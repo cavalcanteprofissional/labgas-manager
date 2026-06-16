@@ -80,6 +80,7 @@
 - [ ] Gráfico de amostras por lote (bar chart)
 - [ ] Últimas amostras registradas na seção de atividades recentes
 - [ ] Card de total de elementos nas amostras
+- [ ] Melhor adaptação e colorização do dashboard com as paletas rainbow
 
 ### Admin
 - [ ] Filtro por aba "amostra" no painel admin
