@@ -55,11 +55,11 @@ COR_TIPO = {
         "gradient": "linear-gradient(135deg, #1d3557, #a8dadc)",
     },
     "amostra": {
-        "class": "purple",
+        "class": "amostra",
         "hex": "#6a1b9a",
-        "var": "var(--amostra)",
-        "bg": "secondary",
-        "gradient": "linear-gradient(135deg, #4a0072, #bb8fce)",
+        "var": "var(--amostra-rainbow)",
+        "bg": "amostra-rainbow",
+        "gradient": "linear-gradient(135deg, #e63946, #f77f00, #ffd166, #2a9d8f, #457b9d, #6a1b9a)",
     },
     "historico": {
         "class": "gray",
@@ -104,7 +104,7 @@ PALETA_CILINDRO = ["#f4a261", "#e76f51", "#d62828", "#c1121f", "#780000"]
 PALETA_PRESSAO  = ["#ffd166", "#fca311", "#f77f00", "#e85d04", "#9d0208"]
 PALETA_ELEMENTO = ["#b7e4c7", "#52b788", "#2d6a4f", "#1b4332", "#081c15"]
 PALETA_LEITURA  = ["#a8dadc", "#457b9d", "#1d3557", "#0b1a2a", "#050d14"]
-PALETA_AMOSTRA  = ["#e8daef", "#bb8fce", "#8e44ad", "#6a1b9a", "#4a0072"]
+PALETA_AMOSTRA  = ["#e63946", "#f77f00", "#ffd166", "#2a9d8f", "#457b9d", "#6a1b9a"]
 
 # Aliases para compatibilidade com codigo existente
 ELEMENTO_CORES = PALETA_ELEMENTO

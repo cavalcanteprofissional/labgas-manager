@@ -33,9 +33,8 @@
             --leitura-dark: #1d3557;
             --leitura-light: #a8dadc;
 
-            /* Cor da Aba Amostra */
-            --amostra: #6a1b9a;
-            --amostra-light: #ce93d8;
+            /* Cor da Aba Amostra — Rainbow */
+            --amostra-rainbow: linear-gradient(135deg, #e63946, #f77f00, #ffd166, #2a9d8f, #457b9d, #6a1b9a);
 
             /* Neutro para Historico */
             --historico: #6c757d;
@@ -147,7 +146,7 @@
             background: linear-gradient(135deg, var(--leitura-dark) 0%, var(--leitura-light) 100%);
         }
         .stat-card.purple, .stat-card.amostra {
-            background: linear-gradient(135deg, var(--amostra-light) 0%, var(--amostra) 100%);
+            background: var(--amostra-rainbow);
         }
         .stat-card.ativos {
             background: linear-gradient(135deg, #081c15 0%, #2d6a4f 100%);
@@ -159,6 +158,10 @@
         .stat-card h2 {
             font-size: 1.75rem;
             font-weight: 700;
+        }
+        .bg-amostra-rainbow {
+            background: var(--amostra-rainbow) !important;
+            color: #fff;
         }
         .navbar-brand {
             font-weight: 700;
