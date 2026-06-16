@@ -119,10 +119,10 @@
         .stat-card.blue, .stat-card.elemento {
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
         }
-        .stat-card.pink, .stat-card.amostra {
+        .stat-card.pink, .stat-card.leitura {
             background: linear-gradient(135deg, var(--pink-dark) 0%, var(--pink-light) 100%);
         }
-        .stat-card.purple, .stat-card.ativos {
+        .stat-card.purple, .stat-card.ativos, .stat-card.amostra {
             background: linear-gradient(135deg, var(--primary-darkest) 0%, var(--primary-dark) 100%);
         }
         .stat-card.orange {
@@ -306,39 +306,44 @@
         <h4 class="text-center mb-4 mt-2"><i class="bi bi-moisture"></i> LabGas</h4>
         <nav>
             <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <i class="bi bi-speedometer2 me-2"></i> <span>Dashboard</span>
+                <i class="bi bi-{{ ICON_TIPO["dashboard"] }} me-2"></i> <span>Dashboard</span>
             </a>
             {% if is_admin or pode_acessar_aba('cilindro') %}
             <a href="{{ url_for('cilindro.list') }}" class="{% if request.endpoint == 'cilindro.list' %}active{% endif %}">
-                <i class="bi bi-box-seam me-2"></i> <span>Cilindros</span>
+                <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-2"></i> <span>Cilindros</span>
             </a>
             {% endif %}
             {% if is_admin or pode_acessar_aba('pressao') %}
             <a href="{{ url_for('pressao.pressao_list') }}" class="{% if request.endpoint == 'pressao.list' %}active{% endif %}">
-                <i class="bi bi-activity me-2"></i> <span>Pressão</span>
+                <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-2"></i> <span>Pressão</span>
             </a>
             {% endif %}
             {% if is_admin or pode_acessar_aba('elemento') %}
             <a href="{{ url_for('elemento.list') }}" class="{% if request.endpoint == 'elemento.list' %}active{% endif %}">
-                <i class="bi bi-droplet me-2"></i> <span>Elementos</span>
+                <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-2"></i> <span>Elementos</span>
+            </a>
+            {% endif %}
+            {% if is_admin or pode_acessar_aba('leitura') %}
+            <a href="{{ url_for('leitura.leitura_list') }}" class="{% if request.endpoint == 'leitura.leitura_list' %}active{% endif %}">
+                <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-2"></i> <span>Leitura</span>
             </a>
             {% endif %}
             {% if is_admin or pode_acessar_aba('amostra') %}
             <a href="{{ url_for('amostra.list') }}" class="{% if request.endpoint == 'amostra.list' %}active{% endif %}">
-                <i class="bi bi-graph-up me-2"></i> <span>Amostras</span>
+                <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-2"></i> <span>Amostras</span>
             </a>
             {% endif %}
             {% if is_admin or pode_acessar_aba('historico') %}
             <a href="{{ url_for('historico.list') }}" class="{% if request.endpoint == 'historico.list' %}active{% endif %}">
-                <i class="bi bi-clock-history me-2"></i> <span>Histórico</span>
+                <i class="bi bi-{{ ICON_TIPO["historico"] }} me-2"></i> <span>Histórico</span>
             </a>
             {% endif %}
             <a href="{{ url_for('perfil') }}" class="{% if request.endpoint == 'perfil' %}active{% endif %}">
-                <i class="bi bi-person me-2"></i> <span>Perfil</span>
+                <i class="bi bi-{{ ICON_TIPO["perfil"] }} me-2"></i> <span>Perfil</span>
             </a>
             {% if is_admin %}
             <a href="{{ url_for('admin.panel') }}" class="{% if request.endpoint == 'admin.panel' or request.endpoint == 'admin.user_data' %}active{% endif %}">
-                <i class="bi bi-gear me-2"></i> <span>Administração</span>
+                <i class="bi bi-{{ ICON_TIPO["admin"] }} me-2"></i> <span>Administração</span>
             </a>
             {% endif %}
             <a href="{{ url_for('auth.logout') }}" class="mt-4">

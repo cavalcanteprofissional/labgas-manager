@@ -6,13 +6,16 @@
 erDiagram
     PERFIL ||--o{ CILINDRO : "possui"
     PERFIL ||--o{ ELEMENTO : "possui"
+    PERFIL ||--o{ LEITURA : "possui"
     PERFIL ||--o{ AMOSTRA : "possui"
     PERFIL ||--o{ PRESSAO : "possui"
     PERFIL ||--o{ HISTORICO_LOG : "registra"
     
-    CILINDRO ||--o{ AMOSTRA : "usado_em"
+    CILINDRO ||--o{ LEITURA : "usado_em"
     CILINDRO ||--o{ PRESSAO : "medido_em"
-    ELEMENTO ||--o{ AMOSTRA : "analisado_em"
+    ELEMENTO ||--o{ LEITURA : "analisado_em"
+    AMOSTRA ||--o{ AMOSTRA_ELEMENTO : "contem"
+    ELEMENTO ||--o{ AMOSTRA_ELEMENTO : "selecionado_em"
 
     PERFIL {
         uuid id PK
@@ -46,15 +49,29 @@ erDiagram
         timestamp created_at
     }
 
-    AMOSTRA {
+    LEITURA {
         int id PK
         date data
         varchar tempo_chama
         int cilindro_id FK
         int elemento_id FK
-        int quantidade_amostras
+        int quantidade
         uuid user_id FK
         timestamp created_at
+    }
+
+    AMOSTRA {
+        int id PK
+        int numero_amostra
+        int lote
+        uuid user_id FK
+        timestamp created_at
+    }
+
+    AMOSTRA_ELEMENTO {
+        int id PK
+        int amostra_id FK
+        int elemento_id FK
     }
 
     PRESSAO {
@@ -94,7 +111,9 @@ flowchart TB
         perfil["perfil"]
         cilindro["cilindro"]
         elemento["elemento"]
+        leitura["leitura"]
         amostra["amostra"]
+        amostra_elemento["amostra_elemento"]
         pressao["pressao"]
         historico["historico_log"]
     end
@@ -102,17 +121,21 @@ flowchart TB
     auth_users -->|FK| perfil
     perfil -->|possui| cilindro
     perfil -->|possui| elemento
+    perfil -->|possui| leitura
     perfil -->|possui| amostra
     perfil -->|possui| pressao
     perfil -->|registra| historico
     
-    cilindro -->|usado_em| amostra
-    elemento -->|analisado_em| amostra
+    cilindro -->|usado_em| leitura
+    elemento -->|analisado_em| leitura
     cilindro -->|medido_em| pressao
+    amostra -->|contem| amostra_elemento
+    elemento -->|selecionado_em| amostra_elemento
     
     frontend -->|CRUD| perfil
     frontend -->|CRUD| cilindro
     frontend -->|CRUD| elemento
+    frontend -->|CRUD| leitura
     frontend -->|CRUD| amostra
     frontend -->|CRUD| pressao
     frontend -->|INSERT| historico
@@ -134,7 +157,7 @@ flowchart TB
 | habilitar_abas | JSONB | Permissões de acesso às abas |
 | criado_em | TIMESTAMP | Data de criação |
 
-**Default:** `habilitar_abas = {"cilindro": false, "elemento": false, "amostra": false, "historico": false}`
+**Default:** `habilitar_abas = {"cilindro": false, "elemento": false, "leitura": false, "amostra": false, "pressao": false, "historico": false}`
 
 ---
 
@@ -168,7 +191,7 @@ flowchart TB
 
 ---
 
-### 4. amostra
+### 4. leitura
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
@@ -177,9 +200,35 @@ flowchart TB
 | tempo_chama | VARCHAR(8) | Tempo de chama (HH:MM:SS) |
 | cilindro_id | INTEGER | FK - Cilindro usado |
 | elemento_id | INTEGER | FK - Elemento analisado |
-| quantidade_amostras | INTEGER | Quantidade de amostras |
+| quantidade | INTEGER | Quantidade de leituras |
 | user_id | UUID | FK - Usuário dono |
 | created_at | TIMESTAMP | Data de criação |
+
+---
+
+### 5. amostra
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | SERIAL | PK - ID automático |
+| numero_amostra | INTEGER | Número sequencial por user |
+| lote | INTEGER | Lote da amostra |
+| user_id | UUID | FK - Usuário dono |
+| created_at | TIMESTAMP | Data de criação |
+
+**Índice único:** `UNIQUE(numero_amostra, user_id)`
+
+---
+
+### 6. amostra_elemento
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | SERIAL | PK - ID automático |
+| amostra_id | INTEGER | FK - Amostra |
+| elemento_id | INTEGER | FK - Elemento selecionado |
+
+**Índice único:** `UNIQUE(amostra_id, elemento_id)`
 
 ---
 
@@ -203,7 +252,7 @@ flowchart TB
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | SERIAL | PK - ID automático |
-| tipo | VARCHAR(20) | Tipo: cilindro, elemento, amostra, pressao, perfil |
+| tipo | VARCHAR(20) | Tipo: cilindro, elemento, leitura, amostra, pressao, perfil |
 | acao | VARCHAR(20) | Ação: criado, atualizado, excluido |
 | nome | VARCHAR(100) | Nome/identificação do item |
 | user_id | UUID | FK - Usuário que executou |
@@ -217,9 +266,12 @@ flowchart TB
 |----|------|------|
 | cilindro.user_id | perfil.id | N:1 |
 | elemento.user_id | perfil.id | N:1 |
+| leitura.user_id | perfil.id | N:1 |
+| leitura.cilindro_id | cilindro.id | N:1 |
+| leitura.elemento_id | elemento.id | N:1 |
 | amostra.user_id | perfil.id | N:1 |
-| amostra.cilindro_id | cilindro.id | N:1 |
-| amostra.elemento_id | elemento.id | N:1 |
+| amostra_elemento.amostra_id | amostra.id | N:1 |
+| amostra_elemento.elemento_id | elemento.id | N:1 |
 | pressao.user_id | perfil.id | N:1 |
 | pressao.cilindro_id | cilindro.id | N:1 |
 | historico_log.user_id | perfil.id | N:1 |
@@ -234,7 +286,9 @@ Todas as tabelas possuem Row Level Security (RLS) habilitado:
 |--------|--------|--------|--------|--------|
 | cilindro | Público | Próprio usuário | Próprio usuário | Próprio usuário |
 | elemento | Público | Próprio usuário | Próprio usuário | Próprio usuário |
+| leitura | Público | Próprio usuário | Próprio usuário | Próprio usuário |
 | amostra | Público | Próprio usuário | Próprio usuário | Próprio usuário |
+| amostra_elemento | Público | Próprio usuário | Próprio usuário | Próprio usuário |
 | perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
 | pressao | Público | Próprio usuário | Próprio usuário | Próprio usuário |
 | historico_log | Público | Admin (service_role) | - | - |

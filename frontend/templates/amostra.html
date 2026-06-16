@@ -1,9 +1,7 @@
 {% extends "base.html" %}
-
 {% block title %}Amostras - LabGas Manager{% endblock %}
-
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-graph-up"></i> Amostras</h2>
+<h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Amostras</h2>
 
 <div class="card mb-4">
     <div class="card-header">
@@ -16,90 +14,40 @@
             <form method="POST" id="createForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="create">
-                <div class="row g-2">
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Data *</label>
-                        <input type="date" name="data" class="form-control form-control-lg" required>
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">N° da Amostra</label>
+                        <input type="text" class="form-control form-control-lg" value="#{{ (amostras[0].numero_amostra + 1) if amostras else '#1' }}" disabled>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Tempo de Chama *</label>
-                        <div class="input-group input-group-lg">
-                            <input type="number" name="hora" class="form-control text-center" placeholder="HH" min="0" max="23" required>
-                            <span class="input-group-text">:</span>
-                            <input type="number" name="minuto" class="form-control text-center" placeholder="MM" min="0" max="59" required>
-                            <span class="input-group-text">:</span>
-                            <input type="number" name="segundo" class="form-control text-center" placeholder="SS" min="0" max="59" required>
-                        </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Lote *</label>
+                        <input type="number" name="lote" class="form-control form-control-lg" min="0" step="1" required>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Cilindro *</label>
-                        <select name="cilindro_id" class="form-select form-select-lg" required>
-                            <option value="">Selecione</option>
-                            {% for c in cilindro %}
-                            <option value="{{ c.id }}">{{ c.codigo }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Elemento *</label>
-                        <select name="elemento_id" class="form-select form-select-lg" required>
-                            <option value="">Selecione</option>
+                    <div class="col-12">
+                        <label class="form-label">Elementos</label>
+                        <div class="row g-2">
                             {% for e in elementos %}
-                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_create_{{ e.id }}">
+                                    <label class="form-check-label" for="elem_create_{{ e.id }}">{{ e.nome }}</label>
+                                </div>
+                            </div>
                             {% endfor %}
-                        </select>
+                        </div>
+                        {% if not elementos %}
+                        <p class="text-muted small mt-2">Nenhum elemento cadastrado. Crie elementos primeiro.</p>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="row g-2 mt-2">
-                    <div class="col-12 col-md-4 col-lg-3">
-                        <label class="form-label">Quantidade de Amostras</label>
-                        <input type="number" name="quantidade_amostras" class="form-control form-control-lg" value="1" min="1">
-                    </div>
-                </div>
-                <div class="row g-2 mt-2">
+                <div class="row mt-3">
                     <div class="col-12">
                         <button type="submit" class="btn btn-success btn-lg w-100">
-                            <i class="bi bi-check-lg"></i> Registrar
+                            <i class="bi bi-check-lg"></i> Cadastrar
                         </button>
                     </div>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<div class="card mb-4">
-    <div class="card-header" style="background-color: #f0f8ff;">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-3">
-                <input type="date" id="filterData" class="form-control" placeholder="Filtrar por data...">
-            </div>
-            <div class="col-md-3">
-                <select id="filterCilindro" class="form-select">
-                    <option value="">Todos os Cilindros</option>
-                    {% for c in cilindro %}
-                    <option value="{{ c.codigo }}">{{ c.codigo }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select id="filterElemento" class="form-select">
-                    <option value="">Todos os Elementos</option>
-                    {% for e in elementos %}
-                    <option value="{{ e.nome }}">{{ e.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button class="btn btn-outline-secondary w-100" onclick="filterAmostra()">
-                    <i class="bi bi-funnel"></i> Filtrar
-                </button>
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -112,111 +60,102 @@
                 <thead class="table-light">
                     <tr>
                         <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
-                        <th>Data</th>
-                        <th class="d-none d-sm-table-cell">Tempo</th>
-                        <th>Cilindro</th>
-                        <th class="d-none d-lg-table-cell">Elemento</th>
-                        <th>Qtd</th>
-                        <th>Ações</th>
+                        <th>N°</th>
+                        <th>Lote</th>
+                        <th>Elementos</th>
+                        <th style="width: 160px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for a in amostras %}
                     <tr>
                         <td><input type="checkbox" name="amostra_ids" value="{{ a.id }}" class="item-checkbox"></td>
+                        <td><strong>{{ a.numero_amostra }}</strong></td>
+                        <td>{{ a.lote }}</td>
                         <td>
-                            <strong>{{ a.data|formatar_data if a.data else '-' }}</strong>
-                            <div class="d-sm-none text-muted small">{{ a.tempo_chama }}</div>
+                            {% for nome in a.elementos_nomes %}
+                            <span class="badge" style="background-color: var(--primary);">{{ nome }}</span>
+                            {% endfor %}
+                            {% if not a.elementos_nomes %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
                         </td>
-                        <td class="d-none d-sm-table-cell">{{ a.tempo_chama }}</td>
-                        <td><span class="badge" style="background-color: var(--green);">{{ a.cilindro_nome }}</span></td>
-                        <td class="d-none d-lg-table-cell"><span class="badge" style="background-color: var(--primary);">{{ a.elemento_nome }}</span></td>
-                        <td>{{ a.quantidade_amostras }}</td>
                         <td>
-                            <div class="d-flex flex-column gap-1">
-                                <button class="btn btn-sm admin-permission-btn btn-warning w-100 text-start" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">
-                                    <i class="bi bi-pencil me-1"></i> Editar
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                                <form method="POST" id="deleteForm{{ a.id }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="amostra_id" value="{{ a.id }}">
-                                </form>
-                                <button type="button" class="btn btn-sm admin-permission-btn btn-danger w-100 text-start" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
-                                    <i class="bi bi-trash me-1"></i> Excluir
+                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </div>
                         </td>
                     </tr>
+
                     <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-dialog modal-lg">
                             <div class="modal-content">
-                                <form method="POST" onsubmit="return updateAmostra(event, {{ a.id }})">
+                                <form method="POST">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="update">
                                     <input type="hidden" name="amostra_id" value="{{ a.id }}">
-                                    <div class="modal-header" style="background: linear-gradient(135deg, #0070b8, #4da3e8); color: white;">
-                                        <h5 class="modal-title" style="color: white;">Editar Amostra</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Editar Amostra #{{ a.numero_amostra }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="mb-3">
-                                            <label class="form-label">Data</label>
-                                            <input type="date" name="data" class="form-control" value="{{ a.data }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Tempo de Chama</label>
-                                            <div class="input-group">
-                                                <input type="number" name="hora" class="form-control text-center" placeholder="HH" min="0" max="23" value="{{ a.tempo_chama.split(':')[0] if a.tempo_chama else '0' }}" required>
-                                                <span class="input-group-text">:</span>
-                                                <input type="number" name="minuto" class="form-control text-center" placeholder="MM" min="0" max="59" value="{{ a.tempo_chama.split(':')[1] if a.tempo_chama else '0' }}" required>
-                                                <span class="input-group-text">:</span>
-                                                <input type="number" name="segundo" class="form-control text-center" placeholder="SS" min="0" max="59" value="{{ a.tempo_chama.split(':')[2] if a.tempo_chama else '0' }}" required>
+                                        <div class="row g-3">
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label">N° da Amostra</label>
+                                                <input type="text" class="form-control" value="{{ a.numero_amostra }}" disabled>
                                             </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Cilindro</label>
-                                            <select name="cilindro_id" class="form-select" required>
-                                                {% for c in cilindro %}
-                                                <option value="{{ c.id }}" {% if c.id == a.cilindro_id %}selected{% endif %}>{{ c.codigo }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Elemento</label>
-                                            <select name="elemento_id" class="form-select" required>
-                                                {% for e in elementos %}
-                                                <option value="{{ e.id }}" {% if e.id == a.elemento_id %}selected{% endif %}>{{ e.nome }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Quantidade de Amostras</label>
-                                            <input type="number" name="quantidade_amostras" class="form-control" value="{{ a.quantidade_amostras }}" min="1">
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label">Lote *</label>
+                                                <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" required>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Elementos</label>
+                                                <div class="row g-2">
+                                                    {% for e in elementos %}
+                                                    <div class="col-6 col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_edit_{{ a.id }}_{{ e.id }}"
+                                                            {% if e.nome in a.elementos_nomes %}checked{% endif %}>
+                                                            <label class="form-check-label" for="elem_edit_{{ a.id }}_{{ e.id }}">{{ e.nome }}</label>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="submit" class="btn btn-primary btn-lg w-100">Salvar</button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Salvar</button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <!-- Modal de Exclusão -->
+
                     <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-dialog">
                             <div class="modal-content">
-                                <div class="modal-header bg-danger text-white">
-                                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Excluir Amostra</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir esta amostra?</p>
-                                    <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
+                                    <p>Tem certeza que deseja excluir a <strong>Amostra #{{ a.numero_amostra }}</strong> (Lote {{ a.lote }})?</p>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" form="deleteForm{{ a.id }}" class="btn btn-danger">Confirmar Exclusão</button>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="amostra_id" value="{{ a.id }}">
+                                        <button type="submit" class="btn btn-danger">Excluir</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -232,133 +171,112 @@
         </div>
         {% endif %}
     </div>
-    
-    {% if total and total > 0 %}
-    <form method="POST" id="bulkDeleteForm">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="action" value="delete_multiple">
-        <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div class="text-muted">
-                    Mostrando {{ (page-1)*per_page + 1 }}-{{ end }} de {{ total }}
-                </div>
-                <nav>
-                    <ul class="pagination mb-0">
-                        <li class="page-item {{ 'disabled' if page == 1 }}"><a class="page-link" href="?page={{ page-1 }}&per_page={{ per_page }}">Anterior</a></li>
-                        {% for p in range(1, max_pages + 1) %}
-                        <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}">{{ p }}</a></li>
-                        {% endfor %}
-                        {% if pages > 10 %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                        <li class="page-item {{ 'active' if page == pages }}"><a class="page-link" href="?page={{ pages }}&per_page={{ per_page }}">{{ pages }}</a></li>
-                        {% endif %}
-                        <li class="page-item {{ 'disabled' if page == pages }}"><a class="page-link" href="?page={{ page+1 }}&per_page={{ per_page }}">Próxima</a></li>
-                    </ul>
-                </nav>
-                <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?page=1&per_page='+this.value">
-                    <option value="10" {{ 'selected' if per_page == 10 }}>10 por página</option>
-                    <option value="25" {{ 'selected' if per_page == 25 }}>25 por página</option>
-                    <option value="50" {{ 'selected' if per_page == 50 }}>50 por página</option>
-                    <option value="100" {{ 'selected' if per_page == 100 }}>100 por página</option>
-                </select>
-            </div>
-        </div>
-    </form>
+    {% if amostras and total > per_page %}
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-muted">Mostrando {{ (page-1)*per_page + 1 }}-{{ page*per_page if page*per_page <= total else total }} de {{ total }}</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page > 1 %}
+                <li class="page-item"><a class="page-link" href="?page={{ page-1 }}">Anterior</a></li>
+                {% endif %}
+                {% for p in range(1, (total // per_page) + 2) %}
+                {% if p == page %}
+                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+                {% endif %}
+                {% endfor %}
+                {% if page * per_page < total %}
+                <li class="page-item"><a class="page-link" href="?page={{ page+1 }}">Próximo</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
     {% endif %}
 </div>
 
 <div id="selectedActions" class="position-fixed bottom-0 start-50 translate-middle-x mb-4 shadow-lg d-none" style="z-index: 1050;">
-    <div class="alert mb-0 py-2 px-4 rounded-pill shadow" style="background-color: rgba(0, 112, 184, 0.1); border: 2px solid #0070b8; color: #0070b8;">
-        <span id="selectedCount" class="me-3 fw-bold" style="color: #0070b8;">0</span>selecionado(s)
-        <button type="button" class="btn btn-sm ms-3" style="background-color: #0070b8; color: white;" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal">
-            <i class="bi bi-trash"></i> Excluir
-        </button>
-    </div>
-</div>
-
-<!-- Modal Bulk Delete -->
-<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão em Massa</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Tem certeza que deseja excluir as <strong><span id="selectedCountModal">0</span></strong> amostras selecionadas?</p>
-                <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" form="bulkDeleteForm" class="btn btn-danger">Confirmar Exclusão</button>
-            </div>
+    <div class="card border-danger">
+        <div class="card-body d-flex align-items-center gap-3 py-2">
+            <span id="selectedCountModal">0</span> amostra(s) selecionada(s)
+            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal">
+                <i class="bi bi-trash"></i> Excluir Selecionadas
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">Cancelar</button>
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excluir Amostras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir as <strong><span id="selectedCountConfirm">0</span></strong> amostras selecionadas?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" id="bulkDeleteForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_multiple">
+                    <div id="bulkInputs"></div>
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-function filterAmostra() {
-    const data = document.getElementById('filterData').value;
-    const cilindro = document.getElementById('filterCilindro').value;
-    const elemento = document.getElementById('filterElemento').value;
-    
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        const rowData = row.cells[1].textContent.trim();
-        const rowCilindro = row.cells[3].textContent.trim().toLowerCase();
-        const rowElemento = row.cells[4].textContent.trim().toLowerCase();
-        
-        let show = true;
-        if (data && rowData !== data) show = false;
-        if (cilindro && !rowCilindro.includes(cilindro.toLowerCase())) show = false;
-        if (elemento && !rowElemento.includes(elemento.toLowerCase())) show = false;
-        
-        row.style.display = show ? '' : 'none';
-    });
-}
-
-function clearFilters() {
-    document.getElementById('filterData').value = '';
-    document.getElementById('filterCilindro').value = '';
-    document.getElementById('filterElemento').value = '';
-    filterAmostra();
-}
-
-document.getElementById('filterData').addEventListener('change', filterAmostra);
-
-document.getElementById('selectAll').addEventListener('change', function() {
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
     const checkboxes = document.querySelectorAll('.item-checkbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-    updateSelectedCount();
-});
+    const selectedActions = document.getElementById('selectedActions');
+    const selectedCountModal = document.getElementById('selectedCountModal');
+    const selectedCountConfirm = document.getElementById('selectedCountConfirm');
+    const bulkInputs = document.getElementById('bulkInputs');
 
-document.querySelectorAll('.item-checkbox').forEach(cb => {
-    cb.addEventListener('change', updateSelectedCount);
-});
-
-function updateSelectedCount() {
-    const count = document.querySelectorAll('.item-checkbox:checked').length;
-    const div = document.getElementById('selectedActions');
-    document.getElementById('selectedCount').textContent = count;
-    document.getElementById('selectedCountModal').textContent = count;
-    div.classList.toggle('d-none', count === 0);
-}
-
-document.getElementById('bulkDeleteForm').addEventListener('submit', function(e) {
-    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-    if (checkboxes.length === 0) {
-        e.preventDefault();
-        alert('Nenhum item selecionado');
-        return;
+    function updateSelectedCount() {
+        const checked = document.querySelectorAll('.item-checkbox:checked');
+        const count = checked.length;
+        if (selectedCountModal) selectedCountModal.textContent = count;
+        if (selectedCountConfirm) selectedCountConfirm.textContent = count;
+        if (selectedActions) {
+            selectedActions.classList.toggle('d-none', count === 0);
+        }
+        if (bulkInputs) {
+            bulkInputs.innerHTML = '';
+            checked.forEach(cb => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'amostra_ids';
+                input.value = cb.value;
+                bulkInputs.appendChild(input);
+            });
+        }
     }
-    
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateSelectedCount();
+        });
+    }
+
     checkboxes.forEach(cb => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'amostra_ids';
-        input.value = cb.value;
-        this.appendChild(input);
+        cb.addEventListener('change', updateSelectedCount);
     });
+
+    window.clearSelection = function() {
+        checkboxes.forEach(cb => cb.checked = false);
+        if (selectAll) selectAll.checked = false;
+        updateSelectedCount();
+    };
 });
 </script>
 {% endblock %}

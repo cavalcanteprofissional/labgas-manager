@@ -108,7 +108,7 @@ def login():
                             "ativo": True,
                             "nome": nome,
                             "email": email,
-                            "habilitar_abas": {"cilindro": True, "pressao": True, "elemento": True, "amostra": True, "historico": True}
+                            "habilitar_abas": {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "historico": True}
                         }).execute()
                         flash("Perfil criado com sucesso!", "success")
 
@@ -194,7 +194,7 @@ def register():
                         "ativo": True,
                         "nome": nome,
                         "email": email,
-                        "habilitar_abas": {"cilindro": True, "pressao": True, "elemento": True, "amostra": True, "historico": True}
+                        "habilitar_abas": {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "historico": True}
                     }).execute()
                     
                     # Registrar cadastro no histórico

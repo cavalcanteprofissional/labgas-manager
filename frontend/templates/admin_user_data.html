@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-person"></i> Dados do Usuário</h2>
+    <h2><i class="bi bi-{{ ICON_TIPO["perfil"] }}"></i> Dados do Usuário</h2>
     <a href="{{ url_for('admin.panel') }}" class="btn btn-outline-primary">
         <i class="bi bi-arrow-left"></i> Voltar
     </a>
@@ -12,7 +12,7 @@
 
 <div class="card mb-4">
     <div class="card-header" style="background: linear-gradient(135deg, #0070b8, #4da3e8); color: white;">
-        <h5 class="mb-0"><i class="bi bi-person-circle"></i> Informações do Usuário</h5>
+        <h5 class="mb-0"><i class="bi bi-{{ ICON_TIPO["perfil"] }}-circle"></i> Informações do Usuário</h5>
     </div>
     <div class="card-body">
         <div class="row">
@@ -45,7 +45,7 @@
         <div class="row text-center">
             <div class="col-6 col-md-3 mb-2">
                 <div class="p-3 rounded" style="background-color: {{ 'var(--green)' if habilitar_abas.cilindro else '#f0f0f0' }}20;">
-                    <i class="bi bi-box-seam fs-4" style="color: {{ 'var(--green)' if habilitar_abas.cilindro else '#6c757d' }};"></i>
+                    <i class="bi bi-{{ ICON_TIPO["cilindro"] }} fs-4" style="color: {{ 'var(--green)' if habilitar_abas.cilindro else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Cilindros</strong></p>
                     <span class="badge" style="background-color: {{ 'var(--green)' if habilitar_abas.cilindro else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.cilindro else 'Desabilitado' }}
@@ -54,7 +54,7 @@
             </div>
             <div class="col-6 col-md-3 mb-2">
                 <div class="p-3 rounded" style="background-color: {{ '#f59e0b' if habilitar_abas.pressao else '#f0f0f0' }}20;">
-                    <i class="bi bi-activity fs-4" style="color: {{ '#f59e0b' if habilitar_abas.pressao else '#6c757d' }};"></i>
+                    <i class="bi bi-{{ ICON_TIPO["pressao"] }} fs-4" style="color: {{ '#f59e0b' if habilitar_abas.pressao else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Pressão</strong></p>
                     <span class="badge" style="background-color: {{ '#f59e0b' if habilitar_abas.pressao else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.pressao else 'Desabilitado' }}
@@ -63,7 +63,7 @@
             </div>
             <div class="col-6 col-md-3 mb-2">
                 <div class="p-3 rounded" style="background-color: {{ 'var(--primary)' if habilitar_abas.elemento else '#f0f0f0' }}20;">
-                    <i class="bi bi-droplet fs-4" style="color: {{ 'var(--primary)' if habilitar_abas.elemento else '#6c757d' }};"></i>
+                    <i class="bi bi-{{ ICON_TIPO["elemento"] }} fs-4" style="color: {{ 'var(--primary)' if habilitar_abas.elemento else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Elementos</strong></p>
                     <span class="badge" style="background-color: {{ 'var(--primary)' if habilitar_abas.elemento else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.elemento else 'Desabilitado' }}
@@ -71,17 +71,26 @@
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ 'var(--pink)' if habilitar_abas.amostra else '#f0f0f0' }}20;">
-                    <i class="bi bi-graph-up fs-4" style="color: {{ 'var(--pink)' if habilitar_abas.amostra else '#6c757d' }};"></i>
-                    <p class="mb-0 mt-2"><strong>Amostras</strong></p>
-                    <span class="badge" style="background-color: {{ 'var(--pink)' if habilitar_abas.amostra else '#6c757d' }};">
+                <div class="p-3 rounded" style="background-color: {{ 'var(--pink)' if habilitar_abas.leitura else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["leitura"] }} fs-4" style="color: {{ 'var(--pink)' if habilitar_abas.leitura else '#6c757d' }};"></i>
+                    <p class="mb-0 mt-2"><strong>Leitura</strong></p>
+                    <span class="badge" style="background-color: {{ 'var(--pink)' if habilitar_abas.leitura else '#6c757d' }};">
+                        {{ 'Habilitado' if habilitar_abas.leitura else 'Desabilitado' }}
+                    </span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <div class="p-3 rounded" style="background-color: {{ '#6a1b9a' if habilitar_abas.amostra else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["amostra"] }} fs-4" style="color: {{ '#6a1b9a' if habilitar_abas.amostra else '#6c757d' }};"></i>
+                    <p class="mb-0 mt-2"><strong>Amostra</strong></p>
+                    <span class="badge" style="background-color: {{ '#6a1b9a' if habilitar_abas.amostra else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.amostra else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
                 <div class="p-3 rounded" style="background-color: {{ 'var(--primary)' if habilitar_abas.historico else '#f0f0f0' }}20;">
-                    <i class="bi bi-clock-history fs-4" style="color: {{ 'var(--primary)' if habilitar_abas.historico else '#6c757d' }};"></i>
+                    <i class="bi bi-{{ ICON_TIPO["historico"] }} fs-4" style="color: {{ 'var(--primary)' if habilitar_abas.historico else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Histórico</strong></p>
                     <span class="badge" style="background-color: {{ 'var(--primary)' if habilitar_abas.historico else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.historico else 'Desabilitado' }}
@@ -97,7 +106,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card green h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-box-seam me-1"></i> Cilindros</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros</h5>
                 <h2 class="mb-0">{{ cilindro_total }}</h2>
             </div>
         </div>
@@ -105,7 +114,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card orange h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-activity me-1"></i> Pressões</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["pressao"] }} me-1"></i> Pressões</h5>
                 <h2 class="mb-0">{{ pressoes_total }}</h2>
             </div>
         </div>
@@ -113,7 +122,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card blue h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-droplet me-1"></i> Elementos</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos</h5>
                 <h2 class="mb-0">{{ elementos_total }}</h2>
             </div>
         </div>
@@ -121,8 +130,16 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card pink h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-graph-up me-1"></i> Amostras</h5>
-                <h2 class="mb-0">{{ amostras_total }}</h2>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leituras</h5>
+                <h2 class="mb-0">{{ leituras_total }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card purple h-100">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostras</h5>
+                <h2 class="mb-0">{{ amostras_total or 0 }}</h2>
             </div>
         </div>
     </div>
@@ -132,7 +149,7 @@
     <div class="card-header" style="background: linear-gradient(135deg, #002a47, #003a5e); color: white;">
         <div class="row g-2 align-items-center">
             <div class="col-md-6">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-1"></i> Histórico de Atividades ({{ historico_total }})</h5>
+                <h5 class="mb-0"><i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico de Atividades ({{ historico_total }})</h5>
             </div>
             <div class="col-md-2">
                 <select id="filterType" class="form-select form-select-sm">
@@ -140,7 +157,8 @@
                     <option value="cilindro">Cilindros</option>
                     <option value="pressao">Pressões</option>
                     <option value="elemento">Elementos</option>
-                    <option value="amostra">Amostras</option>
+                    <option value="leitura">Leitura</option>
+                    <option value="amostra">Amostra</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -175,7 +193,7 @@
                     <tr>
                         <td><small>{{ h.data|formatar_data if h.data else '-' }}</small></td>
                         <td>
-                            <span class="badge" style="background-color: {{ 'var(--green)' if h.tipo == 'cilindro' else 'var(--pink)' if h.tipo == 'amostra' else '#f59e0b' if h.tipo == 'pressao' else 'var(--primary)' if h.tipo == 'elemento' else 'var(--primary-lighter)' if h.tipo == 'perfil' else 'var(--primary)' }};">{{ h.tipo|title }}</span>
+                            <span class="badge" style="background-color: {{ 'var(--green)' if h.tipo == 'cilindro' else 'var(--pink)' if h.tipo == 'leitura' else '#f59e0b' if h.tipo == 'pressao' else 'var(--primary)' if h.tipo == 'elemento' else '#6a1b9a' if h.tipo == 'amostra' else 'var(--primary-lighter)' if h.tipo == 'perfil' else 'var(--primary)' }};">{{ h.tipo|title }}</span>
                         </td>
                         <td>
                             <span class="badge" style="background-color: {{ 'var(--green)' if h.acao == 'criado' else 'var(--yellow)' if h.acao == 'atualizado' else 'var(--red)' if h.acao == 'excluido' else '#6c757d' }};">{{ h.acao|title }}</span>
@@ -200,7 +218,7 @@
         {% endif %}
         {% else %}
         <div class="text-center py-5 text-muted">
-            <i class="bi bi-clock-history fs-1"></i>
+            <i class="bi bi-{{ ICON_TIPO["historico"] }} fs-1"></i>
             <p class="mt-2">Nenhuma atividade registrada.</p>
         </div>
         {% endif %}
@@ -218,7 +236,7 @@ function filterHistory() {
         let rowType = cells[1].textContent.trim().toLowerCase();
         let rowAction = cells[2].textContent.trim().toLowerCase();
         
-        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'amostra': 'amostra' };
+        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'leitura': 'leitura', 'amostra': 'amostra' };
         rowType = typeMap[rowType] || rowType;
         
         const actionMap = { 'criado': 'criado', 'atualizado': 'atualizado', 'excluído': 'excluido' };

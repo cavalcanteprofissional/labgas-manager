@@ -10,6 +10,19 @@ CUSTO_DEFAULT = float(os.getenv("CUSTO_DEFAULT", "290.00"))
 CILINDRO_STATUS = ["ativo", "esgotado"]
 
 # Sistema de cores - Paleta baseada em #0070b8
+ICON_TIPO = {
+    "cilindro": "box-seam",
+    "pressao": "activity",
+    "elemento": "droplet",
+    "leitura": "eye",
+    "amostra": "collection",
+    "historico": "clock-history",
+    "perfil": "person",
+    "admin": "gear",
+    "dashboard": "speedometer2",
+    "ativos": "check-circle",
+}
+
 COR_TIPO = {
     "cilindro": {
         "class": "green",
@@ -21,10 +34,15 @@ COR_TIPO = {
         "gradient": "linear-gradient(135deg, #003a5e, #4da3e8)",
         "badge": "primary"
     },
-    "amostra": {
+    "leitura": {
         "class": "pink",
         "gradient": "linear-gradient(135deg, #0070b8, #6cccff)",
         "badge": "info"
+    },
+    "amostra": {
+        "class": "purple",
+        "gradient": "linear-gradient(135deg, #6a1b9a, #ce93d8)",
+        "badge": "secondary"
     },
     "ativos": {
         "class": "purple",
@@ -68,7 +86,7 @@ ELEMENTO_CORES = [
     "#4a7a98", "#2a5a78", "#1a4a58", "#0a3a48", "#002a38"
 ]
 
-ELEMENTO_CORES_AMOSTRAS = [
+ELEMENTO_CORES_LEITURAS = [
     "#e91e63", "#c2185b", "#d81b60", "#f06292", "#f48fb1",
     "#f06292", "#ec407a", "#f8bbd0", "#f48fb1", "#f62d74",
     "#d81b60", "#c2185b", "#880e4f", "#ad1457", "#c51162",

@@ -17,7 +17,7 @@
     .admin-cards { display: none; }
 }
 </style>
-<h2 class="mb-4"><i class="bi bi-gear"></i> Painel de Administração</h2>
+<h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["admin"] }}"></i> Painel de Administração</h2>
 
 <!-- Desktop Table View -->
 <div class="card mb-4 d-none d-lg-block">
@@ -60,13 +60,15 @@
                         <td class="text-center" data-label="Cilindros">{{ user.cilindros }}</td>
                         <td class="text-center" data-label="Pressão">{{ user.pressoes }}</td>
                         <td class="text-center" data-label="Elementos">{{ user.elementos }}</td>
-                        <td class="text-center" data-label="Amostras">{{ user.amostras }}</td>
+                        <td class="text-center" data-label="Leituras">{{ user.leituras }}</td>
+                        <td class="text-center" data-label="Amostras">{{ user.amostras or 0 }}</td>
                         <td data-label="Acesso às Abas">
                             <div class="d-flex flex-column gap-1">
                                 {% set cil_checked = user.habilitar_abas.cilindro if user.habilitar_abas.cilindro is defined else true %}
                                 {% set temp_checked = user.habilitar_abas.pressao if user.habilitar_abas.pressao is defined else true %}
                                 {% set ele_checked = user.habilitar_abas.elemento if user.habilitar_abas.elemento is defined else true %}
-                                {% set amo_checked = user.habilitar_abas.amostra if user.habilitar_abas.amostra is defined else true %}
+                                {% set amo_checked = user.habilitar_abas.leitura if user.habilitar_abas.leitura is defined else true %}
+                                {% set ams_checked = user.habilitar_abas.amostra if user.habilitar_abas.amostra is defined else true %}
                                 {% set his_checked = user.habilitar_abas.historico if user.habilitar_abas.historico is defined else true %}
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -74,7 +76,7 @@
                                     <input type="hidden" name="aba" value="cilindro">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if cil_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
-                                        <i class="bi bi-box-seam me-1"></i> Cilindros
+                                        <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
@@ -83,7 +85,7 @@
                                     <input type="hidden" name="aba" value="pressao">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if temp_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
-                                        <i class="bi bi-activity me-1"></i> Pressão
+                                        <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-1"></i> Pressão
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
@@ -92,16 +94,25 @@
                                     <input type="hidden" name="aba" value="elemento">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ele_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
-                                        <i class="bi bi-droplet me-1"></i> Elementos
+                                        <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="aba" value="leitura">
+                                    <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                        <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leitura
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="amostra">
-                                    <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
-                                        <i class="bi bi-graph-up me-1"></i> Amostras
+                                    <input type="hidden" name="habilitar" value="{{ 'false' if ams_checked else 'true' }}">
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                        <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostra
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}" style="display:inline;">
@@ -110,7 +121,7 @@
                                     <input type="hidden" name="aba" value="historico">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if his_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
-                                        <i class="bi bi-clock-history me-1"></i> Histórico
+                                        <i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico
                                     </button>
                                 </form>
                             </div>
@@ -187,19 +198,23 @@
                             <strong>{{ user.elementos }}</strong><br><small class="text-muted">Elementos</small>
                         </div>
                         <div class="col">
-                            <strong>{{ user.amostras }}</strong><br><small class="text-muted">Amostras</small>
+                            <strong>{{ user.leituras }}</strong><br><small class="text-muted">Leituras</small>
+                        </div>
+                        <div class="col">
+                            <strong>{{ user.amostras or 0 }}</strong><br><small class="text-muted">Amostras</small>
                         </div>
                     </div>
                     <div class="mb-2">
                         <button class="btn btn-sm btn-primary w-100 text-white" data-bs-toggle="collapse" data-bs-target="#perms-{{ user.id }}">
-                            <i class="bi bi-gear me-1"></i> Permissões
+                            <i class="bi bi-{{ ICON_TIPO["admin"] }} me-1"></i> Permissões
                         </button>
                         <div class="collapse mt-1" id="perms-{{ user.id }}">
                             <div class="d-flex flex-column gap-1">
                                 {% set cil_checked = user.habilitar_abas.cilindro if user.habilitar_abas.cilindro is defined else true %}
                                 {% set temp_checked = user.habilitar_abas.pressao if user.habilitar_abas.pressao is defined else true %}
                                 {% set ele_checked = user.habilitar_abas.elemento if user.habilitar_abas.elemento is defined else true %}
-                                {% set amo_checked = user.habilitar_abas.amostra if user.habilitar_abas.amostra is defined else true %}
+                                {% set amo_checked = user.habilitar_abas.leitura if user.habilitar_abas.leitura is defined else true %}
+                                {% set ams_checked = user.habilitar_abas.amostra if user.habilitar_abas.amostra is defined else true %}
                                 {% set his_checked = user.habilitar_abas.historico if user.habilitar_abas.historico is defined else true %}
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -207,7 +222,7 @@
                                     <input type="hidden" name="aba" value="cilindro">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if cil_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
-                                        <i class="bi bi-box-seam me-1"></i> Cilindros
+                                        <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
@@ -216,7 +231,7 @@
                                     <input type="hidden" name="aba" value="pressao">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if temp_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
-                                        <i class="bi bi-activity me-1"></i> Pressão
+                                        <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-1"></i> Pressão
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
@@ -225,16 +240,25 @@
                                     <input type="hidden" name="aba" value="elemento">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ele_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
-                                        <i class="bi bi-droplet me-1"></i> Elementos
+                                        <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="aba" value="leitura">
+                                    <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                        <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leitura
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="amostra">
-                                    <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
-                                        <i class="bi bi-graph-up me-1"></i> Amostras
+                                    <input type="hidden" name="habilitar" value="{{ 'false' if ams_checked else 'true' }}">
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                        <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostra
                                     </button>
                                 </form>
                                 <form method="POST" action="{{ url_for('admin.update_habilitar_abas') }}">
@@ -243,7 +267,7 @@
                                     <input type="hidden" name="aba" value="historico">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if his_checked else 'true' }}">
                                     <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
-                                        <i class="bi bi-clock-history me-1"></i> Histórico
+                                        <i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico
                                     </button>
                                 </form>
                             </div>
@@ -251,7 +275,7 @@
                     </div>
                     <div class="mb-2">
                         <button class="btn btn-sm btn-primary w-100" data-bs-toggle="collapse" data-bs-target="#actions-{{ user.id }}">
-                            <i class="bi bi-gear-wide-connected me-1"></i> Ações
+                            <i class="bi bi-{{ ICON_TIPO["admin"] }}-wide-connected me-1"></i> Ações
                         </button>
                         <div class="collapse mt-1" id="actions-{{ user.id }}">
                             <div class="d-flex flex-column gap-1">

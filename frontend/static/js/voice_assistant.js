@@ -7,7 +7,7 @@
     // ==================== ESTADO DO ASSISTENTE ====================
     const voiceState = {
         state: 'IDLE',           // IDLE, INTENT, COLLECTING, CONFIRMING, EXECUTE, FEEDBACK
-        intent: null,           // 'cilindro', 'pressao', 'elemento', 'amostra'
+        intent: null,           // 'cilindro', 'pressao', 'elemento', 'leitura'
         data: {},              // Dados temporários
         currentStep: 0,        // Passo atual
         confirmed: false,     // Flag de confirmação
@@ -39,12 +39,12 @@
         { field: 'consumo_lpm', prompt: 'Qual o consumo em litros por minuto?', verify: 'número' }
     ];
 
-    const amostraSteps = [
-        { field: 'data', prompt: 'Qual a data da amostra?', verify: 'data' },
-        { field: 'tempo_chama', prompt: 'Qual o tempo de chama? Formato hora minuto segundo.', verify: 'tempo' },
-        { field: 'cilindro_id', prompt: 'Qual cilindro?', verify: 'código' },
-        { field: 'elemento_id', prompt: 'Qual elemento?', verify: 'nome' },
-        { field: 'quantidade_amostras', prompt: 'Quantas amostras?', verify: 'número' }
+    const leituraSteps = [
+        { field: 'data', prompt: 'Qual a data da leitura?', verify: 'data' },
+        { field: 'tempo_chama', prompt: 'Qual o tempo de chama?', verify: 'tempo' },
+        { field: 'cilindro_id', prompt: 'Qual o cilindro?', verify: 'text' },
+        { field: 'elemento_id', prompt: 'Qual o elemento?', verify: 'text' },
+        { field: 'quantidade', prompt: 'Qual a quantidade?', verify: 'número' }
     ];
 
     // Mapeamento de intents para steps
@@ -52,7 +52,7 @@
         'cilindro': cilindroSteps,
         'pressao': pressaoSteps,
         'elemento': elementoSteps,
-        'amostra': amostraSteps
+        'leitura': leituraSteps
     };
 
     // Valores padrão por intent
@@ -60,7 +60,7 @@
         'cilindro': { gas_kg: '1.0', custo: '290.00', status: 'ativo' },
         'pressao': { temperatura: '25' },
         'elemento': {},
-        'amostra': { quantidade_amostras: '1', hora: '00', minuto: '00', segundo: '00' }
+        'leitura': { quantidade: '1', hora: '00', minuto: '00', segundo: '00' }
     };
 
     // ==================== RECONHECIMENTO DE VOZ ====================
@@ -273,13 +273,13 @@
                 startIntent('pressao');
             } else if (text.includes('elemento') || text === '3') {
                 startIntent('elemento');
-            } else if (text.includes('amostra') || text === '4') {
-                startIntent('amostra');
+            } else if (text.includes('leitura') || text === '4') {
+                startIntent('leitura');
             } else if (text.includes('cancelar') || text.includes('sair') || text.includes('fechar')) {
                 speak('Ok. Até logo!');
                 resetState();
             } else {
-                speak('Desculpe, não entendi. Diga "cilindro", "pressão", "elemento" ou "amostra" para registrar.');
+                speak('Desculpe, não entendi. Diga "cilindro", "pressão", "elemento" ou "leitura" para registrar.');
             }
             return;
         }
@@ -466,7 +466,7 @@
                 }
                 break;
 
-            case 'quantidade_amostras':
+            case 'quantidade':
                 value = parseNumero(text);
                 if (!value || value < 1 || value > 1000) {
                     speak('Quantidade inválida. Diga um número de 1 a 1000.');
@@ -592,7 +592,7 @@
             data.append('action', 'create');
             endpoint = '/elementos';
             successMessage = 'Elemento ' + voiceState.data.nome + ' salvo com sucesso!';
-        } else if (intent === 'amostra') {
+        } else if (intent === 'leitura') {
             // Buscar ID do cilindro pelo código via API
             const cilindroId = await buscarIdPorCodigo(voiceState.data.cilindro_id);
             if (!cilindroId) {
@@ -623,10 +623,10 @@
             data.append('segundo', segundo);
             data.append('cilindro_id', cilindroId);
             data.append('elemento_id', elementoId);
-            data.append('quantidade_amostras', voiceState.data.quantidade_amostras || '1');
+            data.append('quantidade', voiceState.data.quantidade || '1');
             data.append('action', 'create');
-            endpoint = '/amostras';
-            successMessage = 'Amostra registrada com sucesso!';
+            endpoint = '/leituras';
+            successMessage = 'Leitura registrada com sucesso!';
         }
 
         try {
@@ -644,7 +644,7 @@
                 transitionTo('FEEDBACK');
                 setTimeout(() => {
                     resetState();
-                    speak('O que mais deseja fazer? Diga cilindro, pressão, elemento ou amostra.');
+                    speak('O que mais deseja fazer? Diga cilindro, pressão, elemento ou leitura.');
                 }, 2000);
             } else {
                 const error = await response.json();
@@ -865,7 +865,7 @@
             return 'Cilindro ' + (data.cilindro_id || '') + ', pressão ' + (data.pressao || '') + ' bar, temperatura ' + (data.temperatura || '') + ' graus';
         } else if (intent === 'elemento') {
             return 'Nome ' + (data.nome || '') + ', consumo ' + (data.consumo_lpm || '') + ' L/min';
-        } else if (intent === 'amostra') {
+        } else if (intent === 'leitura') {
             return 'Data ' + (data.data || '') + ', tempo ' + (data.tempo_chama || '') + ', cilindro ' + (data.cilindro_id || '') + ', elemento ' + (data.elemento_id || '');
         }
         return 'Dados coletados';
@@ -889,10 +889,10 @@
                       '<br>Hora: ' + (data.hora || '-');
         } else if (intent === 'elemento') {
             preview = 'Nome: ' + (data.nome || '-') + '<br>Consumo: ' + (data.consumo_lpm || '-') + ' L/min';
-        } else if (intent === 'amostra') {
+        } else if (intent === 'leitura') {
             preview = 'Data: ' + (data.data || '-') + '<br>Tempo: ' + (data.tempo_chama || '-') +
                       '<br>Cilindro: ' + (data.cilindro_id || '-') + '<br>Elemento: ' + (data.elemento_id || '-') +
-                      '<br>Qtd: ' + (data.quantidade_amostras || '-');
+                      '<br>Qtd: ' + (data.quantidade || '-');
         } else {
             preview = 'Nenhum';
         }
@@ -1058,7 +1058,7 @@
                     return 'Diga: ponto cinco';
                 case 'tempo_chama':
                     return 'Diga: uma hora trinta';
-                case 'quantidade_amostras':
+            case 'quantidade':
                     return 'Diga: um';
             }
         }
@@ -1104,7 +1104,7 @@
         if (!container) return;
 
         // Manter os botões fixos (opções de entidade, sim/não, cancelar)
-        const fixedButtons = container.querySelectorAll('.quick-select[data-value="cilindro"], .quick-select[data-value="pressão"], .quick-select[data-value="elemento"], .quick-select[data-value="amostra"], .quick-select[data-value="ativo"], .quick-select[data-value="esgotado"], .quick-select[data-value="sim"], .quick-select[data-value="não"], .quick-select[data-value="cancelar"]');
+        const fixedButtons = container.querySelectorAll('.quick-select[data-value="cilindro"], .quick-select[data-value="pressão"], .quick-select[data-value="elemento"], .quick-select[data-value="leitura"], .quick-select[data-value="ativo"], .quick-select[data-value="esgotado"], .quick-select[data-value="sim"], .quick-select[data-value="não"], .quick-select[data-value="cancelar"]');
         
         // Adicionar botões de cilindro
         userCilindros.forEach(cil => {

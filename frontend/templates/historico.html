@@ -3,7 +3,7 @@
 {% block title %}Histórico - LabGas Manager{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-clock-history"></i> Histórico de Atividades</h2>
+<h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["historico"] }}"></i> Histórico de Atividades</h2>
 
 <div class="card">
     <div class="card-header" style="background: linear-gradient(135deg, #002a47, #003a5e); color: white;">
@@ -17,7 +17,8 @@
                     <option value="cilindro">Cilindros</option>
                     <option value="pressao">Pressões</option>
                     <option value="elemento">Elementos</option>
-                    <option value="amostra">Amostras</option>
+                    <option value="leitura">Leitura</option>
+                    <option value="amostra">Amostra</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -55,7 +56,7 @@
                             <small>{{ h.data|formatar_data if h.data else '-' }}</small>
                         </td>
                         <td>
-                            <span class="badge" style="background-color: {{ 'var(--green)' if h.tipo == 'cilindro' else 'var(--pink)' if h.tipo == 'amostra' else '#f59e0b' if h.tipo == 'pressao' else 'var(--primary)' if h.tipo == 'elemento' else 'var(--primary-lighter)' if h.tipo == 'perfil' else 'var(--primary)' }};">
+                            <span class="badge" style="background-color: {{ 'var(--green)' if h.tipo == 'cilindro' else 'var(--pink)' if h.tipo == 'leitura' else '#f59e0b' if h.tipo == 'pressao' else 'var(--primary)' if h.tipo == 'elemento' else '#6a1b9a' if h.tipo == 'amostra' else 'var(--primary-lighter)' if h.tipo == 'perfil' else 'var(--primary)' }};">
                                 {{ h.tipo|title }}
                             </span>
                         </td>
@@ -85,7 +86,7 @@
         {% endif %}
         {% else %}
         <div class="text-center py-5 text-muted">
-            <i class="bi bi-clock-history fs-1"></i>
+            <i class="bi bi-{{ ICON_TIPO["historico"] }} fs-1"></i>
             <p class="mt-2">Nenhuma atividade registrada.</p>
         </div>
         {% endif %}
@@ -104,7 +105,7 @@ function filterHistory() {
         let rowType = cells[1].textContent.trim().toLowerCase();
         let rowAction = cells[2].textContent.trim().toLowerCase();
         
-        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'amostra': 'amostra' };
+        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'leitura': 'leitura', 'amostra': 'amostra' };
         rowType = typeMap[rowType] || rowType;
         
         const actionMap = { 'criado': 'criado', 'atualizado': 'atualizado', 'excluído': 'excluido' };

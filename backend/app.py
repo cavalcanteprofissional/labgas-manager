@@ -4,7 +4,7 @@ from config import APP_NAME, FLASK_ENV
 from routes.auth import auth_bp
 from routes.cilindro import cilindro_bp
 from routes.elemento import elemento_bp
-from routes.amostra import amostra_bp
+from routes.leitura import leitura_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -15,7 +15,7 @@ app.config["ENV"] = FLASK_ENV
 app.register_blueprint(auth_bp)
 app.register_blueprint(cilindro_bp)
 app.register_blueprint(elemento_bp)
-app.register_blueprint(amostra_bp)
+app.register_blueprint(leitura_bp)
 
 
 @app.route("/")

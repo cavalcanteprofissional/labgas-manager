@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 from blueprints.helpers import get_authenticated_client
-from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_AMOSTRAS
+from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS
 from utils.erros_utils import formatar_erro_supabase
 
 # Carrega .env.local para desenvolvimento local (se existir)
@@ -36,7 +36,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=os.getenv("RATE_LIMIT", "200 per day;50 per hour").split(";"),
     storage_uri=os.getenv("REDIS_URL", "memory://")
 )
 
@@ -137,6 +137,7 @@ def add_cors_headers(response):
 def inject_user_info():
     from blueprints.helpers import get_habilitar_abas
     from datetime import datetime
+    from utils.constants import ICON_TIPO
     
     user_id = session.get('user_id')
     
@@ -171,7 +172,8 @@ def inject_user_info():
         user_role=cached.get('user_role', 'usuario'), 
         user_name=cached.get('user_name', ''), 
         pode_acessar_aba=get_habilitar_abas,
-        today=datetime.now().strftime("%Y-%m-%d")
+        today=datetime.now().strftime("%Y-%m-%d"),
+        ICON_TIPO=ICON_TIPO
     )
 
 
@@ -208,15 +210,15 @@ def dashboard():
     
     cilindro_response = supabase.table("cilindro").select("*").eq("user_id", user_id).execute()
     elementos_response = supabase.table("elemento").select("*").eq("user_id", user_id).order("nome").execute()
-    amostras_response = supabase.table("amostra").select("*").eq("user_id", user_id).execute()
+    leituras_response = supabase.table("leitura").select("*").eq("user_id", user_id).execute()
+    amostras_response = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).execute()
 
     cilindro = cilindro_response.data or []
     elementos = elementos_response.data or []
-    amostras = amostras_response.data or []
+    leituras = leituras_response.data or []
 
     ativos = len([c for c in cilindro if c.get("status") == "ativo"])
 
-    # Status counts (para compatibilidadde)
     status_counts = {}
     for c in cilindro:
         status = c.get("status", "desconhecido")
@@ -225,38 +227,35 @@ def dashboard():
     status_labels = list(status_counts.keys())
     status_values = list(status_counts.values())
 
-    # Quantidade de amostras por cilindro (novo card)
-    cilindro_amostras = {}
-    for a in amostras:
+    cilindro_leituras = {}
+    for a in leituras:
         cil_id = a.get("cilindro_id")
         if cil_id:
-            cilindro_amostras[cil_id] = cilindro_amostras.get(cil_id, 0) + a.get("quantidade_amostras", 1)
+            cilindro_leituras[cil_id] = cilindro_leituras.get(cil_id, 0) + a.get("quantidade", 1)
 
-    cilindro_amostras_labels = []
-    cilindro_amostras_values = []
+    cilindro_leituras_labels = []
+    cilindro_leituras_values = []
     cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro}
-    for cil_id, count in sorted(cilindro_amostras.items(), key=lambda x: cilindro_dict.get(x[0], str(x[0]))):
-        cilindro_amostras_labels.append(cilindro_dict.get(cil_id, str(cil_id)))
-        cilindro_amostras_values.append(count)
+    for cil_id, count in sorted(cilindro_leituras.items(), key=lambda x: cilindro_dict.get(x[0], str(x[0]))):
+        cilindro_leituras_labels.append(cilindro_dict.get(cil_id, str(cil_id)))
+        cilindro_leituras_values.append(count)
 
-    # TOP 3 Elementos Mais Analisados
-    elemento_amostras_count = {}
-    for a in amostras:
+    elemento_leituras_count = {}
+    for a in leituras:
         elem_id = a.get("elemento_id")
         if elem_id:
-            elemento_amostras_count[elem_id] = elemento_amostras_count.get(elem_id, 0) + a.get("quantidade_amostras", 1)
+            elemento_leituras_count[elem_id] = elemento_leituras_count.get(elem_id, 0) + a.get("quantidade", 1)
 
     elemento_dict = {e.get("id"): e.get("nome") for e in elementos}
     elementos_mais_analisados = []
-    for elem_id, count in sorted(elemento_amostras_count.items(), key=lambda x: x[1], reverse=True)[:5]:
+    for elem_id, count in sorted(elemento_leituras_count.items(), key=lambda x: x[1], reverse=True)[:5]:
         elementos_mais_analisados.append({
             "nome": elemento_dict.get(elem_id, str(elem_id)),
             "quantidade": count
         })
 
-    # Tempo de chama por elemento (para consumo × tempo)
     tempo_chama_elementos = {}
-    for a in amostras:
+    for a in leituras:
         elem_id = a.get("elemento_id")
         tempo = a.get("tempo_chama", "00:00:00")
         if elem_id and tempo:
@@ -267,7 +266,6 @@ def dashboard():
             except:
                 pass
 
-    # Consumo por Elemento × Tempo de Chama
     elementos_labels = []
     elementos_consumo_tempo = []
     for e in elementos:
@@ -277,14 +275,13 @@ def dashboard():
         elementos_labels.append(e.get("nome"))
         elementos_consumo_tempo.append(round(consumo * tempo, 2))
 
-    # Eficiência de Cilindros por Elemento (matriz)
     eficiencia = {}
-    for a in amostras:
+    for a in leituras:
         cil_id = a.get("cilindro_id")
         elem_id = a.get("elemento_id")
         if cil_id and elem_id:
             key = f"{cil_id}-{elem_id}"
-            eficiencia[key] = eficiencia.get(key, 0) + a.get("quantidade_amostras", 1)
+            eficiencia[key] = eficiencia.get(key, 0) + a.get("quantidade", 1)
 
     eficiencia_labels = []
     eficiencia_values = []
@@ -295,19 +292,19 @@ def dashboard():
         eficiencia_labels.append(f"{nome_cil} × {nome_elem}")
         eficiencia_values.append(count)
 
-    total_quantidade_amostras = sum(a.get("quantidade_amostras", 1) for a in amostras)
+    total_quantidade = sum(a.get("quantidade", 1) for a in leituras)
 
     return render_template(
         "dashboard.html",
         cilindro=cilindro,
         elementos=elementos,
-        amostras=amostras,
+        leituras=leituras,
         ativos=ativos,
         status_counts=status_counts,
         status_labels=status_labels,
         status_values=status_values,
-        cilindro_amostras_labels=cilindro_amostras_labels,
-        cilindro_amostras_values=cilindro_amostras_values,
+        cilindro_leituras_labels=cilindro_leituras_labels,
+        cilindro_leituras_values=cilindro_leituras_values,
         elementos_mais_analisados=elementos_mais_analisados,
         elementos_labels=elementos_labels,
         elementos_consumo_tempo=elementos_consumo_tempo,
@@ -317,8 +314,9 @@ def dashboard():
         cilindro_dict=cilindro_dict,
         elemento_dict=elemento_dict,
         elemento_cores=ELEMENTO_CORES,
-        elemento_cores_amostras=ELEMENTO_CORES_AMOSTRAS,
-        total_quantidade_amostras=total_quantidade_amostras,
+        elemento_cores_leituras=ELEMENTO_CORES_LEITURAS,
+        total_quantidade=total_quantidade,
+        amostras_total=amostras_response.count or 0,
     )
 
 
@@ -336,7 +334,7 @@ def perfil():
     user_nome = perfil_data.get("nome", "")
     
     if is_admin():
-        habilitar_abas = {"cilindro": True, "pressao": True, "elemento": True, "amostra": True, "historico": True}
+        habilitar_abas = {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
     else:
         habilitar_abas = get_habilitar_abas(user_id)
 
@@ -368,14 +366,16 @@ def perfil():
 
     cilindro_response = supabase.table("cilindro").select("id").eq("user_id", user_id).execute()
     elementos_response = supabase.table("elemento").select("id").eq("user_id", user_id).execute()
-    amostras_response = supabase.table("amostra").select("id").eq("user_id", user_id).execute()
+    leituras_response = supabase.table("leitura").select("id").eq("user_id", user_id).execute()
     pressoes_response = supabase.table("pressao").select("id").eq("user_id", user_id).execute()
+    amostras_response = supabase.table("amostra").select("id").eq("user_id", user_id).execute()
 
     stats = {
         "cilindros": len(cilindro_response.data or []),
         "elementos": len(elementos_response.data or []),
-        "amostras": len(amostras_response.data or []),
+        "leituras": len(leituras_response.data or []),
         "pressoes": len(pressoes_response.data or []),
+        "amostras": len(amostras_response.data or []),
     }
 
     return render_template("perfil.html", stats=stats, user_role=user_role, user_nome=user_nome, habilitar_abas=habilitar_abas)
@@ -466,18 +466,20 @@ def api_dados_usuario():
 from blueprints.auth import auth_bp
 from blueprints.cilindro import cilindro_bp
 from blueprints.elemento import elemento_bp
-from blueprints.amostra import amostra_bp
+from blueprints.leitura import leitura_bp
 from blueprints.admin import admin_bp
 from blueprints.historico import historico_bp
 from blueprints.pressao import pressao_bp
+from blueprints.amostra import amostra_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(cilindro_bp)
 app.register_blueprint(elemento_bp)
-app.register_blueprint(amostra_bp)
+app.register_blueprint(leitura_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(historico_bp)
 app.register_blueprint(pressao_bp)
+app.register_blueprint(amostra_bp)
 
 
 if __name__ == "__main__":

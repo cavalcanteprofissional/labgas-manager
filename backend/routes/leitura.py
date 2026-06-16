@@ -2,23 +2,23 @@ from flask import Blueprint, request, jsonify
 from utils.supabase import get_supabase
 from utils.decorators import token_required
 
-amostra_bp = Blueprint("amostra", __name__, url_prefix="/api/amostras")
+leitura_bp = Blueprint("leitura", __name__, url_prefix="/api/leituras")
 
 
-@amostra_bp.route("", methods=["GET"])
+@leitura_bp.route("", methods=["GET"])
 @token_required
-def get_amostras():
+def get_leituras():
     supabase = get_supabase()
     user_id = request.user_id
 
-    response = supabase.table("amostra").select("*").eq("user_id", user_id).execute()
+    response = supabase.table("leitura").select("*").eq("user_id", user_id).execute()
 
     return jsonify(response.data), 200
 
 
-@amostra_bp.route("", methods=["POST"])
+@leitura_bp.route("", methods=["POST"])
 @token_required
-def create_amostra():
+def create_leitura():
     supabase = get_supabase()
     user_id = request.user_id
     data = request.get_json()
@@ -31,89 +31,89 @@ def create_amostra():
         "tempo_chama": data["tempo_chama"],
         "cilindro_id": data.get("cilindro_id"),
         "elemento_id": data.get("elemento_id"),
-        "quantidade_amostras": data.get("quantidade_amostras", 1),
+        "quantidade": data.get("quantidade", 1),
         "user_id": user_id,
     }
 
-    response = supabase.table("amostra").insert(new_data).execute()
+    response = supabase.table("leitura").insert(new_data).execute()
 
     return jsonify(
-        {"message": "Amostra criada com sucesso", "data": response.data[0]}
+        {"message": "Leitura criada com sucesso", "data": response.data[0]}
     ), 201
 
 
-@amostra_bp.route("/<int:amostra_id>", methods=["GET"])
+@leitura_bp.route("/<int:leitura_id>", methods=["GET"])
 @token_required
-def get_amostra(amostra_id):
+def get_leitura(leitura_id):
     supabase = get_supabase()
     user_id = request.user_id
 
     response = (
-        supabase.table("amostra")
+        supabase.table("leitura")
         .select("*")
-        .eq("id", amostra_id)
+        .eq("id", leitura_id)
         .eq("user_id", user_id)
         .execute()
     )
 
     if not response.data:
-        return jsonify({"message": "Amostra não encontrada"}), 404
+        return jsonify({"message": "Leitura não encontrada"}), 404
 
     return jsonify(response.data[0]), 200
 
 
-@amostra_bp.route("/<int:amostra_id>", methods=["PUT"])
+@leitura_bp.route("/<int:leitura_id>", methods=["PUT"])
 @token_required
-def update_amostra(amostra_id):
+def update_leitura(leitura_id):
     supabase = get_supabase()
     user_id = request.user_id
     data = request.get_json()
 
     existing = (
-        supabase.table("amostra")
+        supabase.table("leitura")
         .select("id")
-        .eq("id", amostra_id)
+        .eq("id", leitura_id)
         .eq("user_id", user_id)
         .execute()
     )
     if not existing.data:
-        return jsonify({"message": "Amostra não encontrada"}), 404
+        return jsonify({"message": "Leitura não encontrada"}), 404
 
     update_data = {
         "data": data.get("data", existing.data[0]["data"]),
         "tempo_chama": data.get("tempo_chama", existing.data[0]["tempo_chama"]),
         "cilindro_id": data.get("cilindro_id", existing.data[0].get("cilindro_id")),
         "elemento_id": data.get("elemento_id", existing.data[0].get("elemento_id")),
-        "quantidade_amostras": data.get(
-            "quantidade_amostras", existing.data[0].get("quantidade_amostras", 1)
+        "quantidade": data.get(
+            "quantidade", existing.data[0].get("quantidade", 1)
         ),
     }
 
     response = (
-        supabase.table("amostra").update(update_data).eq("id", amostra_id).execute()
+        supabase.table("leitura").update(update_data).eq("id", leitura_id).execute()
     )
 
     return jsonify(
-        {"message": "Amostra atualizada com sucesso", "data": response.data[0]}
+        {"message": "Leitura atualizada com sucesso", "data": response.data[0]}
     ), 200
 
 
-@amostra_bp.route("/<int:amostra_id>", methods=["DELETE"])
+@leitura_bp.route("/<int:leitura_id>", methods=["DELETE"])
 @token_required
-def delete_amostra(amostra_id):
+def delete_leitura(leitura_id):
     supabase = get_supabase()
     user_id = request.user_id
 
     existing = (
-        supabase.table("amostra")
+        supabase.table("leitura")
         .select("id")
-        .eq("id", amostra_id)
+        .eq("id", leitura_id)
         .eq("user_id", user_id)
         .execute()
     )
     if not existing.data:
-        return jsonify({"message": "Amostra não encontrada"}), 404
+        return jsonify({"message": "Leitura não encontrada"}), 404
 
-    supabase.table("amostra").delete().eq("id", amostra_id).execute()
+    supabase.table("leitura").delete().eq("id", leitura_id).execute()
 
-    return jsonify({"message": "Amostra excluída com sucesso"}), 200
+    return jsonify({"message": "Leitura excluída com sucesso"}), 200

@@ -108,9 +108,9 @@ def list():
             
             elemento_nome = elemento_info[0].get("nome")
             
-            amostra_count = get_supabase_client().table("amostra").select("id", count="exact").eq("elemento_id", elemento_id).execute()
-            if amostra_count.count and amostra_count.count > 0:
-                flash("Não é possível excluir este elemento pois existem amostras vinculadas a ele. Exclua primeiro as amostras.", "warning")
+            leitura_count = get_supabase_client().table("leitura").select("id", count="exact").eq("elemento_id", elemento_id).execute()
+            if leitura_count.count and leitura_count.count > 0:
+                flash("Não é possível excluir este elemento pois existem leituras vinculadas a ele. Exclua primeiro as leituras.", "warning")
                 return redirect(url_for("elemento.list"))
             
             try:
@@ -147,8 +147,8 @@ def list():
                         
                         elemento_nome = elemento_info[0].get("nome")
                         
-                        amostra_count = get_supabase_client().table("amostra").select("id", count="exact").eq("elemento_id", elemento_id).execute()
-                        if amostra_count.count and amostra_count.count > 0:
+                        leitura_count = get_supabase_client().table("leitura").select("id", count="exact").eq("elemento_id", elemento_id).execute()
+                        if leitura_count.count and leitura_count.count > 0:
                             skipped.append(elemento_nome)
                             continue
                         
@@ -162,7 +162,7 @@ def list():
                 if deleted_count > 0:
                     flash(f"{deleted_count} elemento(s) excluído(s) com sucesso!", "success")
                 if skipped:
-                    flash(f"Alguns elementos não puderam ser excluídos (amostras vinculadas): {', '.join(skipped)}", "warning")
+                    flash(f"Alguns elementos não puderam ser excluídos (leituras vinculadas): {', '.join(skipped)}", "warning")
                 if not_owned:
                     flash(f"Alguns elementos não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
             except Exception as e:

@@ -180,9 +180,9 @@ def list():
                 
                 cilindro_codigo = cilindro_info[0].get("codigo")
                 
-                amostra_count = get_supabase_client().table("amostra").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
+                amostra_count = get_supabase_client().table("leitura").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
                 if amostra_count.count and amostra_count.count > 0:
-                    flash("Não é possível excluir este cilindro pois existem amostras vinculadas a ele. Exclua primeiro as amostras.", "warning")
+                    flash("Não é possível excluir este cilindro pois existem leituras vinculadas a ele. Exclua primeiro as leituras.", "warning")
                     return redirect(url_for("cilindro.list"))
                 
                 get_admin_client().table("cilindro").delete().eq("id", cilindro_id).execute()
@@ -218,7 +218,7 @@ def list():
                         
                         cilindro_codigo = cilindro_info[0].get("codigo")
                         
-                        amostra_count = get_supabase_client().table("amostra").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
+                        amostra_count = get_supabase_client().table("leitura").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
                         if amostra_count.count and amostra_count.count > 0:
                             skipped.append(cilindro_codigo)
                             continue
@@ -233,7 +233,7 @@ def list():
                 if deleted_count > 0:
                     flash(f"{deleted_count} cilindro(s) excluído(s) com sucesso!", "success")
                 if skipped:
-                    flash(f"Alguns cilindos não puderam ser excluídos (amostras vinculadas): {', '.join(skipped)}", "warning")
+                    flash(f"Alguns cilindos não puderam ser excluídos (leituras vinculadas): {', '.join(skipped)}", "warning")
                 if not_owned:
                     flash(f"Alguns cilindos não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
             except Exception as e:

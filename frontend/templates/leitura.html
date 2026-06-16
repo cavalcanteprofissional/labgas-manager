@@ -1,51 +1,51 @@
 {% extends "base.html" %}
 
-{% block title %}Pressão - LabGas Manager{% endblock %}
+{% block title %}Leitura - LabGas Manager{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["pressao"] }}"></i> Pressão</h2>
+<h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Leitura</h2>
 
-{% if not cilindro_list %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle"></i> Nenhum cilindro cadastrado. Cadastre um cilindro primeiro para registrar pressões.
-</div>
-{% else %}
 <div class="card mb-4">
     <div class="card-header">
-        <button class="btn btn-primary btn-lg w-100 w-md-auto" data-bs-toggle="collapse" data-bs-target="#formPressao">
+        <button class="btn btn-primary btn-lg w-100 w-md-auto" data-bs-toggle="collapse" data-bs-target="#formLeitura">
             <i class="bi bi-plus-circle"></i> Nova Leitura
         </button>
     </div>
-    <div class="collapse" id="formPressao">
+    <div class="collapse" id="formLeitura">
         <div class="card-body">
             <form method="POST" id="createForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="create">
                 <div class="row g-2">
                     <div class="col-12 col-md-6 col-lg-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" name="data" class="form-control form-control-lg" value="{{ today }}">
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label class="form-label">Tempo de Chama (HH:MM:SS)</label>
+                        <input type="text" name="tempo_chama" class="form-control form-control-lg" placeholder="00:00:00" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}">
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3">
                         <label class="form-label">Cilindro</label>
                         <select name="cilindro_id" class="form-select form-select-lg">
                             <option value="">Selecione...</option>
-                            {% for c in cilindro_list %}
+                            {% for c in cilindro %}
                             <option value="{{ c.id }}">{{ c.codigo }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Pressão (bar)</label>
-                        <input type="number" name="pressao" class="form-control form-control-lg" placeholder="Ex: 1.5" step="0.1" min="0" max="300">
+                        <label class="form-label">Elemento</label>
+                        <select name="elemento_id" class="form-select form-select-lg">
+                            <option value="">Selecione...</option>
+                            {% for e in elementos %}
+                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Temperatura (°C)</label>
-                        <input type="number" name="temperatura" class="form-control form-control-lg" placeholder="Ex: 25.0" step="0.1" min="-50" max="100">
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Data</label>
-                        <input type="date" name="data" class="form-control form-control-lg" value="{{ today }}">
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label class="form-label">Hora</label>
-                        <input type="time" name="hora" class="form-control form-control-lg" value="00:00">
+                        <label class="form-label">Quantidade</label>
+                        <input type="number" name="quantidade" class="form-control form-control-lg" value="1" min="0">
                     </div>
                 </div>
                 <div class="row g-2 mt-2">
@@ -59,24 +59,23 @@
         </div>
     </div>
 </div>
-{% endif %}
 
 <div class="card mb-4">
     <div class="card-header bg-light">
         <div class="row g-2 align-items-center">
             <div class="col-md-5">
-                <input type="text" id="searchPressao" class="form-control" placeholder="Buscar por cilindro...">
+                <input type="text" id="searchLeitura" class="form-control" placeholder="Buscar por cilindro ou elemento...">
             </div>
             <div class="col-md-5">
                 <select id="filterCilindro" class="form-select">
                     <option value="">Todos os Cilindros</option>
-                    {% for c in cilindro_list %}
+                    {% for c in cilindro %}
                     <option value="{{ c.codigo }}">{{ c.codigo }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn btn-outline-secondary w-100" onclick="filterPressao()">
+                <button class="btn btn-outline-secondary w-100" onclick="filterLeitura()">
                     <i class="bi bi-funnel"></i> Filtrar
                 </button>
             </div>
@@ -86,96 +85,91 @@
 
 <div class="card">
     <div class="card-body p-0">
-        {% if pressoes %}
+        {% if leituras %}
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
                         <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                        <th>Data</th>
+                        <th>Tempo</th>
                         <th>Cilindro</th>
-                        <th>Pressão</th>
-                        <th>Temperatura</th>
-                        <th class="d-none d-md-table-cell">Data</th>
-                        <th class="d-none d-md-table-cell">Hora</th>
-                        <th class="d-none d-lg-table-cell">Registrado em</th>
+                        <th>Elemento</th>
+                        <th>Qtd</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for p in pressoes %}
+                    {% for a in leituras %}
                     <tr>
-                        <td><input type="checkbox" name="pressao_ids" value="{{ p.id }}" class="item-checkbox"></td>
+                        <td><input type="checkbox" name="leitura_ids" value="{{ a.id }}" class="item-checkbox"></td>
+                        <td>{{ a.data|formatar_data }}</td>
+                        <td>{{ a.tempo_chama }}</td>
                         <td>
-                            <span class="badge" style="background-color: var(--green);">{{ p.cilindro_codigo or p.cilindro_id }}</span>
+                            <span class="badge" style="background-color: var(--green);">{{ a.cilindro_nome or a.cilindro_id }}</span>
                         </td>
                         <td>
-                            <span class="badge bg-{{ 'danger' if p.pressao > 2.5 else 'success' if p.pressao < 0.5 else 'warning' }}">
-                                {{ "%.1f"|format(p.pressao) }} bar
-                            </span>
+                            <span class="badge" style="background-color: var(--primary);">{{ a.elemento_nome or a.elemento_id }}</span>
                         </td>
                         <td>
-                            {% if p.temperatura %}
-                            <span class="badge bg-{{ 'danger' if p.temperatura > 30 else 'success' if p.temperatura < 20 else 'warning' }}">
-                                {{ "%.1f"|format(p.temperatura) }}°C
-                            </span>
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            <span class="badge" style="background-color: var(--purple-light);">{{ a.quantidade }}</span>
                         </td>
-                        <td class="d-none d-md-table-cell">{{ p.data|formatar_data }}</td>
-                        <td class="d-none d-md-table-cell">{{ p.hora }}</td>
-                        <td class="d-none d-lg-table-cell">{{ p.created_at|formatar_data }}</td>
                         <td>
                             <div class="d-flex flex-column gap-1">
-                                <button class="btn btn-sm admin-permission-btn btn-warning w-100 text-start" data-bs-toggle="modal" data-bs-target="#editModal{{ p.id }}">
+                                <button class="btn btn-sm admin-permission-btn btn-warning w-100 text-start" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">
                                     <i class="bi bi-pencil me-1"></i> Editar
                                 </button>
-                                <form method="POST" id="deleteForm{{ p.id }}">
+                                <form method="POST" id="deleteForm{{ a.id }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="pressao_id" value="{{ p.id }}">
+                                    <input type="hidden" name="leitura_id" value="{{ a.id }}">
                                 </form>
-                                <button type="button" class="btn btn-sm admin-permission-btn btn-danger w-100 text-start" data-bs-toggle="modal" data-bs-target="#deleteModal{{ p.id }}">
+                                <button type="button" class="btn btn-sm admin-permission-btn btn-danger w-100 text-start" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
                                     <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </div>
                         </td>
                     </tr>
-                    <div class="modal fade" id="editModal{{ p.id }}" tabindex="-1">
+                    <!-- Modal Edit -->
+                    <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">
-                                <form method="POST" onsubmit="return updatePressao(event, {{ p.id }})">
+                                <form method="POST">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="update">
-                                    <input type="hidden" name="pressao_id" value="{{ p.id }}">
+                                    <input type="hidden" name="leitura_id" value="{{ a.id }}">
                                     <div class="modal-header">
-                                        <h5 class="modal-title">Editar Pressão</h5>
+                                        <h5 class="modal-title">Editar Leitura</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
                                         <div class="mb-3">
+                                            <label class="form-label">Data</label>
+                                            <input type="date" name="data" class="form-control" value="{{ a.data }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Tempo de Chama (HH:MM:SS)</label>
+                                            <input type="text" name="tempo_chama" class="form-control" value="{{ a.tempo_chama }}" pattern="[0-9]{2}:[0-9]{2}:[0-9]{2}">
+                                        </div>
+                                        <div class="mb-3">
                                             <label class="form-label">Cilindro</label>
                                             <select name="cilindro_id" class="form-select">
-                                                {% for c in cilindro_list %}
-                                                <option value="{{ c.id }}" {% if p.cilindro_id == c.id %}selected{% endif %}>{{ c.codigo }}</option>
+                                                {% for c in cilindro %}
+                                                <option value="{{ c.id }}" {% if a.cilindro_id == c.id %}selected{% endif %}>{{ c.codigo }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Pressão (bar)</label>
-                                            <input type="number" name="pressao" class="form-control" value="{{ p.pressao }}" step="0.1" min="0" max="300" placeholder="Ex: 1.5">
+                                            <label class="form-label">Elemento</label>
+                                            <select name="elemento_id" class="form-select">
+                                                {% for e in elementos %}
+                                                <option value="{{ e.id }}" {% if a.elemento_id == e.id %}selected{% endif %}>{{ e.nome }}</option>
+                                                {% endfor %}
+                                            </select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Temperatura (°C)</label>
-                                            <input type="number" name="temperatura" class="form-control" value="{{ p.temperatura or '' }}" step="0.1" min="-50" max="100" placeholder="Ex: 25.0">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Data</label>
-                                            <input type="date" name="data" class="form-control" value="{{ p.data }}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Hora</label>
-                                            <input type="time" name="hora" class="form-control" value="{{ p.hora }}">
+                                            <label class="form-label">Quantidade</label>
+                                            <input type="number" name="quantidade" class="form-control" value="{{ a.quantidade }}" min="0">
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -185,8 +179,8 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Modal de Exclusão -->
-                    <div class="modal fade" id="deleteModal{{ p.id }}" tabindex="-1">
+                    <!-- Modal Delete -->
+                    <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">
                                 <div class="modal-header bg-danger text-white">
@@ -194,12 +188,12 @@
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir o registro de pressão do cilindro <strong>{{ p.cilindro_codigo or p.cilindro_id }}</strong>?</p>
+                                    <p>Tem certeza que deseja excluir esta leitura?</p>
                                     <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" form="deleteForm{{ p.id }}" class="btn btn-danger">Confirmar Exclusão</button>
+                                    <button type="submit" form="deleteForm{{ a.id }}" class="btn btn-danger">Confirmar Exclusão</button>
                                 </div>
                             </div>
                         </div>
@@ -210,8 +204,8 @@
         </div>
         {% else %}
         <div class="text-center py-5 text-muted">
-            <i class="bi bi-{{ ICON_TIPO["pressao"] }} fs-1"></i>
-            <p class="mt-2">Nenhum registro de pressão.</p>
+            <i class="bi bi-{{ ICON_TIPO["leitura"] }} fs-1"></i>
+            <p class="mt-2">Nenhuma leitura registrada.</p>
         </div>
         {% endif %}
     </div>
@@ -268,7 +262,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Tem certeza que deseja excluir os <strong><span id="selectedCountModal">0</span></strong> registros de pressão selecionados?</p>
+                <p>Tem certeza que deseja excluir as <strong><span id="selectedCountModal">0</span></strong> leituras selecionadas?</p>
                 <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
             </div>
             <div class="modal-footer">
@@ -280,23 +274,24 @@
 </div>
 
 <script>
-function filterPressao() {
-    const search = document.getElementById('searchPressao').value.toLowerCase();
+function filterLeitura() {
+    const search = document.getElementById('searchLeitura').value.toLowerCase();
     const cilindro = document.getElementById('filterCilindro').value;
     
     const rows = document.querySelectorAll('tbody tr');
     rows.forEach(row => {
-        const codigo = row.cells[1].textContent.toLowerCase();
+        const codigo = row.cells[3].textContent.toLowerCase();
+        const elemento = row.cells[4].textContent.toLowerCase();
         
         let show = true;
-        if (search && !codigo.includes(search)) show = false;
+        if (search && !codigo.includes(search) && !elemento.includes(search)) show = false;
         if (cilindro && codigo !== cilindro.toLowerCase()) show = false;
         
         row.style.display = show ? '' : 'none';
     });
 }
 
-document.getElementById('searchPressao').addEventListener('keyup', filterPressao);
+document.getElementById('searchLeitura').addEventListener('keyup', filterLeitura);
 
 document.getElementById('selectAll').addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
@@ -327,7 +322,7 @@ document.getElementById('bulkDeleteForm').addEventListener('submit', function(e)
     checkboxes.forEach(cb => {
         const input = document.createElement('input');
         input.type = 'hidden';
-        input.name = 'pressao_ids';
+        input.name = 'leitura_ids';
         input.value = cb.value;
         this.appendChild(input);
     });

@@ -4,7 +4,7 @@
 
 {% block content %}
 <h2 class="mb-4">
-    <i class="bi bi-speedometer2"></i> Dashboard
+    <i class="bi bi-{{ ICON_TIPO["dashboard"] }}"></i> Dashboard
     <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#voice-modal" title="Assistente de Voz">
         <i class="bi bi-mic d-lg-none"></i><span class="d-none d-lg-inline"><i class="bi bi-mic"></i> Voice</span>
     </button>
@@ -28,7 +28,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card green h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-box-seam me-1"></i> Cilindros</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros</h5>
                 <h2 class="mb-0">{{ cilindro|length }}</h2>
             </div>
         </div>
@@ -36,7 +36,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card green h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-check-circle me-1"></i> Ativos</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["ativos"] }} me-1"></i> Ativos</h5>
                 <h2 class="mb-0">{{ ativos }}</h2>
             </div>
         </div>
@@ -44,7 +44,7 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card blue h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-droplet me-1"></i> Elementos</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos</h5>
                 <h2 class="mb-0">{{ elementos|length }}</h2>
             </div>
         </div>
@@ -52,8 +52,16 @@
     <div class="col-6 col-lg-3">
         <div class="card stat-card pink h-100">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-graph-up me-1"></i> Amostras</h5>
-                <h2 class="mb-0">{{ total_quantidade_amostras }}</h2>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leituras</h5>
+                <h2 class="mb-0">{{ total_quantidade }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card purple h-100">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostras</h5>
+                <h2 class="mb-0">{{ amostras_total or 0 }}</h2>
             </div>
         </div>
     </div>
@@ -63,15 +71,15 @@
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, #00695c, #4db6ac); color: white;">
-                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Quantidade de Amostras por Cilindro</h5>
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Quantidade de Leituras por Cilindro</h5>
             </div>
             <div class="card-body">
-                {% if cilindro_amostras_values %}
+                {% if cilindro_leituras_values %}
                 <div class="chart-container" style="position: relative; height: 250px;">
                     <canvas id="statusChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhuma amostra cadastrada.</p>
+                <p class="text-muted text-center py-5">Nenhuma leitura cadastrada.</p>
                 {% endif %}
             </div>
         </div>
@@ -98,7 +106,7 @@
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, #c2185b, #f06292); color: white;">
-                <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> Elementos mais analisados por Amostras</h5>
+                <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> Elementos mais analisados</h5>
             </div>
             <div class="card-body">
                 {% if elementos_mais_analisados %}
@@ -108,12 +116,12 @@
                         <div>
                             <span class="badge" style="background-color: var(--primary);">{{ item.nome }}</span>
                         </div>
-                        <span class="badge" style="background-color: {{ elemento_cores_amostras[loop.index0] }};">{{ item.quantidade }} amostra(s)</span>
+                        <span class="badge" style="background-color: {{ elemento_cores_leituras[loop.index0] }};">{{ item.quantidade }} leitura(s)</span>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma amostra registrada.</p>
+                <p class="text-muted text-center py-4">Nenhuma leitura registrada.</p>
                 {% endif %}
             </div>
         </div>
@@ -149,7 +157,7 @@
                     <canvas id="eficienciaChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma amostra registrada.</p>
+                <p class="text-muted text-center py-4">Nenhuma leitura registrada.</p>
                 {% endif %}
             </div>
         </div>
@@ -158,13 +166,13 @@
 
 <div class="row g-3 mb-4">
     <div class="col-12">
-        <h4 class="mb-3"><i class="bi bi-clock-history"></i> Atividade Recente</h4>
+        <h4 class="mb-3"><i class="bi bi-{{ ICON_TIPO["historico"] }}"></i> Atividade Recente</h4>
     </div>
     
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, #00695c, #4db6ac); color: white;">
-                <h6 class="mb-0"><i class="bi bi-box-seam"></i> Últimos Cilindros</h6>
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["cilindro"] }}"></i> Últimos Cilindros</h6>
             </div>
             <div class="card-body p-0">
                 {% if cilindro[:5] %}
@@ -194,7 +202,7 @@
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, #003a5e, #4da3e8); color: white;">
-                <h6 class="mb-0"><i class="bi bi-droplet"></i> Últimos Elementos</h6>
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Últimos Elementos</h6>
             </div>
             <div class="card-body p-0">
                 {% if elementos[:5] %}
@@ -222,12 +230,12 @@
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, #c2185b, #f06292); color: white;">
-                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Últimas Amostras</h6>
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Últimas Leituras</h6>
             </div>
             <div class="card-body p-0">
-                {% if amostras[:5] %}
+                {% if leituras[:5] %}
                 <div class="list-group list-group-flush">
-                    {% for a in amostras[:5] %}
+                    {% for a in leituras[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <span class="badge" style="background-color: var(--green);">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
@@ -238,10 +246,10 @@
                     {% endfor %}
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                    <a href="{{ url_for('leitura.leitura_list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma amostra</p>
+                <p class="text-muted text-center py-4">Nenhuma leitura</p>
                 {% endif %}
             </div>
         </div>
@@ -256,9 +264,9 @@
 new Chart(document.getElementById('statusChart'), {
     type: 'doughnut',
     data: {
-        labels: {{ cilindro_amostras_labels|tojson }},
+        labels: {{ cilindro_leituras_labels|tojson }},
         datasets: [{
-            data: {{ cilindro_amostras_values|tojson }},
+            data: {{ cilindro_leituras_values|tojson }},
             backgroundColor: ['#00897b', '#4db6ac', '#80cbc4', '#b2dfdb', '#00695c', '#004d40', '#26a69a', '#2e7d32']
         }]
     },

@@ -53,8 +53,9 @@ def panel():
         
         cil_response = client.table("cilindro").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
         ele_response = client.table("elemento").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
-        amo_response = client.table("amostra").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
+        leitura_response = client.table("leitura").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
         pre_response = client.table("pressao").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
+        amostra_response = client.table("amostra").select("user_id,id", count="exact").in_("user_id", user_ids).execute()
         
         cil_counts = {}
         for r in cil_response.data or []:
@@ -64,13 +65,17 @@ def panel():
         for r in ele_response.data or []:
             ele_counts[r["user_id"]] = r.get("count", 0)
         
-        amo_counts = {}
-        for r in amo_response.data or []:
-            amo_counts[r["user_id"]] = r.get("count", 0)
+        leitura_counts = {}
+        for r in leitura_response.data or []:
+            leitura_counts[r["user_id"]] = r.get("count", 0)
         
         pre_counts = {}
         for r in pre_response.data or []:
             pre_counts[r["user_id"]] = r.get("count", 0)
+        
+        amostra_counts = {}
+        for r in amostra_response.data or []:
+            amostra_counts[r["user_id"]] = r.get("count", 0)
     
     for user in users:
         uid = user.get("id")
@@ -78,10 +83,11 @@ def panel():
         user["nome"] = user.get("nome") or user.get("email") or uid
         user["cilindros"] = cil_counts.get(uid, 0)
         user["elementos"] = ele_counts.get(uid, 0)
-        user["amostras"] = amo_counts.get(uid, 0)
+        user["leituras"] = leitura_counts.get(uid, 0)
         user["pressoes"] = pre_counts.get(uid, 0)
+        user["amostras"] = amostra_counts.get(uid, 0)
         if user.get("role") == "admin":
-            user["habilitar_abas"] = {"cilindro": True, "pressao": True, "elemento": True, "amostra": True, "historico": True}
+            user["habilitar_abas"] = {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
         else:
             user["habilitar_abas"] = get_habilitar_abas(user["id"])
     
@@ -170,7 +176,7 @@ def delete_user():
     client = get_admin_client()
     client.table("cilindro").delete().eq("user_id", target_user_id).execute()
     client.table("elemento").delete().eq("user_id", target_user_id).execute()
-    client.table("amostra").delete().eq("user_id", target_user_id).execute()
+    client.table("leitura").delete().eq("user_id", target_user_id).execute()
     client.table("pressao").delete().eq("user_id", target_user_id).execute()
     client.table("historico_log").delete().eq("user_id", target_user_id).execute()
     client.table("perfil").delete().eq("id", target_user_id).execute()
@@ -198,13 +204,13 @@ def update_habilitar_abas():
         flash("Parâmetros inválidos.", "danger")
         return redirect(url_for("admin.panel"))
     
-    if aba not in ["cilindro", "pressao", "elemento", "amostra", "historico"]:
+    if aba not in ["cilindro", "pressao", "elemento", "leitura", "historico"]:
         flash("Aba inválida.", "danger")
         return redirect(url_for("admin.panel"))
     
     client = get_admin_client()
     
-    habilitar_abas = {"cilindro": False, "pressao": False, "elemento": False, "amostra": False, "historico": False}
+    habilitar_abas = {"cilindro": False, "pressao": False, "elemento": False, "leitura": False, "historico": False}
     perfil = client.table("perfil").select("habilitar_abas").eq("id", target_user_id).execute()
     if perfil.data and perfil.data[0].get("habilitar_abas"):
         habilitar_abas = perfil.data[0].get("habilitar_abas")
@@ -215,7 +221,7 @@ def update_habilitar_abas():
     
     # Registrar alteração de permissões no histórico
     acao = "habilitada" if habilitar else "desabilitada"
-    nome_aba = {"cilindro": "Cilindros", "pressao": "Pressão", "elemento": "Elementos", "amostra": "Amostras", "historico": "Histórico"}.get(aba, aba)
+    nome_aba = {"cilindro": "Cilindros", "pressao": "Pressão", "elemento": "Elementos", "leitura": "Leitura", "historico": "Histórico"}.get(aba, aba)
     registrar_historico("perfil", "atualizado", f"Aba {nome_aba} {acao}", get_user_id())
     
     flash(f"Aba {nome_aba} {acao} com sucesso!", "success")
@@ -240,8 +246,9 @@ def user_data(target_user_id):
     
     cilindro_total = client.table("cilindro").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     elementos_total = client.table("elemento").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
-    amostras_total = client.table("amostra").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
+    leituras_total = client.table("leitura").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     pressoes_total = client.table("pressao").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
+    amostras_total = client.table("amostra").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     
     historico_offset = (page - 1) * per_page
     historico_log = client.table("historico_log").select(
@@ -260,15 +267,16 @@ def user_data(target_user_id):
     perfil = client.table("perfil").select("*").eq("id", target_user_id).execute().data
     target_user = perfil[0] if perfil else {"id": target_user_id, "role": "unknown"}
     
-    habilitar_abas = get_habilitar_abas(target_user_id) if target_user.get("role") != "admin" else {"cilindro": True, "pressao": True, "elemento": True, "amostra": True, "historico": True}
+    habilitar_abas = get_habilitar_abas(target_user_id) if target_user.get("role") != "admin" else {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
     
     return render_template(
         "admin_user_data.html",
         target_user=target_user,
         cilindro_total=cilindro_total,
         elementos_total=elementos_total,
-        amostras_total=amostras_total,
+        leituras_total=leituras_total,
         pressoes_total=pressoes_total,
+        amostras_total=amostras_total,
         habilitar_abas=habilitar_abas,
         history=history,
         historico_total=historico_total,
@@ -297,7 +305,7 @@ def export_data():
     
     cilindro_data = client.table("cilindro").select("*").execute().data or []
     elementos_data = client.table("elemento").select("*").execute().data or []
-    amostras_data = client.table("amostra").select("*").execute().data or []
+    leituras_data = client.table("leitura").select("*").execute().data or []
     pressoes_data = client.table("pressao").select("*").execute().data or []
     usuarios_data = client.table("perfil").select("id,email,nome").execute().data or []
     
@@ -320,7 +328,7 @@ def export_data():
     cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro_data}
     elemento_dict = {e.get("id"): e.get("nome") for e in elementos_data}
     
-    for a in amostras_data:
+    for a in leituras_data:
         uid = a.get("user_id")
         if uid:
             u = usuarios_dict.get(uid, {})
@@ -336,7 +344,7 @@ def export_data():
             "exportado_em": datetime.now().isoformat(),
             "cilindros": cilindro_data,
             "elementos": elementos_data,
-            "amostras": amostras_data,
+            "leituras": leituras_data,
             "pressoes": pressoes_data
         }
         response = make_response(json.dumps(data, indent=2, default=str))
@@ -365,13 +373,13 @@ def export_data():
                 values = [str(row.get(h, "")) for h in headers]
                 output.write(",".join(values) + "\n")
         
-        output.write("\n# AMOSTRAS\n")
-        if amostras_data:
+        output.write("\n# LEITURAS\n")
+        if leituras_data:
             headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_codigo", 
-                      "elemento_id", "elemento_nome", "quantidade_amostras",
+                      "elemento_id", "elemento_nome", "quantidade",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
-            for row in amostras_data:
+            for row in leituras_data:
                 values = [str(row.get(h, "")) for h in headers]
                 output.write(",".join(values) + "\n")
         
@@ -425,18 +433,18 @@ def export_data():
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
         
-        ws_amostras = wb.create_sheet("Amostras")
-        if amostras_data:
+        ws_leituras = wb.create_sheet("Leituras")
+        if leituras_data:
             headers = ["ID", "Data", "Tempo Chama", "Cilindro ID", "Cilindro Código",
-                      "Elemento ID", "Elemento Nome", "Qtd Amostras",
+                      "Elemento ID", "Elemento Nome", "Qtd",
                       "Usuário Email", "Usuário Nome", "Criado em"]
-            ws_amostras.append(headers)
-            for row in amostras_data:
-                ws_amostras.append([
+            ws_leituras.append(headers)
+            for row in leituras_data:
+                ws_leituras.append([
                     row.get("id"), row.get("data"), row.get("tempo_chama"),
                     row.get("cilindro_id"), row.get("cilindro_codigo"),
                     row.get("elemento_id"), row.get("elemento_nome"),
-                    row.get("quantidade_amostras"),
+                    row.get("quantidade"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
         
@@ -468,7 +476,7 @@ def export_data():
         
         md_output.write(f"# LabGas Manager - Exportação\n\n")
         md_output.write(f"**Exportado em:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n\n")
-        md_output.write(f"**Total:** {len(cilindro_data)} Cilindros | {len(pressoes_data)} Pressoes | {len(elementos_data)} Elementos | {len(amostras_data)} Amostras\n\n")
+        md_output.write(f"**Total:** {len(cilindro_data)} Cilindros | {len(pressoes_data)} Pressoes | {len(elementos_data)} Elementos | {len(leituras_data)} Leituras\n\n")
         
         md_output.write("## Cilindros\n\n")
         if cilindro_data:
@@ -499,14 +507,14 @@ def export_data():
         else:
             md_output.write("*Nenhum elemento encontrado.*\n\n")
         
-        md_output.write("\n## Amostras\n\n")
-        if amostras_data:
+        md_output.write("\n## Leituras\n\n")
+        if leituras_data:
             md_output.write("| ID | Data | Tempo | Cilindro | Elemento | Qtd | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|---|\n")
-            for row in amostras_data:
-                md_output.write(f"| {row.get('id')} | {row.get('data')} | {row.get('tempo_chama')} | {row.get('cilindro_codigo')} | {row.get('elemento_nome')} | {row.get('quantidade_amostras')} | {row.get('usuario_email')} |\n")
+            for row in leituras_data:
+                md_output.write(f"| {row.get('id')} | {row.get('data')} | {row.get('tempo_chama')} | {row.get('cilindro_codigo')} | {row.get('elemento_nome')} | {row.get('quantidade')} | {row.get('usuario_email')} |\n")
         else:
-            md_output.write("*Nenhuma amostra encontrada.*\n\n")
+            md_output.write("*Nenhuma leitura encontrada.*\n\n")
         
         response = make_response(md_output.getvalue())
         response.headers["Content-Disposition"] = f"attachment; filename=labgas_export_{timestamp}.md"
