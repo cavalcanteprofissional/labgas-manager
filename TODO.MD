@@ -36,6 +36,16 @@
 - [x] `app.py` — context processor injects ICON_TIPO
 - [x] Icon refactor: 11 templates migrated to `bi bi-{{ ICON_TIPO[...] }}`
 
+## Fase 26: Número da Amostra Manual
+- [x] Migration v3: `numero_amostra INTEGER → NUMERIC`
+- [x] `schema.sql` + `DIAGRAM.MD` atualizados (INTEGER → NUMERIC)
+- [x] Blueprint: create lê `numero_amostra` do form, valida real positivo
+- [x] Blueprint: update também lê/valida `numero_amostra` do form
+- [x] Template: create form `<input type="number">` com placeholder = último+1
+- [x] Template: edit modal `numero_amostra` editável
+- [ ] Executar migration no Supabase SQL Editor
+- [ ] Testar: criar amostra com número manual + editar
+
 ## Sugestões Futuras 🚀
 
 ### Exportação

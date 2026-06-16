@@ -13,14 +13,12 @@ def test_create_amostra(login, page, cleanup_amostras):
     page.wait_for_selector("body")
 
     page.click("button[data-bs-target='#formAmostra']")
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(2000)
 
-    lote_input = page.locator("input[name='lote']").first
-    lote_input.wait_for(state="visible", timeout=5000)
-    lote_input.fill("42")
-
-    submit = page.locator("button[type='submit']").first
-    submit.click()
+    form = page.locator("#formAmostra")
+    form.locator("input[name='numero_amostra']").fill("1.5")
+    form.locator("input[name='lote']").fill("42")
+    form.locator("button[type='submit']").click()
     page.wait_for_timeout(3000)
     assert "/amostras" in page.url
 

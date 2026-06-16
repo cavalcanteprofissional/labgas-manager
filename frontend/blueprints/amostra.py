@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from utils.supabase_utils import get_supabase_client, get_admin_client
-from utils.validators import safe_int
+from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
@@ -26,11 +26,21 @@ def list():
         action = request.form.get("action")
 
         if action == "create":
+            numero_amostra = request.form.get("numero_amostra", "").strip()
             lote = request.form.get("lote", "").strip()
             elemento_ids = request.form.getlist("elemento_ids")
 
+            if not numero_amostra:
+                flash("N° da Amostra é obrigatório", "danger")
+                return redirect(url_for("amostra.list"))
+
             if not lote:
                 flash("Lote é obrigatório", "danger")
+                return redirect(url_for("amostra.list"))
+
+            numero_val = safe_float(numero_amostra)
+            if numero_val is None or numero_val <= 0:
+                flash("N° da Amostra deve ser um número real positivo", "danger")
                 return redirect(url_for("amostra.list"))
 
             try:
@@ -41,15 +51,10 @@ def list():
                 flash("Lote deve ser um número inteiro não negativo", "danger")
                 return redirect(url_for("amostra.list"))
 
-            next_num = 1
-            max_num = supabase.table("amostra").select("numero_amostra").eq("user_id", user_id).order("numero_amostra", desc=True).limit(1).execute()
-            if max_num.data:
-                next_num = (max_num.data[0]["numero_amostra"] or 0) + 1
-
             try:
                 client = admin_client if admin else supabase
                 response = client.table("amostra").insert({
-                    "numero_amostra": next_num,
+                    "numero_amostra": numero_val,
                     "lote": lote_val,
                     "user_id": user_id,
                 }).execute()
@@ -66,8 +71,8 @@ def list():
                     except (ValueError, Exception):
                         pass
 
-                registrar_historico("amostra", "criado", f"#{next_num} Lote {lote_val}", user_id)
-                flash(f"Amostra #{next_num} criada com sucesso!", "success")
+                registrar_historico("amostra", "criado", f"#{numero_val} Lote {lote_val}", user_id)
+                flash(f"Amostra #{numero_val} criada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "criar amostra"), "danger")
 
@@ -75,11 +80,21 @@ def list():
 
         elif action == "update":
             amostra_id = request.form.get("amostra_id")
+            numero_amostra = request.form.get("numero_amostra", "").strip()
             lote = request.form.get("lote", "").strip()
             elemento_ids = request.form.getlist("elemento_ids")
 
             if not amostra_id:
                 flash("ID da amostra não informado", "danger")
+                return redirect(url_for("amostra.list"))
+
+            if not numero_amostra:
+                flash("N° da Amostra é obrigatório", "danger")
+                return redirect(url_for("amostra.list"))
+
+            numero_val = safe_float(numero_amostra)
+            if numero_val is None or numero_val <= 0:
+                flash("N° da Amostra deve ser um número real positivo", "danger")
                 return redirect(url_for("amostra.list"))
 
             try:
@@ -101,7 +116,10 @@ def list():
 
             try:
                 client = admin_client if admin else supabase
-                client.table("amostra").update({"lote": lote_val}).eq("id", amostra_id).execute()
+                client.table("amostra").update({
+                    "numero_amostra": numero_val,
+                    "lote": lote_val,
+                }).eq("id", amostra_id).execute()
 
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
                 for elem_id in elemento_ids:
@@ -114,10 +132,7 @@ def list():
                     except (ValueError, Exception):
                         pass
 
-                registro_nome = f"#{existing.data[0].get('numero_amostra', '?')} Lote {lote_val}"
-                amostra_atual = client.table("amostra").select("numero_amostra").eq("id", amostra_id).execute()
-                if amostra_atual.data:
-                    registro_nome = f"#{amostra_atual.data[0].get('numero_amostra', '?')} Lote {lote_val}"
+                registro_nome = f"#{numero_val} Lote {lote_val}"
                 registrar_historico("amostra", "atualizado", registro_nome, user_id)
                 flash("Amostra atualizada com sucesso!", "success")
             except Exception as e:

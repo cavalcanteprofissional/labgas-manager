@@ -16,8 +16,8 @@
                 <input type="hidden" name="action" value="create">
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">N° da Amostra</label>
-                        <input type="text" class="form-control form-control-lg" value="#{{ (amostras[0].numero_amostra + 1) if amostras else '#1' }}" disabled>
+                        <label class="form-label">N° da Amostra *</label>
+                        <input type="number" name="numero_amostra" class="form-control form-control-lg" min="0" step="any" placeholder="{{ (amostras[0].numero_amostra + 1) if amostras else '1' }}" required>
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Lote *</label>
@@ -106,8 +106,8 @@
                                     <div class="modal-body">
                                         <div class="row g-3">
                                             <div class="col-12 col-md-6">
-                                                <label class="form-label">N° da Amostra</label>
-                                                <input type="text" class="form-control" value="{{ a.numero_amostra }}" disabled>
+                                                <label class="form-label">N° da Amostra *</label>
+                                                <input type="number" name="numero_amostra" class="form-control" value="{{ a.numero_amostra }}" min="0" step="any" required>
                                             </div>
                                             <div class="col-12 col-md-6">
                                                 <label class="form-label">Lote *</label>
