@@ -137,7 +137,7 @@ def add_cors_headers(response):
 def inject_user_info():
     from blueprints.helpers import get_habilitar_abas
     from datetime import datetime
-    from utils.constants import ICON_TIPO
+    from utils.constants import ICON_TIPO, COR_TIPO
     
     user_id = session.get('user_id')
     
@@ -173,7 +173,8 @@ def inject_user_info():
         user_name=cached.get('user_name', ''), 
         pode_acessar_aba=get_habilitar_abas,
         today=datetime.now().strftime("%Y-%m-%d"),
-        ICON_TIPO=ICON_TIPO
+        ICON_TIPO=ICON_TIPO,
+        COR_TIPO=COR_TIPO
     )
 
 

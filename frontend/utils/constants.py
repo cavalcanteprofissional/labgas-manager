@@ -26,34 +26,74 @@ ICON_TIPO = {
 COR_TIPO = {
     "cilindro": {
         "class": "green",
+        "hex": "#00897b",
+        "var": "var(--green)",
+        "bg": "success",
         "gradient": "linear-gradient(135deg, #005f96, #4da3e8)",
-        "badge": "info"
+    },
+    "pressao": {
+        "class": "orange",
+        "hex": "#f59e0b",
+        "var": "var(--yellow)",
+        "bg": "warning",
+        "gradient": "linear-gradient(135deg, #d97706, #fbbf24)",
     },
     "elemento": {
-        "class": "blue", 
+        "class": "blue",
+        "hex": "#0070b8",
+        "var": "var(--primary)",
+        "bg": "primary",
         "gradient": "linear-gradient(135deg, #003a5e, #4da3e8)",
-        "badge": "primary"
     },
     "leitura": {
         "class": "pink",
+        "hex": "#e91e63",
+        "var": "var(--pink)",
+        "bg": "danger",
         "gradient": "linear-gradient(135deg, #0070b8, #6cccff)",
-        "badge": "info"
     },
     "amostra": {
         "class": "purple",
+        "hex": "#6a1b9a",
+        "var": "var(--amostra)",
+        "bg": "secondary",
         "gradient": "linear-gradient(135deg, #6a1b9a, #ce93d8)",
-        "badge": "secondary"
+    },
+    "historico": {
+        "class": "blue",
+        "hex": "#0070b8",
+        "var": "var(--primary)",
+        "bg": "primary",
+        "gradient": "linear-gradient(135deg, #002a47, #003a5e)",
+    },
+    "perfil": {
+        "class": "info",
+        "hex": "#6cccff",
+        "var": "var(--primary-lighter)",
+        "bg": "info",
+        "gradient": "linear-gradient(135deg, #0070b8, #4da3e8)",
+    },
+    "dashboard": {
+        "class": "blue",
+        "hex": "#0070b8",
+        "var": "var(--primary)",
+        "bg": "primary",
+        "gradient": "linear-gradient(135deg, var(--primary), var(--primary-light))",
     },
     "ativos": {
-        "class": "purple",
+        "class": "green",
+        "hex": "#004d40",
+        "var": "var(--green-darkest)",
+        "bg": "success",
         "gradient": "linear-gradient(135deg, #002a47, #003a5e)",
-        "badge": "primary"
     },
     "admin": {
         "class": "danger",
+        "hex": "#0070b8",
+        "var": "var(--primary)",
+        "bg": "primary",
         "gradient": "linear-gradient(135deg, #002a47, #004475)",
-        "badge": "primary"
-    }
+    },
 }
 
 ELEMENTOS_PADRAO = [

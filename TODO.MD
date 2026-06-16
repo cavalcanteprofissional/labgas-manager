@@ -36,15 +36,26 @@
 - [x] `app.py` — context processor injects ICON_TIPO
 - [x] Icon refactor: 11 templates migrated to `bi bi-{{ ICON_TIPO[...] }}`
 
-## Fase 26: Número da Amostra Manual
+## Fase 26: Número da Amostra Manual ✅
 - [x] Migration v3: `numero_amostra INTEGER → NUMERIC`
 - [x] `schema.sql` + `DIAGRAM.MD` atualizados (INTEGER → NUMERIC)
 - [x] Blueprint: create lê `numero_amostra` do form, valida real positivo
 - [x] Blueprint: update também lê/valida `numero_amostra` do form
 - [x] Template: create form `<input type="number">` com placeholder = último+1
 - [x] Template: edit modal `numero_amostra` editável
-- [ ] Executar migration no Supabase SQL Editor
-- [ ] Testar: criar amostra com número manual + editar
+- [x] Migration executada no Supabase SQL Editor
+- [x] Testes: 3/3 passando
+
+## Fase 27: Refatorar Cores (COR_TIPO) ✅
+- [x] `COR_TIPO` completado com todos os campos (hex, var, bg, gradient)
+- [x] Entradas adicionadas: pressao, historico, perfil, dashboard
+- [x] CSS variable `--amostra: #6a1b9a` em base.html
+- [x] Context processor injeta `COR_TIPO` (app.py)
+- [x] `admin_user_data.html` → cores via COR_TIPO
+- [x] `perfil.html` → corrigido de #0070b8 genérico para cor específica de cada entidade
+- [x] `historico.html` → mapeamento de badge substituído por `COR_TIPO[h.tipo]['var']`
+- [x] `admin_user_data.html` → badge histórico usa mesma lógica
+- [x] 3/3 testes passando
 
 ## Sugestões Futuras 🚀
 

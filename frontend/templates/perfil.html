@@ -123,44 +123,44 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-6 col-md-3">
-                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#0070b8' if habilitar_abas.cilindro else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-2 fs-5" style="color: {{ '#0070b8' if habilitar_abas.cilindro else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.cilindro %}fw-bold{% endif %}" style="color: {{ '#0070b8' if habilitar_abas.cilindro else '#6c757d' }};">Cilindros</span>
+                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['cilindro']['hex'] if habilitar_abas.cilindro else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-2 fs-5" style="color: {{ COR_TIPO['cilindro']['hex'] if habilitar_abas.cilindro else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.cilindro %}fw-bold{% endif %}" style="color: {{ COR_TIPO['cilindro']['hex'] if habilitar_abas.cilindro else '#6c757d' }};">Cilindros</span>
                     <i class="bi bi-{% if habilitar_abas.cilindro %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-<div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#0070b8' if habilitar_abas.pressao else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-2 fs-5" style="color: {{ '#0070b8' if habilitar_abas.pressao else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.pressao %}fw-bold{% endif %}" style="color: {{ '#0070b8' if habilitar_abas.pressao else '#6c757d' }};">Pressão</span>
+<div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-2 fs-5" style="color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.pressao %}fw-bold{% endif %}" style="color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#6c757d' }};">Pressão</span>
                     <i class="bi bi-{% if habilitar_abas.pressao %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#0070b8' if habilitar_abas.elemento else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-2 fs-5" style="color: {{ '#0070b8' if habilitar_abas.elemento else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.elemento %}fw-bold{% endif %}" style="color: {{ '#0070b8' if habilitar_abas.elemento else '#6c757d' }};">Elementos</span>
+                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['elemento']['hex'] if habilitar_abas.elemento else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-2 fs-5" style="color: {{ COR_TIPO['elemento']['hex'] if habilitar_abas.elemento else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.elemento %}fw-bold{% endif %}" style="color: {{ COR_TIPO['elemento']['hex'] if habilitar_abas.elemento else '#6c757d' }};">Elementos</span>
                     <i class="bi bi-{% if habilitar_abas.elemento %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#0070b8' if habilitar_abas.leitura else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-2 fs-5" style="color: {{ '#0070b8' if habilitar_abas.leitura else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.leitura %}fw-bold{% endif %}" style="color: {{ '#0070b8' if habilitar_abas.leitura else '#6c757d' }};">Leitura</span>
+                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['leitura']['hex'] if habilitar_abas.leitura else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-2 fs-5" style="color: {{ COR_TIPO['leitura']['hex'] if habilitar_abas.leitura else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.leitura %}fw-bold{% endif %}" style="color: {{ COR_TIPO['leitura']['hex'] if habilitar_abas.leitura else '#6c757d' }};">Leitura</span>
                     <i class="bi bi-{% if habilitar_abas.leitura %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#6a1b9a' if habilitar_abas.amostra else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-2 fs-5" style="color: {{ '#6a1b9a' if habilitar_abas.amostra else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.amostra %}fw-bold{% endif %}" style="color: {{ '#6a1b9a' if habilitar_abas.amostra else '#6c757d' }};">Amostra</span>
+                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-2 fs-5" style="color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.amostra %}fw-bold{% endif %}" style="color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#6c757d' }};">Amostra</span>
                     <i class="bi bi-{% if habilitar_abas.amostra %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ '#0070b8' if habilitar_abas.historico else '#f0f0f0' }}20;">
-                    <i class="bi bi-{{ ICON_TIPO["historico"] }} me-2 fs-5" style="color: {{ '#0070b8' if habilitar_abas.historico else '#6c757d' }};"></i>
-                    <span class="{% if habilitar_abas.historico %}fw-bold{% endif %}" style="color: {{ '#0070b8' if habilitar_abas.historico else '#6c757d' }};">Histórico</span>
+                <div class="d-flex align-items-center p-3 rounded" style="background-color: {{ COR_TIPO['historico']['hex'] if habilitar_abas.historico else '#f0f0f0' }}20;">
+                    <i class="bi bi-{{ ICON_TIPO["historico"] }} me-2 fs-5" style="color: {{ COR_TIPO['historico']['hex'] if habilitar_abas.historico else '#6c757d' }};"></i>
+                    <span class="{% if habilitar_abas.historico %}fw-bold{% endif %}" style="color: {{ COR_TIPO['historico']['hex'] if habilitar_abas.historico else '#6c757d' }};">Histórico</span>
                     <i class="bi bi-{% if habilitar_abas.historico %}check-circle-fill ms-auto text-success{% else %}x-circle-fill ms-auto text-muted{% endif %}"></i>
                 </div>
             </div>

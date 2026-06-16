@@ -56,7 +56,7 @@
                             <small>{{ h.data|formatar_data if h.data else '-' }}</small>
                         </td>
                         <td>
-                            <span class="badge" style="background-color: {{ 'var(--green)' if h.tipo == 'cilindro' else 'var(--pink)' if h.tipo == 'leitura' else '#f59e0b' if h.tipo == 'pressao' else 'var(--primary)' if h.tipo == 'elemento' else '#6a1b9a' if h.tipo == 'amostra' else 'var(--primary-lighter)' if h.tipo == 'perfil' else 'var(--primary)' }};">
+                            <span class="badge" style="background-color: {{ COR_TIPO[h.tipo]['var'] if h.tipo in COR_TIPO else 'var(--primary)' }};">
                                 {{ h.tipo|title }}
                             </span>
                         </td>
