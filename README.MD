@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.3.1** (Branch: master)
+**Versão: 2.6.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -8,41 +8,46 @@ Dashboard para gestão de cilindro de gás e elementos analisados em laboratóri
 
 ---
 
-## Sistema de Cores v2.1.0
+## Sistema de Cores v3.0 — Rainbow por Dependência
 
-### Cor Primária
-- **Principal**: `#0070b8` (derivada do ícone TSA)
+O esquema de cores segue um **arco-íris ordenado por dependência entre entidades**: entidades raiz iniciam o espectro, dependentes usam matizes adjacentes.
 
-### Paleta de Cores (CSS Variables)
+| Entidade | Relação | Cor | Hex | CSS Variable |
+|----------|---------|-----|-----|-------------|
+| **Cilindro** | Raiz, base de medições | 🔴 Vermelho | `#e63946` | `--cilindro` |
+| **Pressão** | Depende de Cilindro | 🟠 Laranja | `#f77f00` | `--pressao` |
+| **Elemento** | Raiz, base de análises | 🟢 Verde | `#2a9d8f` | `--elemento` |
+| **Leitura** | Depende de Cilindro + Elemento | 🔵 Azul | `#457b9d` | `--leitura` |
+| **Amostra** | N:N com Elementos (arco-íris completo) | 🟣 Violeta | `#6a1b9a` | `--amostra` |
+| **Perfil** | Marca original | 🔷 Azul | `#0070b8` | `--primary` |
+| **Admin** | Gestão | ⬛ Azul escuro | `#002a47` | `--primary-darkest` |
 
-| Variável | Hex | Uso |
-|----------|-----|-----|
-| `--primary-darkest` | #002a47 | Sidebar, textos escuros |
-| `--primary-dark` | #003a5e | Sidebar hover, headers |
-| `--primary` | #0070b8 | Brand, botões, elemento |
-| `--primary-light` | #4da3e8 | Gradientes, cards |
-| `--primary-lighter` | #6cccff | Gráficos, acentos |
-| `--primary-lightest` | #88d4ff | Highlights |
-| `--accent` | #005f96 | Cilindro (antigo) |
-| `--accent-alt` | #4da3e8 | Elemento (antigo) |
+### Paletas de Intensidade para Gráficos
 
-### Paleta de Cores por KPI
+Cada entidade possui uma paleta de **5 níveis claro → escuro**, usada nos gráficos Chart.js: **valores baixos = cores claras, valores altos = cores escuras**.
 
-| Variável | Hex | Uso |
-|----------|-----|-----|
-| `--green` | #00897b | Cilindros, Ativos, tags de cilindro |
-| `--green-dark` | #00695c | Gradiente stat-card Cilindros |
-| `--green-light` | #4db6ac | Gradiente stat-card Cilindros |
-| `--pink` | #e91e63 | Amostras, tags de amostra |
-| `--pink-dark` | #c2185b | Gradiente stat-card Amostras |
-| `--pink-light` | #f06292 | Gradiente stat-card Amostras |
-| `--purple` | #7b1fa2 | Tags de Consumo (L/min) |
-| `--purple-light` | #ba68c8 | Tags de Qtd |
-| `--yellow` | #f59e0b | Tag "Atualizado" (mesma cor do btn Editar) |
-| `--red` | #dc3545 | Tag "Excluído" (mesma cor do btn Excluir) |
-| `--orange` | #f59e0b | Pressões |
-| `--orange-dark` | #d97706 | Gradiente stat-card Pressões |
-| `--orange-light` | #fbbf24 | Gradiente stat-card Pressões |
+| Entidade | Claro (0-20%) | Médio (40-60%) | Escuro (80-100%) |
+|----------|:---:|:---:|:---:|
+| Cilindro | `#f4a261` | `#d62828` | `#780000` |
+| Pressão | `#ffd166` | `#f77f00` | `#9d0208` |
+| Elemento | `#b7e4c7` | `#2d6a4f` | `#081c15` |
+| Leitura | `#a8dadc` | `#1d3557` | `#050d14` |
+| Amostra | `#e8daef` | `#8e44ad` | `#4a0072` |
+
+### Cores de Sinalização (Bootstrap padrão — mantidas)
+
+Botões de ação, alertas e mensagens usam as cores padrão do Bootstrap, **não modificadas**:
+
+| Contexto | Classe Bootstrap | Cor |
+|----------|----------------|-----|
+| Ação primária / Info | `btn-primary` / `alert-primary` | 🔵 Azul `#0070b8` |
+| Sucesso / Criado | `btn-success` / `alert-success` | 🟢 Verde `#198754` |
+| Aviso / Editado | `btn-warning` / `alert-warning` | 🟡 Amarelo `#ffc107` |
+| Erro / Excluído | `btn-danger` / `alert-danger` | 🔴 Vermelho `#dc3545` |
+
+### Centralização via Context Processor
+
+Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os templates** pelo context processor em `app.py`, permitindo trocar cores e ícones centralizadamente em `utils/constants.py`.
 
 ---
 
@@ -52,11 +57,12 @@ Dashboard para gestão de cilindro de gás e elementos analisados em laboratóri
 
 | Aba | Funcionalidades |
 |-----|-----------------|
-| **Dashboard** | Cards com estatísticas, gráficos de amostras por cilindro, elementos mais analisados, eficiência de cilindro |
+| **Dashboard** | Cards com estatísticas, gráficos de leituras por cilindro, elementos mais analisados, eficiência |
 | **Cilindros** | CRUD completo, código CIL-XXX, status (ativo/esgotado) |
 | **Pressão** | CRUD completo, pressão (bar), temperatura (°C), data e hora, vinculado a cilindro |
 | **Elementos** | CRUD completo, consumo em L/min, 20 elementos padrão pré-carregados |
-| **Amostras** | CRUD completo, vinculado a cilindro/elemento, tempo de chama, quantidade |
+| **Leitura** | CRUD completo, vinculado a cilindro/elemento, tempo de chama, quantidade |
+| **Amostra** | CRUD completo com N:N elementos, lote, número manual (real positivo) |
 | **Histórico** | Log de todas as operações CRUD, filtros por tipo/ação |
 | **Perfil** | Edição de nome, visualização de role e permissões |
 | **Administração** | Painel admin, gerenciar usuários, controle de acesso por abas, exportar dados |
@@ -645,10 +651,10 @@ O frontend estará disponível em: `http://localhost:5000`
 - Nomes únicos por usuário (primeira letra maiúscula)
 
 ### Amostra
-- Data default como data atual
-- Tempo de chama editável (HH:MM:SS)
-- Vincular a cilindro e elemento existentes
-- Quantidade de amostras (inteiro)
+- Número da amostra inserido manualmente pelo usuário (real positivo)
+- Placeholder com sugestão do último número + 1
+- Lote (inteiro não negativo)
+- Associação N:N com Elementos (múltiplos elementos por amostra)
 
 ---
 
@@ -666,7 +672,8 @@ O frontend estará disponível em: `http://localhost:5000`
 ### CRUD
 - Criação, edição e exclusão de Cilindros
 - Criação, edição e exclusão de Elementos
-- Criação, edição e exclusão de Amostras
+- Criação, edição e exclusão de Leituras
+- Criação, edição e exclusão de Amostras (com N:N Elementos)
 - Multi-select com checkbox para exclusão em massa
 
 ### Admin
@@ -680,7 +687,7 @@ O frontend estará disponível em: `http://localhost:5000`
 
 ### Histórico
 - Registro de todas as operações CRUD
-- Filtros por tipo (cilindro/pressao/elemento/amostra/perfil) e ação (criado/atualizado/excluido)
+- Filtros por tipo (cilindro/pressao/elemento/leitura/amostra/perfil) e ação (criado/atualizado/excluido)
 - Exibição do usuário que realizou a ação
 - **Log de usuários**: Cadastro, alteração de role, ativação/desativação, permissões de abas
 
@@ -783,10 +790,70 @@ O frontend estará disponível em: `http://localhost:5000`
 
 ---
 
+## Novidades v3.0 — Rainbow + Intensity
+
+### Novo Esquema de Cores Rainbow
+Cada entidade agora possui cor própria seguindo o espectro visível ordenado por dependência:
+
+| Entidade | Cor | Relação |
+|----------|-----|---------|
+| Cilindro (raiz) | 🔴 Vermelho `#e63946` | Início do espectro |
+| Pressão (dep. Cilindro) | 🟠 Laranja `#f77f00` | Adjacente ao vermelho |
+| Elemento (raiz) | 🟢 Verde `#2a9d8f` | Meio do espectro |
+| Leitura (dep. Cilindro+Elemento) | 🔵 Azul `#457b9d` | Mistura RGB |
+| Amostra (N:N Elementos) | 🟣 Violeta `#6a1b9a` | Fim do espectro |
+
+### Intensidade nos Gráficos (Chart.js)
+Nova função `getColorByIntensity()` que mapeia valores por rank:
+- **Valor baixo** → cor clara/brilhante
+- **Valor alto** → cor escura/forte
+
+### Cores de Sinalização Mantidas
+Botões, alertas e mensagens de ação continuam usando cores padrão do Bootstrap (azul, verde, amarelo, vermelho).
+
+### Centralização via COR_TIPO + ICON_TIPO
+Ambos injetados pelo context processor em todos os templates. Trocar ícone/cor de qualquer entidade = alterar 1 linha em `constants.py`.
+
+---
+
+## Novidades v2.5.0 — Nova Aba Amostra + Refactor Ícones
+
+### Renomeação Amostra → Leitura
+- A antiga aba "Amostras" foi renomeada para **"Leitura"**
+- Blueprint `leitura.py`, template `leitura.html`, rota `/leitura`
+- Migration SQL executada no Supabase
+
+### Nova Aba Amostra (com N:N Elementos)
+- Blueprint `amostra.py` com CRUD completo
+- Associação **N:N** com Elementos via tabela `amostra_elemento`
+- Número da amostra manual (real positivo) com placeholder = último + 1
+- Lote, bulk delete, paginação, permissões de acesso
+- Acesso do Assistente de Voz
+
+### Refactor ICON_TIPO
+- Centralização dos ícones Bootstrap em `utils/constants.py`
+- Substituição de `bi-flask` (inexistente) por `bi-collection`
+- Ícones injetados via context processor em todos os templates
+
+---
+
+## Novidades v2.4.0 — Testes Playwright
+
+### Testes Automatizados com Playwright
+- 28 testes end-to-end (Chrome)
+- Cobertura: auth, dashboard, admin, cilindro, elemento, leitura, pressao, amostra
+- Fixtures: login, cleanup, test user com permissões
+- Conftest com Flask subprocess + wait_for_url
+
+---
+
 ## Changelog
 
 | Versão | Descrição |
 |--------|-----------|
+| v3.0 | Rainbow + Intensity color scheme, COR_TIPO centralizado |
+| v2.5.0 | Nova aba Amostra, renomeação Amostra→Leitura, ICON_TIPO refactor |
+| v2.4.0 | Testes Playwright (28 testes) |
 | v2.3.0 | Segurança avançada (cookie secure + security headers) |
 | v2.2.5 | Otimização query cilindro em Pressão |
 | v2.2.4 | Otimização N+1 admin + fix pressao.list() |
@@ -808,47 +875,6 @@ O frontend estará disponível em: `http://localhost:5000`
 | v1.5.0 | Correções de segurança (CSRF, IDOR, Rate Limiting, RLS) |
 | v1.4.1 | Correções de UX e mensagens amigáveis, formatação de datas |
 | v1.4.0 | Refatoração para Blueprints, código modular |
-
----
-
-## Novidades v2.1.0
-
-### Sistema de Paleta de Cores por KPI
-Cada KPI (Cilindros, Elementos, Amostras, Pressões) agora possui cores padronizadas com gradientes.
-
-### StatCards Padronizados
-- **Cilindros/Ativos**: Verde (`stat-card green`)
-- **Pressões**: Laranja (`stat-card orange`)
-- **Elementos**: Azul (`stat-card blue`)
-- **Amostras**: Rosa (`stat-card pink`)
-
-### Tags Padronizadas por Tipo
-- **Cilindro**: Tag verde (`var(--green)`)
-- **Elemento**: Tag azul (`var(--primary)`)
-- **Amostra**: Tag rosa (`var(--pink)`)
-- **Pressão**: Tag amarelo (`#f59e0b`)
-
-### Tags de Ação no Histórico
-- **Criado**: Verde (`var(--green)`)
-- **Atualizado**: Amarelo (`var(--yellow)`) - mesma cor do botão Editar
-- **Excluído**: Vermelho (`var(--red)`) - mesma cor do botão Excluir
-
-### Novas Variáveis CSS
-- `--green`, `--green-dark`, `--green-light` - Cilindros
-- `--pink`, `--pink-dark`, `--pink-light` - Amostras
-- `--purple`, `--purple-light` - Consumo (L/min), Qtd
-- `--yellow` - Tag "Atualizado"
-- `--red` - Tag "Excluído"
-- `--orange`, `--orange-dark`, `--orange-light` - Pressões
-
-### Ordenação Alfabética
-- Aba "Elementos" agora exibe elementos em ordem alfabética (A-Z)
-
-### Correções Visuais
-- Stat-card "Ativos" agora usa cor verde (antes roxo)
-- Stat-card "Pressões" agora usa gradiente laranja verdadeiro (antes azul)
-- Tags de código de cilindro em todas as abas
-- Tags de elemento em azul em todas as abas
 
 ---
 

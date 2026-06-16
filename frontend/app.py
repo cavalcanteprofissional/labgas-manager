@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 from blueprints.helpers import get_authenticated_client
-from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS
+from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA
 from utils.erros_utils import formatar_erro_supabase
 
 # Carrega .env.local para desenvolvimento local (se existir)
@@ -316,6 +316,9 @@ def dashboard():
         elemento_dict=elemento_dict,
         elemento_cores=ELEMENTO_CORES,
         elemento_cores_leituras=ELEMENTO_CORES_LEITURAS,
+        paleta_cilindro=PALETA_CILINDRO,
+        paleta_elemento=PALETA_ELEMENTO,
+        paleta_leitura=PALETA_LEITURA,
         total_quantidade=total_quantidade,
         amostras_total=amostras_response.count or 0,
     )

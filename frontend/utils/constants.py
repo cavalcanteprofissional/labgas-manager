@@ -9,7 +9,9 @@ CUSTO_DEFAULT = float(os.getenv("CUSTO_DEFAULT", "290.00"))
 
 CILINDRO_STATUS = ["ativo", "esgotado"]
 
-# Sistema de cores - Paleta baseada em #0070b8
+# Sistema de cores - Rainbow por dependencia
+# Ordem do espectro: Vermelho → Laranja → Verde → Azul → Violeta
+# Entidades dependentes compartilham matiz proximo
 ICON_TIPO = {
     "cilindro": "box-seam",
     "pressao": "activity",
@@ -25,53 +27,53 @@ ICON_TIPO = {
 
 COR_TIPO = {
     "cilindro": {
-        "class": "green",
-        "hex": "#00897b",
-        "var": "var(--green)",
-        "bg": "success",
-        "gradient": "linear-gradient(135deg, #005f96, #4da3e8)",
+        "class": "red",
+        "hex": "#e63946",
+        "var": "var(--cilindro)",
+        "bg": "danger",
+        "gradient": "linear-gradient(135deg, #c1121f, #e63946)",
     },
     "pressao": {
         "class": "orange",
-        "hex": "#f59e0b",
-        "var": "var(--yellow)",
+        "hex": "#f77f00",
+        "var": "var(--pressao)",
         "bg": "warning",
-        "gradient": "linear-gradient(135deg, #d97706, #fbbf24)",
+        "gradient": "linear-gradient(135deg, #e85d04, #fca311)",
     },
     "elemento": {
-        "class": "blue",
-        "hex": "#0070b8",
-        "var": "var(--primary)",
-        "bg": "primary",
-        "gradient": "linear-gradient(135deg, #003a5e, #4da3e8)",
+        "class": "green",
+        "hex": "#2a9d8f",
+        "var": "var(--elemento)",
+        "bg": "success",
+        "gradient": "linear-gradient(135deg, #1b4332, #52b788)",
     },
     "leitura": {
-        "class": "pink",
-        "hex": "#e91e63",
-        "var": "var(--pink)",
-        "bg": "danger",
-        "gradient": "linear-gradient(135deg, #0070b8, #6cccff)",
+        "class": "blue",
+        "hex": "#457b9d",
+        "var": "var(--leitura)",
+        "bg": "primary",
+        "gradient": "linear-gradient(135deg, #1d3557, #a8dadc)",
     },
     "amostra": {
         "class": "purple",
         "hex": "#6a1b9a",
         "var": "var(--amostra)",
         "bg": "secondary",
-        "gradient": "linear-gradient(135deg, #6a1b9a, #ce93d8)",
+        "gradient": "linear-gradient(135deg, #4a0072, #bb8fce)",
     },
     "historico": {
-        "class": "blue",
-        "hex": "#0070b8",
-        "var": "var(--primary)",
-        "bg": "primary",
-        "gradient": "linear-gradient(135deg, #002a47, #003a5e)",
+        "class": "gray",
+        "hex": "#6c757d",
+        "var": "var(--historico)",
+        "bg": "secondary",
+        "gradient": "linear-gradient(135deg, #343a40, #adb5bd)",
     },
     "perfil": {
         "class": "info",
-        "hex": "#6cccff",
-        "var": "var(--primary-lighter)",
+        "hex": "#0070b8",
+        "var": "var(--primary)",
         "bg": "info",
-        "gradient": "linear-gradient(135deg, #0070b8, #4da3e8)",
+        "gradient": "linear-gradient(135deg, #003a5e, #4da3e8)",
     },
     "dashboard": {
         "class": "blue",
@@ -82,19 +84,31 @@ COR_TIPO = {
     },
     "ativos": {
         "class": "green",
-        "hex": "#004d40",
-        "var": "var(--green-darkest)",
+        "hex": "#1b4332",
+        "var": "var(--green-dark)",
         "bg": "success",
-        "gradient": "linear-gradient(135deg, #002a47, #003a5e)",
+        "gradient": "linear-gradient(135deg, #081c15, #2d6a4f)",
     },
     "admin": {
-        "class": "danger",
-        "hex": "#0070b8",
-        "var": "var(--primary)",
-        "bg": "primary",
-        "gradient": "linear-gradient(135deg, #002a47, #004475)",
+        "class": "dark",
+        "hex": "#002a47",
+        "var": "var(--primary-darkest)",
+        "bg": "dark",
+        "gradient": "linear-gradient(135deg, #001a2f, #004475)",
     },
 }
+
+# Paletas ordenadas do mais CLARO (valor baixo) → mais ESCURO (valor alto)
+# para uso em graficos Chart.js com getColorByIntensity()
+PALETA_CILINDRO = ["#f4a261", "#e76f51", "#d62828", "#c1121f", "#780000"]
+PALETA_PRESSAO  = ["#ffd166", "#fca311", "#f77f00", "#e85d04", "#9d0208"]
+PALETA_ELEMENTO = ["#b7e4c7", "#52b788", "#2d6a4f", "#1b4332", "#081c15"]
+PALETA_LEITURA  = ["#a8dadc", "#457b9d", "#1d3557", "#0b1a2a", "#050d14"]
+PALETA_AMOSTRA  = ["#e8daef", "#bb8fce", "#8e44ad", "#6a1b9a", "#4a0072"]
+
+# Aliases para compatibilidade com codigo existente
+ELEMENTO_CORES = PALETA_ELEMENTO
+ELEMENTO_CORES_LEITURAS = PALETA_LEITURA
 
 ELEMENTOS_PADRAO = [
     {"nome": "Antimônio", "consumo_lpm": 1.5},
@@ -117,18 +131,4 @@ ELEMENTOS_PADRAO = [
     {"nome": "Selênio", "consumo_lpm": 2.0},
     {"nome": "Zinco", "consumo_lpm": 1.5},
     {"nome": "Tálio", "consumo_lpm": 1.5},
-]
-
-ELEMENTO_CORES = [
-    "#0070b8", "#0069a3", "#005f96", "#005a8e", "#004475",
-    "#003a5e", "#002a47", "#4da3e8", "#5cb8e8", "#6cccff",
-    "#7ad0ff", "#88d4ff", "#94ddff", "#8bbed4", "#6a9ab8",
-    "#4a7a98", "#2a5a78", "#1a4a58", "#0a3a48", "#002a38"
-]
-
-ELEMENTO_CORES_LEITURAS = [
-    "#e91e63", "#c2185b", "#d81b60", "#f06292", "#f48fb1",
-    "#f06292", "#ec407a", "#f8bbd0", "#f48fb1", "#f62d74",
-    "#d81b60", "#c2185b", "#880e4f", "#ad1457", "#c51162",
-    "#f62d74", "#ec407a", "#ea80fc", "#aa00ff", "#b388ff"
 ]

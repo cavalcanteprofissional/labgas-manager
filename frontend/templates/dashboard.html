@@ -26,7 +26,7 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="card stat-card green h-100">
+        <div class="card stat-card cilindro h-100">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros</h5>
                 <h2 class="mb-0">{{ cilindro|length }}</h2>
@@ -42,7 +42,7 @@
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card stat-card blue h-100">
+        <div class="card stat-card elemento h-100">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos</h5>
                 <h2 class="mb-0">{{ elementos|length }}</h2>
@@ -50,7 +50,7 @@
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card stat-card pink h-100">
+        <div class="card stat-card leitura h-100">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leituras</h5>
                 <h2 class="mb-0">{{ total_quantidade }}</h2>
@@ -70,7 +70,7 @@
 <div class="row">
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #00695c, #4db6ac); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); color: white;">
                 <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Quantidade de Leituras por Cilindro</h5>
             </div>
             <div class="card-body">
@@ -86,7 +86,7 @@
     </div>
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #003a5e, #4da3e8); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
                 <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Consumo por Elemento × Tempo de Chama</h5>
             </div>
             <div class="card-body">
@@ -105,7 +105,7 @@
 <div class="row g-3 mb-4">
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #c2185b, #f06292); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
                 <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> Elementos mais analisados</h5>
             </div>
             <div class="card-body">
@@ -114,9 +114,9 @@
                     {% for item in elementos_mais_analisados %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--primary);">{{ item.nome }}</span>
+                            <span class="badge" style="background-color: var(--elemento);">{{ item.nome }}</span>
                         </div>
-                        <span class="badge" style="background-color: {{ elemento_cores_leituras[loop.index0] }};">{{ item.quantidade }} leitura(s)</span>
+                        <span class="badge" style="background-color: {{ paleta_leitura[loop.index0 % (paleta_leitura|length)] }};">{{ item.quantidade }} leitura(s)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -128,7 +128,7 @@
     </div>
     <div class="col-12 col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #002a47, #003a5e); color: white;">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--amostra), var(--amostra-light)); color: white;">
                 <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Eficiência por Elemento</h5>
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -171,7 +171,7 @@
     
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #00695c, #4db6ac); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); color: white;">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["cilindro"] }}"></i> Últimos Cilindros</h6>
             </div>
             <div class="card-body p-0">
@@ -180,7 +180,7 @@
                     {% for c in cilindro[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--green);">{{ c.codigo }}</span>
+                            <span class="badge" style="background-color: var(--cilindro);">{{ c.codigo }}</span>
                             <small class="d-block text-muted">{{ c.data_compra|formatar_data }}</small>
                         </div>
                         <span class="badge bg-{{ 'success' if c.status == 'ativo' else 'danger' }}">
@@ -201,7 +201,7 @@
     
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #003a5e, #4da3e8); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Últimos Elementos</h6>
             </div>
             <div class="card-body p-0">
@@ -210,7 +210,7 @@
                     {% for e in elementos[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--primary);">{{ e.nome }}</span>
+                            <span class="badge" style="background-color: var(--elemento);">{{ e.nome }}</span>
                             <small class="d-block text-muted">{{ "%.1f"|format(e.consumo_lpm) }} L/min</small>
                         </div>
                         {{ "%.1f"|format(e.consumo_lpm) }} L/min
@@ -229,7 +229,7 @@
     
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, #c2185b, #f06292); color: white;">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Últimas Leituras</h6>
             </div>
             <div class="card-body p-0">
@@ -238,8 +238,8 @@
                     {% for a in leituras[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--green);">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
-                            <span class="badge mx-1" style="background-color: var(--primary);">{{ elemento_dict.get(a.elemento_id, a.elemento_id) }}</span>
+                            <span class="badge" style="background-color: var(--cilindro);">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
+                            <span class="badge mx-1" style="background-color: var(--elemento);">{{ elemento_dict.get(a.elemento_id, a.elemento_id) }}</span>
                         </div>
                         <small class="text-muted">{{ a.data|formatar_data if a.data else '-' }}</small>
                     </div>
@@ -267,7 +267,7 @@ new Chart(document.getElementById('statusChart'), {
         labels: {{ cilindro_leituras_labels|tojson }},
         datasets: [{
             data: {{ cilindro_leituras_values|tojson }},
-            backgroundColor: ['#00897b', '#4db6ac', '#80cbc4', '#b2dfdb', '#00695c', '#004d40', '#26a69a', '#2e7d32']
+            backgroundColor: getColorByIntensity({{ cilindro_leituras_values|tojson }}, {{ paleta_cilindro|tojson }})
         }]
     },
     options: {
@@ -287,9 +287,16 @@ new Chart(document.getElementById('statusChart'), {
 {% endif %}
 
 {% if elementos_labels %}
-const elementoCores = {{ elemento_cores|tojson }};
-function getCoresPorElemento(labels) {
-    return labels.map((_, i) => elementoCores[i % elementoCores.length]);
+function getColorByIntensity(values, palette) {
+    const sorted = [...values].sort(function(a, b) { return a - b; });
+    return values.map(function(v) {
+        var rank = sorted.indexOf(v) / (values.length - 1);
+        var idx = Math.round(rank * (palette.length - 1));
+        return palette[idx];
+    });
+}
+function getCoresPorElemento(labels, values) {
+    return getColorByIntensity(values, {{ paleta_elemento|tojson }});
 }
 new Chart(document.getElementById('elementosChart'), {
     type: 'bar',
@@ -298,7 +305,7 @@ new Chart(document.getElementById('elementosChart'), {
         datasets: [{
             label: 'Consumo × Tempo (L)',
             data: {{ elementos_consumo_tempo|tojson }},
-            backgroundColor: getCoresPorElemento({{ elementos_labels|tojson }}),
+            backgroundColor: getCoresPorElemento({{ elementos_labels|tojson }}, {{ elementos_consumo_tempo|tojson }}),
             borderRadius: 4
         }]
     },
@@ -362,7 +369,7 @@ const eficienciaChart = new Chart(document.getElementById('eficienciaChart'), {
         datasets: [{
             label: 'Qtd Amostras',
             data: getEficienciaFiltered().data,
-            backgroundColor: getCoresPorElemento(getEficienciaFiltered().labels),
+            backgroundColor: getCoresPorElemento(getEficienciaFiltered().labels, getEficienciaFiltered().data),
             borderRadius: 4
         }]
     },

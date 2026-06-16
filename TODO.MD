@@ -57,6 +57,19 @@
 - [x] `admin_user_data.html` → badge histórico usa mesma lógica
 - [x] 3/3 testes passando
 
+## Fase 28: Rainbow + Intensity Color Scheme ✅
+- [x] `COR_TIPO` atualizado com cores rainbow por dependência:
+  - Cilindro(root) → Vermelho, Pressão(dep.cilindro) → Laranja, Elemento(root) → Verde,
+    Leitura(dep.cilindro+elemento) → Azul, Amostra(N:N elementos) → Violeta,
+    Histórico → Cinza neutro, Perfil → Azul marca, Admin → Azul escuro
+- [x] Botões de ação/aviso mantêm cores de sinalização padrão (Bootstrap: primary=danger=success=warning)
+- [x] `PALETA_CILINDRO`, `PALETA_PRESSAO`, `PALETA_ELEMENTO`, `PALETA_LEITURA`, `PALETA_AMOSTRA` (5 níveis claro→escuro cada)
+- [x] Dashboards: Chart.js usa `getColorByIntensity()` — valor baixo=claro, valor alto=escuro
+- [x] CSS variables atualizadas (`--cilindro: #e63946`, `--pressao: #f77f00`, `--elemento: #2a9d8f`, `--leitura: #457b9d`, `--amostra: #6a1b9a`)
+- [x] app.py injeta paletas + COR_TIPO no context
+- [x] admin_user_data.html, perfil.html, historico.html com novas cores
+- [x] 3/3 testes passando
+
 ## Sugestões Futuras 🚀
 
 ### Exportação

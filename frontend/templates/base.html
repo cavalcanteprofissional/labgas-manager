@@ -19,7 +19,28 @@
             --accent-alt: #4da3e8;
             --sidebar-width: 260px;
 
-            /* Paleta Verde Similar à Primary */
+            /* Rainbow por dependencia */
+            --cilindro: #e63946;
+            --cilindro-dark: #c1121f;
+            --cilindro-light: #f4a261;
+            --pressao: #f77f00;
+            --pressao-dark: #e85d04;
+            --pressao-light: #ffd166;
+            --elemento: #2a9d8f;
+            --elemento-dark: #1b4332;
+            --elemento-light: #52b788;
+            --leitura: #457b9d;
+            --leitura-dark: #1d3557;
+            --leitura-light: #a8dadc;
+
+            /* Cor da Aba Amostra */
+            --amostra: #6a1b9a;
+            --amostra-light: #ce93d8;
+
+            /* Neutro para Historico */
+            --historico: #6c757d;
+
+            /* Paleta Verde (sinalizacao - manter) */
             --green-darkest: #004d40;
             --green-dark: #00695c;
             --green: #00897b;
@@ -27,7 +48,7 @@
             --green-lighter: #80cbc4;
             --green-lightest: #b2dfdb;
 
-            /* Paleta Rosa Similar à Primary */
+            /* Paleta Rosa (sinalizacao - manter) */
             --pink-darkest: #880e4f;
             --pink-dark: #c2185b;
             --pink: #e91e63;
@@ -35,21 +56,17 @@
             --pink-lighter: #f48fb1;
             --pink-lightest: #f8bbd9;
 
-            /* Paleta Roxo para Tags */
+            /* Paleta Roxo (sinalizacao - manter) */
             --purple: #7b1fa2;
             --purple-light: #ba68c8;
 
-            /* Cor da Aba Amostra */
-            --amostra: #6a1b9a;
-            --amostra-light: #ce93d8;
-
-            /* Paleta Amarelo (same as btn-warning) */
+            /* Paleta Amarelo (sinalizacao) */
             --yellow: #f59e0b;
 
-            /* Paleta Vermelho (same as btn-danger) */
+            /* Paleta Vermelho (sinalizacao) */
             --red: #dc3545;
 
-            /* Paleta Laranja */
+            /* Paleta Laranja (sinalizacao) */
             --orange: #f59e0b;
             --orange-dark: #d97706;
             --orange-light: #fbbf24;
@@ -117,20 +134,23 @@
         .stat-card:active {
             transform: scale(0.98);
         }
-        .stat-card.green, .stat-card.cilindro {
-            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-light) 100%);
+        .stat-card.red, .stat-card.cilindro {
+            background: linear-gradient(135deg, var(--cilindro-dark) 0%, var(--cilindro-light) 100%);
         }
-        .stat-card.blue, .stat-card.elemento {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+        .stat-card.orange, .stat-card.pressao {
+            background: linear-gradient(135deg, var(--pressao-dark) 0%, var(--pressao-light) 100%);
         }
-        .stat-card.pink, .stat-card.leitura {
-            background: linear-gradient(135deg, var(--pink-dark) 0%, var(--pink-light) 100%);
+        .stat-card.green, .stat-card.elemento {
+            background: linear-gradient(135deg, var(--elemento-dark) 0%, var(--elemento-light) 100%);
         }
-        .stat-card.purple, .stat-card.ativos, .stat-card.amostra {
-            background: linear-gradient(135deg, var(--primary-darkest) 0%, var(--primary-dark) 100%);
+        .stat-card.blue, .stat-card.leitura {
+            background: linear-gradient(135deg, var(--leitura-dark) 0%, var(--leitura-light) 100%);
         }
-        .stat-card.orange {
-            background: linear-gradient(135deg, var(--orange-dark) 0%, var(--orange-light) 100%);
+        .stat-card.purple, .stat-card.amostra {
+            background: linear-gradient(135deg, var(--amostra-light) 0%, var(--amostra) 100%);
+        }
+        .stat-card.ativos {
+            background: linear-gradient(135deg, #081c15 0%, #2d6a4f 100%);
         }
         .stat-card .card-title {
             font-size: 0.85rem;
