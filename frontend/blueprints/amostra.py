@@ -94,6 +94,10 @@ def list():
                 flash("N° da Amostra deve ser um número inteiro positivo", "danger")
                 return redirect(url_for("amostra.list"))
 
+            if not lote:
+                flash("Lote é obrigatório", "danger")
+                return redirect(url_for("amostra.list"))
+
             try:
                 amostra_id = int(amostra_id)
             except (ValueError, TypeError):

@@ -20,6 +20,8 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 - **Cor sólida `--amostra` para badges**: criada variável `--amostra: #6a1b9a` no CSS e alterado `COR_TIPO["amostra"]["var"]` de `var(--amostra-rainbow)` (gradient) para `var(--amostra)` (sólido) — badges do histórico agora exibem cor roxa
 - **admin_user_data corrigido**: `background-color: var(--X)20` inválido trocado por `background-color: hex20` válido em todas as 4 ocorrências
 - **Dashboard: novos cards "Últimas Pressões" e "Últimas Amostras"** na seção Atividade Recente, com badges coloridas seguindo o padrão COR_TIPO
+- **Dashboard crash 500**: queries de `pressao` e `amostra` envolvidas em `try/except` para não quebrar o dashboard se a tabela não tiver acesso por RLS ou outro erro de consulta
+- **Update amostra**: adicionada validação `if not lote` faltante no update (existia apenas no create), evitando envio de lote vazio
 
 ## [2.6.0] — Rainbow + Intensity (v3.0)
 
