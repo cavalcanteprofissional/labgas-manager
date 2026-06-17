@@ -93,6 +93,17 @@
 - `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
 - Usa HTML5 nativo (`<datalist>`), sem dependência de JS
 
+## Fase 35: Otimização de Consultas SQL ⚡
+- [ ] database: add missing indexes (schema.sql + migration_v5)
+- [ ] amostra.py: batch insert elemento_ids (create + update)
+- [ ] amostra.py: batch delete_multiple com in_()
+- [ ] amostra.py: eliminar re-query de lotes (extrair do resultado principal)
+- [ ] cilindro.py: batch delete_multiple com in_()
+- [ ] elemento.py: batch delete_multiple com in_()
+- [ ] leitura.py: batch delete_multiple com in_()
+- [ ] pressao.py: batch delete_multiple com in_()
+- [ ] historico.py: count mais leve (select id)
+
 ## Fase 34: Corrigir encoding no teste admin + padronizar warning elementos 🐛
 - [x] test_admin.py: substituir locator com `ç` por `text=Admin` estável
 - [x] amostra.html: substituir `alert()` por `div.alert-warning` inline (padrão flash)

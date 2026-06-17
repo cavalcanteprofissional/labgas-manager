@@ -199,48 +199,49 @@ def pressao_list():
             return redirect(url_for("pressao.pressao_list"))
         
         elif action == "delete_multiple":
-            pressao_ids = request.form.getlist("pressao_ids")
-            
-            if not pressao_ids:
+            raw_ids = request.form.getlist("pressao_ids")
+            if not raw_ids:
                 flash("Nenhum registro selecionado", "danger")
                 return redirect(url_for("pressao.pressao_list"))
-            
+
+            ids = []
+            for v in raw_ids:
+                try:
+                    ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            if not ids:
+                flash("IDs inválidos", "danger")
+                return redirect(url_for("pressao.pressao_list"))
+
             try:
-                deleted_count = 0
-                not_owned = []
-                
-                for pressao_id in pressao_ids:
-                    try:
-                        pressao_info = get_supabase_client().table("pressao").select("cilindro_id,pressao,temperatura,user_id").eq("id", pressao_id).execute().data
-                        if not pressao_info:
-                            continue
-                        
-                        if not admin and pressao_info[0].get("user_id") != user_id:
-                            not_owned.append(pressao_id)
-                            continue
-                        
-                        cilindro_id = pressao_info[0].get("cilindro_id")
-                        pressao_val = pressao_info[0].get("pressao")
-                        temp_val = pressao_info[0].get("temperatura")
-                        
-                        cilindro_info = get_supabase_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute().data
-                        cilindro_codigo = cilindro_info[0].get("codigo") if cilindro_info else str(cilindro_id)
-                        
-                        get_admin_client().table("pressao").delete().eq("id", pressao_id).execute()
-                        
-                        temp_str = f", {temp_val}°C" if temp_val is not None else ""
-                        registrar_historico("pressao", "excluido", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
-                        deleted_count += 1
-                    except Exception:
-                        continue
-                
-                if deleted_count > 0:
-                    flash(f"{deleted_count} registro(s) excluído(s) com sucesso!", "success")
-                if not_owned:
-                    flash(f"Alguns registros não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
+                supabase = get_supabase_client()
+                rows = supabase.table("pressao").select("id,cilindro_id,pressao,temperatura,user_id").in_("id", ids).execute().data or []
+
+                permitted = [r for r in rows if admin or r.get("user_id") == user_id]
+                not_owned_count = len(ids) - len(permitted)
+
+                if not permitted:
+                    flash("Nenhum registro foi excluído", "warning")
+                    return redirect(url_for("pressao.pressao_list"))
+
+                cil_ids = sorted(set(r["cilindro_id"] for r in permitted))
+                cilindros = supabase.table("cilindro").select("id,codigo").in_("id", cil_ids).execute().data or []
+                cil_map = {c["id"]: c.get("codigo", str(c["id"])) for c in cilindros}
+
+                get_admin_client().table("pressao").delete().in_("id", [r["id"] for r in permitted]).execute()
+
+                for r in permitted:
+                    cod = cil_map.get(r["cilindro_id"], str(r["cilindro_id"]))
+                    temp_str = f", {r['temperatura']}°C" if r.get("temperatura") is not None else ""
+                    registrar_historico("pressao", "excluido", f"{cod} - {r['pressao']} bar{temp_str}", user_id)
+
+                flash(f"{len(permitted)} registro(s) excluído(s) com sucesso!", "success")
+                if not_owned_count:
+                    flash(f"{not_owned_count} registro(s) não foram excluídos (não pertencem a você)", "warning")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir registros"), "danger")
-            
+
             return redirect(url_for("pressao.pressao_list"))
     
     response = get_supabase_client().table("pressao").select("*").order("created_at", desc=True).execute()

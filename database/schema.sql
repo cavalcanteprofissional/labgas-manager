@@ -115,3 +115,4 @@ CREATE INDEX idx_amostra_user_id ON amostra(user_id);
 CREATE INDEX idx_amostra_lote ON amostra(lote);
 CREATE INDEX idx_amostra_elemento_amostra_id ON amostra_elemento(amostra_id);
 CREATE INDEX idx_amostra_elemento_elemento_id ON amostra_elemento(elemento_id);
+CREATE INDEX idx_amostra_lote_created ON amostra(lote, created_at DESC);

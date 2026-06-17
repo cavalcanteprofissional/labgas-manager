@@ -63,15 +63,14 @@ def list():
 
                 amostra_id = response.data[0]["id"]
 
+                ae_records = []
                 for elem_id in elemento_ids:
                     try:
-                        eid = int(elem_id)
-                        client.table("amostra_elemento").insert({
-                            "amostra_id": amostra_id,
-                            "elemento_id": eid,
-                        }).execute()
-                    except (ValueError, Exception):
+                        ae_records.append({"amostra_id": amostra_id, "elemento_id": int(elem_id)})
+                    except ValueError:
                         pass
+                if ae_records:
+                    client.table("amostra_elemento").insert(ae_records).execute()
 
                 registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id)
                 flash(f"Amostra #{numero_val} criada com sucesso!", "success")
@@ -134,15 +133,14 @@ def list():
                 }).eq("id", amostra_id).execute()
 
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
+                ae_records = []
                 for elem_id in elemento_ids:
                     try:
-                        eid = int(elem_id)
-                        client.table("amostra_elemento").insert({
-                            "amostra_id": amostra_id,
-                            "elemento_id": eid,
-                        }).execute()
-                    except (ValueError, Exception):
+                        ae_records.append({"amostra_id": amostra_id, "elemento_id": int(elem_id)})
+                    except ValueError:
                         pass
+                if ae_records:
+                    client.table("amostra_elemento").insert(ae_records).execute()
 
                 registro_nome = f"A/{numero_val} L{lote_val}"
                 registrar_historico("amostra", "atualizado", registro_nome, user_id)
@@ -187,34 +185,39 @@ def list():
             return redirect(url_for("amostra.list"))
 
         elif action == "delete_multiple":
-            amostra_ids = request.form.getlist("amostra_ids")
-
-            if not amostra_ids:
+            raw_ids = request.form.getlist("amostra_ids")
+            if not raw_ids:
                 flash("Nenhuma amostra selecionada", "danger")
                 return redirect(url_for("amostra.list"))
 
-            deleted = 0
-            for aid in amostra_ids:
+            ids = []
+            for v in raw_ids:
                 try:
-                    aid = int(aid)
-                    existing = supabase.table("amostra").select("user_id").eq("id", aid).execute()
-                    if not existing.data:
-                        continue
-                    if not admin and existing.data[0].get("user_id") != user_id:
-                        continue
+                    ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            if not ids:
+                flash("IDs inválidos", "danger")
+                return redirect(url_for("amostra.list"))
 
-                    client = admin_client if admin else authenticated
-                    client.table("amostra_elemento").delete().eq("amostra_id", aid).execute()
-                    client.table("amostra").delete().eq("id", aid).execute()
-                    deleted += 1
-                except (ValueError, Exception):
-                    continue
+            existing = supabase.table("amostra").select("id, user_id").in_("id", ids).execute()
+            permitted = []
+            for row in (existing.data or []):
+                if admin or row.get("user_id") == user_id:
+                    permitted.append(row["id"])
 
-            if deleted:
-                registrar_historico("amostra", "excluido", f"{deleted} amostras", user_id)
-                flash(f"{deleted} amostra(s) excluída(s) com sucesso!", "success")
-            else:
+            if not permitted:
                 flash("Nenhuma amostra foi excluída", "warning")
+                return redirect(url_for("amostra.list"))
+
+            try:
+                client = admin_client if admin else authenticated
+                client.table("amostra_elemento").delete().in_("amostra_id", permitted).execute()
+                client.table("amostra").delete().in_("id", permitted).execute()
+                registrar_historico("amostra", "excluido", f"{len(permitted)} amostras", user_id)
+                flash(f"{len(permitted)} amostra(s) excluída(s) com sucesso!", "success")
+            except Exception as e:
+                flash(formatar_erro_supabase(str(e), "excluir amostras"), "danger")
 
             return redirect(url_for("amostra.list"))
 
@@ -241,13 +244,13 @@ def list():
     elementos_disponiveis = supabase.table("elemento").select("id, nome").order("nome").execute()
     elementos = elementos_disponiveis.data or []
 
-    lotes_response = supabase.table("amostra").select("lote, created_at").order("created_at", desc=True).execute()
     lotes_vistos = []
     vistos = set()
-    for item in (lotes_response.data or []):
-        if item["lote"] not in vistos:
-            vistos.add(item["lote"])
-            lotes_vistos.append(item["lote"])
+    for a in amostras:
+        l = a["lote"]
+        if l not in vistos:
+            vistos.add(l)
+            lotes_vistos.append(l)
 
     total = len(amostras)
     start = (page - 1) * per_page

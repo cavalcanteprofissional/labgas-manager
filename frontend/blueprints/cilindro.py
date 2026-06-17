@@ -195,50 +195,57 @@ def list():
             return redirect(url_for("cilindro.list"))
         
         elif action == "delete_multiple":
-            cilindro_ids = request.form.getlist("cilindro_ids")
-            
-            if not cilindro_ids:
+            raw_ids = request.form.getlist("cilindro_ids")
+            if not raw_ids:
                 flash("Nenhum cilindro selecionado", "danger")
                 return redirect(url_for("cilindro.list"))
-            
+
+            ids = []
+            for v in raw_ids:
+                try:
+                    ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            if not ids:
+                flash("IDs inválidos", "danger")
+                return redirect(url_for("cilindro.list"))
+
             try:
-                deleted_count = 0
+                supabase = get_supabase_client()
+                cilindros = supabase.table("cilindro").select("id,codigo,user_id").in_("id", ids).execute().data or []
+
+                tem_leitura = set()
+                leituras = supabase.table("leitura").select("cilindro_id").in_("cilindro_id", ids).execute().data or []
+                for lr in leituras:
+                    tem_leitura.add(lr["cilindro_id"])
+
+                permitidos = []
                 skipped = []
                 not_owned = []
-                
-                for cilindro_id in cilindro_ids:
-                    try:
-                        cilindro_info = get_supabase_client().table("cilindro").select("codigo,user_id").eq("id", cilindro_id).execute().data
-                        if not cilindro_info:
-                            continue
-                        
-                        if cilindro_info[0].get("user_id") != user_id:
-                            not_owned.append(cilindro_info[0].get("codigo", cilindro_id))
-                            continue
-                        
-                        cilindro_codigo = cilindro_info[0].get("codigo")
-                        
-                        amostra_count = get_supabase_client().table("leitura").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
-                        if amostra_count.count and amostra_count.count > 0:
-                            skipped.append(cilindro_codigo)
-                            continue
-                        
-                        get_admin_client().table("cilindro").delete().eq("id", cilindro_id).execute()
-                        
-                        registrar_historico("cilindro", "excluido", cilindro_codigo, user_id)
-                        deleted_count += 1
-                    except Exception:
-                        continue
-                
-                if deleted_count > 0:
-                    flash(f"{deleted_count} cilindro(s) excluído(s) com sucesso!", "success")
+                for c in cilindros:
+                    if c.get("user_id") != user_id:
+                        not_owned.append(c.get("codigo", str(c["id"])))
+                    elif c["id"] in tem_leitura:
+                        skipped.append(c.get("codigo", str(c["id"])))
+                    else:
+                        permitidos.append(c)
+
+                if permitidos:
+                    get_admin_client().table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
+                    for c in permitidos:
+                        registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id)
+
+                if permitidos:
+                    flash(f"{len(permitidos)} cilindro(s) excluído(s) com sucesso!", "success")
                 if skipped:
-                    flash(f"Alguns cilindos não puderam ser excluídos (leituras vinculadas): {', '.join(skipped)}", "warning")
+                    flash(f"Alguns cilindros não puderam ser excluídos (leituras vinculadas): {', '.join(skipped)}", "warning")
                 if not_owned:
-                    flash(f"Alguns cilindos não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
+                    flash(f"Alguns cilindros não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
+                if not permitidos and not skipped and not not_owned:
+                    flash("Nenhum cilindro foi excluído", "warning")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir cilindros"), "danger")
-            
+
             return redirect(url_for("cilindro.list"))
     
     response = get_supabase_client().table("cilindro").select("*").order("created_at", desc=True).execute()

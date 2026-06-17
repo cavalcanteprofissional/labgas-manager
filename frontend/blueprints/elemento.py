@@ -124,50 +124,57 @@ def list():
             return redirect(url_for("elemento.list"))
         
         elif action == "delete_multiple":
-            elemento_ids = request.form.getlist("elemento_ids")
-            
-            if not elemento_ids:
+            raw_ids = request.form.getlist("elemento_ids")
+            if not raw_ids:
                 flash("Nenhum elemento selecionado", "danger")
                 return redirect(url_for("elemento.list"))
-            
+
+            ids = []
+            for v in raw_ids:
+                try:
+                    ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            if not ids:
+                flash("IDs inválidos", "danger")
+                return redirect(url_for("elemento.list"))
+
             try:
-                deleted_count = 0
+                supabase = get_supabase_client()
+                elementos = supabase.table("elemento").select("id,nome,user_id").in_("id", ids).execute().data or []
+
+                tem_leitura = set()
+                leituras = supabase.table("leitura").select("elemento_id").in_("elemento_id", ids).execute().data or []
+                for lr in leituras:
+                    tem_leitura.add(lr["elemento_id"])
+
+                permitidos = []
                 skipped = []
                 not_owned = []
-                
-                for elemento_id in elemento_ids:
-                    try:
-                        elemento_info = get_supabase_client().table("elemento").select("nome,user_id").eq("id", elemento_id).execute().data
-                        if not elemento_info:
-                            continue
-                        
-                        if elemento_info[0].get("user_id") != user_id:
-                            not_owned.append(elemento_info[0].get("nome", elemento_id))
-                            continue
-                        
-                        elemento_nome = elemento_info[0].get("nome")
-                        
-                        leitura_count = get_supabase_client().table("leitura").select("id", count="exact").eq("elemento_id", elemento_id).execute()
-                        if leitura_count.count and leitura_count.count > 0:
-                            skipped.append(elemento_nome)
-                            continue
-                        
-                        get_admin_client().table("elemento").delete().eq("id", elemento_id).execute()
-                        
-                        registrar_historico("elemento", "excluido", elemento_nome, user_id)
-                        deleted_count += 1
-                    except Exception:
-                        continue
-                
-                if deleted_count > 0:
-                    flash(f"{deleted_count} elemento(s) excluído(s) com sucesso!", "success")
+                for e in elementos:
+                    if e.get("user_id") != user_id:
+                        not_owned.append(e.get("nome", str(e["id"])))
+                    elif e["id"] in tem_leitura:
+                        skipped.append(e.get("nome", str(e["id"])))
+                    else:
+                        permitidos.append(e)
+
+                if permitidos:
+                    get_admin_client().table("elemento").delete().in_("id", [e["id"] for e in permitidos]).execute()
+                    for e in permitidos:
+                        registrar_historico("elemento", "excluido", e.get("nome", str(e["id"])), user_id)
+
+                if permitidos:
+                    flash(f"{len(permitidos)} elemento(s) excluído(s) com sucesso!", "success")
                 if skipped:
                     flash(f"Alguns elementos não puderam ser excluídos (leituras vinculadas): {', '.join(skipped)}", "warning")
                 if not_owned:
                     flash(f"Alguns elementos não foram excluídos (não pertencem a você): {', '.join(not_owned)}", "warning")
+                if not permitidos and not skipped and not not_owned:
+                    flash("Nenhum elemento foi excluído", "warning")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir elementos"), "danger")
-            
+
             return redirect(url_for("elemento.list"))
     
     response = get_supabase_client().table("elemento").select("*").order("nome", desc=False).execute()

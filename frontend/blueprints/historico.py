@@ -21,9 +21,9 @@ def list():
     per_page = 20
     offset = (page - 1) * per_page
     
-    historico_log = get_supabase_client().table("historico_log").select("*").order("created_at", desc=True).range(offset, offset + per_page - 1).execute().data or []
-    
-    total = get_supabase_client().table("historico_log").select("*", count="exact").execute().count or 0
+    response = get_supabase_client().table("historico_log").select("*", count="exact").order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
+    historico_log = response.data or []
+    total = response.count or 0
     
     all_user_ids = {h.get("user_id") for h in historico_log if h.get("user_id")}
     user_map = buscar_perfis_usuarios(all_user_ids)

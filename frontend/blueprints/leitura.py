@@ -180,44 +180,52 @@ def leitura_list():
             return redirect(url_for("leitura.leitura_list"))
         
         elif action == "delete_multiple":
-            leitura_ids = request.form.getlist("leitura_ids")
-            
-            if not leitura_ids:
+            raw_ids = request.form.getlist("leitura_ids")
+            if not raw_ids:
                 flash("Nenhuma leitura selecionada", "danger")
                 return redirect(url_for("leitura.leitura_list"))
-            
+
+            ids = []
+            for v in raw_ids:
+                try:
+                    ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            if not ids:
+                flash("IDs inválidos", "danger")
+                return redirect(url_for("leitura.leitura_list"))
+
             try:
-                deleted_count = 0
-                not_owned = []
-                
-                for leitura_id in leitura_ids:
-                    try:
-                        leitura_info = get_supabase_client().table("leitura").select("cilindro_id,elemento_id,user_id").eq("id", leitura_id).execute().data
-                        if not leitura_info:
-                            continue
-                        
-                        if leitura_info[0].get("user_id") != user_id:
-                            not_owned.append(leitura_id)
-                            continue
-                        
-                        nome_leitura = "N/A"
-                        cilindro_nome = get_supabase_client().table("cilindro").select("codigo").eq("id", leitura_info[0]["cilindro_id"]).execute().data
-                        elemento_nome = get_supabase_client().table("elemento").select("nome").eq("id", leitura_info[0]["elemento_id"]).execute().data
-                        nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
-                        
-                        get_admin_client().table("leitura").delete().eq("id", leitura_id).execute()
-                        registrar_historico("leitura", "excluido", nome_leitura, user_id)
-                        deleted_count += 1
-                    except Exception:
-                        continue
-                
-                if deleted_count > 0:
-                    flash(f"{deleted_count} leitura(s) excluída(s) com sucesso!", "success")
-                if not_owned:
-                    flash(f"{len(not_owned)} leitura(s) não foram excluídas (não pertencem a você)", "warning")
+                supabase = get_supabase_client()
+                leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,user_id").in_("id", ids).execute().data or []
+
+                permitted = [l for l in leituras if l.get("user_id") == user_id]
+                not_owned_count = len(ids) - len(permitted)
+
+                if not permitted:
+                    flash("Nenhuma leitura foi excluída", "warning")
+                    return redirect(url_for("leitura.leitura_list"))
+
+                cilindro_ids = sorted(set(l["cilindro_id"] for l in permitted))
+                elemento_ids = sorted(set(l["elemento_id"] for l in permitted))
+
+                cilindros = supabase.table("cilindro").select("id,codigo").in_("id", cilindro_ids).execute().data or []
+                cil_map = {c["id"]: c.get("codigo", "N/A") for c in cilindros}
+                elementos = supabase.table("elemento").select("id,nome").in_("id", elemento_ids).execute().data or []
+                elem_map = {e["id"]: e.get("nome", "N/A") for e in elementos}
+
+                get_admin_client().table("leitura").delete().in_("id", [l["id"] for l in permitted]).execute()
+
+                for l in permitted:
+                    nome = f"{cil_map.get(l['cilindro_id'], 'N/A')} - {elem_map.get(l['elemento_id'], 'N/A')}"
+                    registrar_historico("leitura", "excluido", nome, user_id)
+
+                flash(f"{len(permitted)} leitura(s) excluída(s) com sucesso!", "success")
+                if not_owned_count:
+                    flash(f"{not_owned_count} leitura(s) não foram excluídas (não pertencem a você)", "warning")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir leituras"), "danger")
-            
+
             return redirect(url_for("leitura.leitura_list"))
     
     response = get_supabase_client().table("leitura").select("*").order("data", desc=True).execute()

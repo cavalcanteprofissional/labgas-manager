@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.6** (Branch: master)
+**Versão: 2.6.7** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -362,15 +362,20 @@ O banco de dados possui índices otimizados para as operações mais frequentes:
 | elemento | idx_elemento_user_id | user_id | Filtrar por usuário |
 | elemento | idx_elemento_nome | nome | Busca por nome |
 | amostra | idx_amostra_user_id | user_id | Filtrar por usuário |
-| amostra | idx_amostra_cilindro_id | cilindro_id | Vincular cilindro |
-| amostra | idx_amostra_elemento_id | elemento_id | Vincular elemento |
-| amostra | idx_amostra_data | data | Filtrar por data |
+| amostra | idx_amostra_lote | lote | Busca por lote |
+| amostra | idx_amostra_lote_created | lote, created_at DESC | Lotes + ordenação |
 | pressao | idx_pressao_user_id | user_id | Filtrar por usuário |
 | pressao | idx_pressao_cilindro_id | cilindro_id | Vincular cilindro |
 | pressao | idx_pressao_data | data | Filtrar por data |
+| leitura | idx_leitura_user_id | user_id | Filtrar por usuário |
+| leitura | idx_leitura_cilindro_id | cilindro_id | Vincular cilindro |
+| leitura | idx_leitura_elemento_id | elemento_id | Vincular elemento |
+| leitura | idx_leitura_data | data | Filtrar por data |
 | historico_log | idx_historico_log_user_id | user_id | Filtrar por usuário |
 | historico_log | idx_historico_log_tipo | tipo | Filtrar por tipo |
 | historico_log | idx_historico_log_created_at | created_at | Ordenação temporal |
+| amostra_elemento | idx_amostra_elemento_amostra_id | amostra_id | Vincular amostra |
+| amostra_elemento | idx_amostra_elemento_elemento_id | elemento_id | Vincular elemento |
 
 ### Políticas RLS (Row Level Security)
 

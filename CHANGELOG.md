@@ -2,6 +2,18 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.7] - 2026-06-17
+
+### SQL Optimization (Fase 35)
+
+- **Índices no banco**: 4 índices adicionados via migration v5 (`idx_historico_log_user_id`, `idx_historico_log_tipo`, `idx_historico_log_created_at`, `idx_amostra_lote_created`) — `historico_log` tinha apenas PK, agora usa os 3 índices do schema.sql; `amostra` ganhou índice composto `(lote, created_at DESC)` para consulta de lotes
+- **Batch INSERT em amostra_elemento** (create + update): laço de N inserts substituído por único `insert([dict,...])` — 1 query independente do número de elementos
+- **Batch DELETE com `in_()` em amostra.py**: `delete_multiple` reduziu de N×3 queries para 3 queries fixas (1 SELECT + 2 DELETE batch)
+- **Batch DELETE com `in_()` em cilindro.py + elemento.py**: cada um reduziu de N×4 queries para 3 queries fixas (2 SELECT + 1 DELETE batch, com verificação de FK em lote)
+- **Batch DELETE com `in_()` em leitura.py + pressao.py**: cada um reduziu de N×3+N queries para 3-4 queries fixas (1 SELECT + lookup batch + 1 DELETE)
+- **Consulta de lotes eliminada**: `SELECT lote, created_at` redundante removido — lotes extraídos do resultado principal de amostras
+- **histórico: 2 queries fundidas em 1**: paginação + contagem agora feitas numa única chamada com `count="exact"` + `.range()` — 1 round-trip em vez de 2
+
 ## [2.6.6] - 2026-06-17
 
 ### Bugfixes
