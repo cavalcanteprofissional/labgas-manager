@@ -57,7 +57,7 @@ COR_TIPO = {
     "amostra": {
         "class": "amostra",
         "hex": "#6a1b9a",
-        "var": "var(--amostra)",
+        "var": "var(--amostra-rainbow)",
         "bg": "amostra-rainbow",
         "gradient": "linear-gradient(135deg, #e63946, #f77f00, #ffd166, #2a9d8f, #457b9d, #6a1b9a)",
     },

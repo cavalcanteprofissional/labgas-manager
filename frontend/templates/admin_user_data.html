@@ -44,55 +44,55 @@
     <div class="card-body">
         <div class="row text-center">
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['cilindro']['hex'] if habilitar_abas.cilindro else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['cilindro']['hex'] if habilitar_abas.cilindro else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["cilindro"] }} fs-4" style="color: {{ COR_TIPO['cilindro']['var'] if habilitar_abas.cilindro else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Cilindros</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['cilindro']['var'] if habilitar_abas.cilindro else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] if habilitar_abas.cilindro else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.cilindro else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["pressao"] }} fs-4" style="color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Pressão</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['pressao']['hex'] if habilitar_abas.pressao else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['pressao']['var'] if habilitar_abas.pressao else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.pressao else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['elemento']['hex'] if habilitar_abas.elemento else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['elemento']['hex'] if habilitar_abas.elemento else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["elemento"] }} fs-4" style="color: {{ COR_TIPO['elemento']['var'] if habilitar_abas.elemento else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Elementos</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['elemento']['var'] if habilitar_abas.elemento else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] if habilitar_abas.elemento else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.elemento else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['leitura']['hex'] if habilitar_abas.leitura else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['leitura']['hex'] if habilitar_abas.leitura else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["leitura"] }} fs-4" style="color: {{ COR_TIPO['leitura']['var'] if habilitar_abas.leitura else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Leitura</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['leitura']['var'] if habilitar_abas.leitura else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['leitura']['var'] if habilitar_abas.leitura else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.leitura else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["amostra"] }} fs-4" style="color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Amostra</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['amostra']['hex'] if habilitar_abas.amostra else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['amostra']['var'] if habilitar_abas.amostra else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.amostra else 'Desabilitado' }}
                     </span>
                 </div>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <div class="p-3 rounded" style="background-color: {{ COR_TIPO['historico']['hex'] if habilitar_abas.historico else '#f0f0f0' }}20;">
+                <div class="p-3 rounded" style="background: {{ COR_TIPO['historico']['hex'] if habilitar_abas.historico else '#f0f0f0' }}20;">
                     <i class="bi bi-{{ ICON_TIPO["historico"] }} fs-4" style="color: {{ COR_TIPO['historico']['var'] if habilitar_abas.historico else '#6c757d' }};"></i>
                     <p class="mb-0 mt-2"><strong>Histórico</strong></p>
-                    <span class="badge" style="background-color: {{ COR_TIPO['historico']['var'] if habilitar_abas.historico else '#6c757d' }};">
+                    <span class="badge" style="background: {{ COR_TIPO['historico']['var'] if habilitar_abas.historico else '#6c757d' }};">
                         {{ 'Habilitado' if habilitar_abas.historico else 'Desabilitado' }}
                     </span>
                 </div>
@@ -193,7 +193,7 @@
                     <tr>
                         <td><small>{{ h.data|formatar_data if h.data else '-' }}</small></td>
                         <td>
-                            <span class="badge" style="background-color: {{ COR_TIPO[h.tipo]['var'] if h.tipo in COR_TIPO else 'var(--primary)' }};">{{ h.tipo|title }}</span>
+                            <span class="badge" style="background: {{ COR_TIPO[h.tipo]['var'] if h.tipo in COR_TIPO else 'var(--primary)' }};">{{ h.tipo|title }}</span>
                         </td>
                         <td>
                             <span class="badge" style="background-color: {{ 'var(--green)' if h.acao == 'criado' else 'var(--yellow)' if h.acao == 'atualizado' else 'var(--red)' if h.acao == 'excluido' else '#6c757d' }};">{{ h.acao|title }}</span>
