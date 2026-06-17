@@ -280,6 +280,29 @@
 </div>
 
 <script>
+function autoFormatTime(el, digits) {
+    el.addEventListener('input', function () {
+        var old = this.value;
+        var raw = old.replace(/\D/g, '').slice(0, digits);
+        var formatted = '';
+        if (digits === 6) {
+            if (raw.length > 4)
+                formatted = raw.slice(0, 2) + ':' + raw.slice(2, 4) + ':' + raw.slice(4);
+            else if (raw.length > 2)
+                formatted = raw.slice(0, 2) + ':' + raw.slice(2);
+            else formatted = raw;
+        } else {
+            if (raw.length > 2)
+                formatted = raw.slice(0, 2) + ':' + raw.slice(2);
+            else formatted = raw;
+        }
+        if (formatted !== old) this.value = formatted;
+    });
+}
+
+autoFormatTime(document.querySelector('#createForm input[name="hora"]'), 4);
+document.querySelectorAll('.modal input[name="hora"]').forEach(function (el) { autoFormatTime(el, 4); });
+
 function filterPressao() {
     const search = document.getElementById('searchPressao').value.toLowerCase();
     const cilindro = document.getElementById('filterCilindro').value;

@@ -2,6 +2,16 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.14] - 2026-06-17
+
+### Features
+
+- **Autocomplete de horário com colons** ⌨️: nova função JS `autoFormatTime()` inserida nos templates `leitura.html` e `pressao.html`. Ao digitar apenas números nos campos de tempo, os dois-pontos são inseridos automaticamente:
+  - `tempo_chama` (Leitura): `HH:MM:SS` — 6 dígitos → `14:30:05`
+  - `hora` (Pressão): `HH:MM` — 4 dígitos → `14:30`
+  - Funciona tanto no formulário de criação quanto nos modais de edição
+  - JS puro, sem dependências — só redefine o value se houve mudança real, evitando loop infinito
+
 ## [2.6.13] - 2026-06-17
 
 ### Segurança dos Cleanups 🛡️
