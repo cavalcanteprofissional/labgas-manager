@@ -110,6 +110,11 @@
 - [x] test_create_amostra: agora seleciona elemento e verifica badge
 - [x] 29/29 testes passando
 
+## Fase 37: Modais dentro do tbody — HTML inválido 🐛 (v2.6.9)
+- [x] amostra.html: modais edit + delete estavam dentro de `<tbody>` (filho direto inválido)
+- [x] Movidos para depois de `</table>` em loop separado
+- [x] Verificado: `registrar_historico("amostra", "atualizado")` presente no update
+
 ## Fase 34: Corrigir encoding no teste admin + padronizar warning elementos 🐛
 - [x] test_admin.py: substituir locator com `ç` por `text=Admin` estável
 - [x] amostra.html: substituir `alert()` por `div.alert-warning` inline (padrão flash)

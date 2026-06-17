@@ -108,79 +108,82 @@
                             </div>
                         </td>
                     </tr>
-
-                    <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <form method="POST">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="action" value="update">
-                                    <input type="hidden" name="amostra_id" value="{{ a.id }}">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Editar Amostra #{{ a.numero_amostra }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row g-3">
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label">N° da Amostra *</label>
-                                                <input type="number" name="numero_amostra" class="form-control" value="{{ a.numero_amostra }}" min="1" step="1" required>
-                                            </div>
-                                            <div class="col-12 col-md-6">
-                                                <label class="form-label">Lote *</label>
-                                                <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" list="loteSuggestions" required>
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="form-label">Elementos <span class="text-warning">*</span></label>
-                                                <div class="elemento-grid">
-                                                    {% for e in elementos %}
-                                                    <div class="form-check">
-                                                        <input class="form-check-input elemento-checkbox" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_edit_{{ a.id }}_{{ e.id }}"
-                                                        {% if e.nome in a.elementos_nomes %}checked{% endif %}>
-                                                        <label class="form-check-label" for="elem_edit_{{ a.id }}_{{ e.id }}">{{ e.nome }}</label>
-                                                    </div>
-                                                    {% endfor %}
-                                                </div>
-                                                <small class="text-muted">Marque pelo menos um elemento</small>
-                                                <div class="alert alert-warning py-2 mt-2 d-none mb-0 elemento-warning">Selecione pelo menos um elemento para a amostra.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Salvar</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Excluir Amostra</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir a <strong>Amostra #{{ a.numero_amostra }}</strong> (Lote {{ a.lote }})?</p>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <form method="POST" class="d-inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="amostra_id" value="{{ a.id }}">
-                                        <button type="submit" class="btn btn-danger">Excluir</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        {% for a in amostras %}
+        <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="amostra_id" value="{{ a.id }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Editar Amostra #{{ a.numero_amostra }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">N° da Amostra *</label>
+                                    <input type="number" name="numero_amostra" class="form-control" value="{{ a.numero_amostra }}" min="1" step="1" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">Lote *</label>
+                                    <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" list="loteSuggestions" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Elementos <span class="text-warning">*</span></label>
+                                    <div class="elemento-grid">
+                                        {% for e in elementos %}
+                                        <div class="form-check">
+                                            <input class="form-check-input elemento-checkbox" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_edit_{{ a.id }}_{{ e.id }}"
+                                            {% if e.nome in a.elementos_nomes %}checked{% endif %}>
+                                            <label class="form-check-label" for="elem_edit_{{ a.id }}_{{ e.id }}">{{ e.nome }}</label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">Marque pelo menos um elemento</small>
+                                    <div class="alert alert-warning py-2 mt-2 d-none mb-0 elemento-warning">Selecione pelo menos um elemento para a amostra.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Excluir Amostra</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Tem certeza que deseja excluir a <strong>Amostra #{{ a.numero_amostra }}</strong> (Lote {{ a.lote }})?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="amostra_id" value="{{ a.id }}">
+                            <button type="submit" class="btn btn-danger">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
         {% else %}
         <div class="text-center py-5 text-muted">
             <i class="bi bi-inbox fs-1"></i>
