@@ -60,6 +60,19 @@ def ensure_test_user():
 ensure_test_user()
 
 
+def pytest_addoption(parser):
+    parser.addoption("--run-modais", action="store_true", default=False,
+                     help="Run modal tests (edit/delete/bulk)")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--run-modais"):
+        skip_modais = pytest.mark.skip(reason="use --run-modais to run modal tests")
+        for item in items:
+            if "modais" in item.keywords:
+                item.add_marker(skip_modais)
+
+
 def is_port_open(port, host="127.0.0.1"):
     import socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

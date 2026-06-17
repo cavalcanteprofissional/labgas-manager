@@ -193,10 +193,19 @@
 - [ ] Teste de bulk delete no Playwright
 
 ### Testes em Modais 🧪
-- [ ] Abrir modal de edição da amostra e verificar se checkboxes de elemento estão marcados (`checked`)
-- [ ] Abrir modal de edição do cilindro e verificar campos preenchidos
-- [ ] Abrir modal de edição do elemento e verificar campos preenchidos
-- [ ] Abrir modal de edição da leitura e verificar campos preenchidos
-- [ ] Abrir modal de edição da pressão e verificar campos preenchidos
-- [ ] Abrir modal de exclusão e confirmar exclusão
-- [ ] Abrir modal de exclusão em massa e confirmar
+- [x] Abrir modal de edição da amostra e verificar se checkboxes de elemento estão marcados (`checked`) ✅ (v2.6.11)
+- [x] Abrir modal de edição do cilindro e verificar campos preenchidos ✅ (v2.6.11)
+- [x] Abrir modal de edição do elemento e verificar campos preenchidos ✅ (v2.6.11)
+- [x] Abrir modal de edição da leitura e verificar campos preenchidos ✅ (v2.6.11)
+- [x] Abrir modal de edição da pressão e verificar campos preenchidos ✅ (v2.6.11)
+- [x] Abrir modal de exclusão e confirmar exclusão ✅ (v2.6.11)
+- [x] Abrir modal de exclusão em massa e confirmar ✅ (v2.6.11)
+
+## Fase 39: Testes de Modais (v2.6.11) 🧪
+- [x] conftest.py: adicionar `--run-modais` (pytest_addoption) e skip automático via `pytest_collection_modifyitems`
+- [x] test_amostra.py: 6 testes modais (edit preenche, edit valida JS, edit submit, delete, cancel, bulk)
+- [x] test_cilindro.py: 3 testes modais (edit preenche, delete, bulk)
+- [x] test_elemento.py: 3 testes modais (edit preenche, delete, bulk)
+- [x] test_leitura.py: 3 testes modais (edit preenche, delete, bulk)
+- [x] test_pressao.py: 3 testes modais (edit preenche, delete, bulk)
+- [x] Total: 18 testes modais, executados com `pytest --run-modais`

@@ -2,6 +2,39 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.11] - 2026-06-17
+
+### Testes em Modais (Fase 39) 🧪
+
+- **18 testes modais** (Playwright) com flag `--run-modais`:
+  - Amostra: 6 testes (edit preenche, valida JS, submit, delete confirma, cancela, bulk)
+  - Cilindro: 3 testes (edit preenche, delete, bulk)
+  - Elemento: 3 testes (edit preenche, delete, bulk)
+  - Leitura: 3 testes (edit preenche, delete, bulk)
+  - Pressão: 3 testes (edit preenche, delete, bulk)
+- **Marker pytest** `modais`: opt-in via `pytest --run-modais`, skipados por padrão
+- **conftest.py**: `pytest_addoption` + `pytest_collection_modifyitems` para skip automático
+- **pytest.ini**: marker `modais` registrado
+- **Total**: 47 testes (29 normais + 18 modais), 2 skips condicionais
+
+### Bugfixes
+
+- **Paginação escondendo registros de teste**: páginas cilindro/elemento/leitura/pressao usam `SELECT USING (true)` sem filtro de `user_id`, então registros de outros usuários ocupavam página 1 — navegações nos testes modais usam `?per_page=1000`
+- **Float formatting nas asserções**: `<input type="number" step="0.1">` renderiza `42.0` em vez de `42` — asserções corrigidas para `"42.0"`, `"150.0"`, `"25.0"`
+
+## [2.6.10] - 2026-06-17
+
+### Features
+
+- **Paginação padronizada na aba Amostra** (Fase 38): agora usa o mesmo padrão da aba Leitura — per_page dropdown (10/25/50/100), max_pages=10, `...` para N>10, Anterior/Próxima com estado disabled
+- **`--run-modais`**: opção pytest adicionada ao conftest.py para executar testes de modal (skipados por padrão)
+
+## [2.6.9] - 2026-06-17
+
+### Bugfixes
+
+- **HTML inválido — modais dentro de `<tbody>`**: browsers fecham `<tbody>` automaticamente ao encontrar `<div>`, movendo os modais para fora da tabela e quebrando o JS do Bootstrap — modais editModal + deleteModal movidos para depois de `</table>` em amostra.html (Fase 37)
+
 ## [2.6.8] - 2026-06-17
 
 ### Bugfixes
