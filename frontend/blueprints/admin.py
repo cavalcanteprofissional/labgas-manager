@@ -204,13 +204,13 @@ def update_habilitar_abas():
         flash("Parâmetros inválidos.", "danger")
         return redirect(url_for("admin.panel"))
     
-    if aba not in ["cilindro", "pressao", "elemento", "leitura", "historico"]:
+    if aba not in ["cilindro", "pressao", "elemento", "leitura", "amostra", "historico"]:
         flash("Aba inválida.", "danger")
         return redirect(url_for("admin.panel"))
     
     client = get_admin_client()
     
-    habilitar_abas = {"cilindro": False, "pressao": False, "elemento": False, "leitura": False, "historico": False}
+    habilitar_abas = {"cilindro": False, "pressao": False, "elemento": False, "leitura": False, "amostra": False, "historico": False}
     perfil = client.table("perfil").select("habilitar_abas").eq("id", target_user_id).execute()
     if perfil.data and perfil.data[0].get("habilitar_abas"):
         habilitar_abas = perfil.data[0].get("habilitar_abas")

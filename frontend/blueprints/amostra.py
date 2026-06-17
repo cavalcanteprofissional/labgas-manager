@@ -229,6 +229,14 @@ def list():
     elementos_disponiveis = supabase.table("elemento").select("id, nome").order("nome").execute()
     elementos = elementos_disponiveis.data or []
 
+    lotes_response = supabase.table("amostra").select("lote, created_at").order("created_at", desc=True).execute()
+    lotes_vistos = []
+    vistos = set()
+    for item in (lotes_response.data or []):
+        if item["lote"] not in vistos:
+            vistos.add(item["lote"])
+            lotes_vistos.append(item["lote"])
+
     total = len(amostras)
     start = (page - 1) * per_page
     end = start + per_page
@@ -238,6 +246,7 @@ def list():
         "amostra.html",
         amostras=paginated,
         elementos=elementos,
+        lotes=lotes_vistos,
         page=page,
         per_page=per_page,
         total=total,

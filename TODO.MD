@@ -70,6 +70,29 @@
 - [x] admin_user_data.html, perfil.html, historico.html com novas cores
 - [x] 3/3 testes passando
 
+## Bugs Encontrados 🐛
+
+### 1. Admin não consegue ativar/desativar aba "amostra"
+**Arquivo:** `frontend/blueprints/admin.py:207,213`
+- `"amostra"` estava faltando na lista de validação (`if aba not in [...]`) — linha 207
+- `"amostra"` estava faltando no dicionário padrão `habilitar_abas` — linha 213
+- O toggle existe no template (`admin.html`), mas o servidor rejeitava com "Aba inválida"
+- **Status:** ✅ Corrigido — adicionado `"amostra"` em ambas as listas
+
+### 2. Teste `test_amostra_empty_state` não limpa dados
+**Arquivo:** `frontend/tests/test_amostra.py:26`
+- Não usava a fixture `cleanup_amostras`
+- Se houvesse dados no banco, o estado vazio nunca era testado de fato
+- **Status:** ✅ Corrigido — adicionada fixture `cleanup_amostras`
+
+## Melhorias Recentes ✨
+
+### 1. Sugestão de Lotes no campo "lote" da aba Amostra
+**Status:** ✅ Implementado
+- `frontend/blueprints/amostra.py` — query de lotes distintos ordenados por `created_at` descendente
+- `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
+- Usa HTML5 nativo (`<datalist>`), sem dependência de JS
+
 ## Sugestões Futuras 🚀
 
 ### Exportação

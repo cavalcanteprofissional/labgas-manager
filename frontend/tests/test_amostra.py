@@ -23,7 +23,7 @@ def test_create_amostra(login, page, cleanup_amostras):
     assert "/amostras" in page.url
 
 
-def test_amostra_empty_state(login, page):
+def test_amostra_empty_state(login, page, cleanup_amostras):
     page.goto("http://localhost:5000/amostras")
     page.wait_for_selector("body")
     text = page.text_content("body")

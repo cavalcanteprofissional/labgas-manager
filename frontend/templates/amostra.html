@@ -21,7 +21,7 @@
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Lote *</label>
-                        <input type="number" name="lote" class="form-control form-control-lg" min="0" step="1" required>
+                        <input type="number" name="lote" class="form-control form-control-lg" min="0" step="1" list="loteSuggestions" required>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Elementos</label>
@@ -111,7 +111,7 @@
                                             </div>
                                             <div class="col-12 col-md-6">
                                                 <label class="form-label">Lote *</label>
-                                                <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" required>
+                                                <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" list="loteSuggestions" required>
                                             </div>
                                             <div class="col-12">
                                                 <label class="form-label">Elementos</label>
@@ -229,6 +229,11 @@
         </div>
     </div>
 </div>
+<datalist id="loteSuggestions">
+    {% for l in lotes %}
+    <option value="{{ l }}">
+    {% endfor %}
+</datalist>
 {% endblock %}
 
 {% block extra_js %}

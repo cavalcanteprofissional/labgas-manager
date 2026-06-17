@@ -35,12 +35,12 @@ def buscar_perfis_usuarios(user_ids):
     """Busca perfis de múltiplos usuários em uma única consulta (otimização N+1)."""
     from flask import current_app
     
-    supabase = get_supabase_client()
+    supabase = get_admin_client()
     if not user_ids:
         return {}
     try:
         perfis = supabase.table("perfil").select("id,nome").in_("id", list(user_ids)).execute().data
-        return {p["id"]: p.get("nome", str(p["id"])) for p in (perfis or [])}
+        return {p["id"]: (p.get("nome") or str(p["id"])) for p in (perfis or [])}
     except Exception:
         return {uid: str(uid) for uid in user_ids}
 
