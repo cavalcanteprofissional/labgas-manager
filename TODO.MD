@@ -93,6 +93,26 @@
 - `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
 - Usa HTML5 nativo (`<datalist>`), sem dependência de JS
 
+## Fase 33: Formatar nomes do histórico (amostra) ✏️
+- [x] amostra.py: `f"#{n} Lote {l}"` → `f"A/{n} L{l}"` (4 calls)
+
+## Fase 32: Corrigir Pipeline de Testes (sessão suja + feedback CLI) 🧪
+- [x] `page.context.clear_cookies()` no fixture login
+- [x] Logs de progresso no fixture flask_app
+- [x] testes passando sem timeouts em cascata
+
+## Fase 31: Padronizar Botões de Ação (padrão amostra) 🎯
+- [x] cilindro.html: horizontal, outline-primary/outline-danger, só ícone
+- [x] elemento.html: idem
+- [x] leitura.html: idem
+- [x] pressao.html: idem
+
+## Fase 30: Layout Column-Major nos Seletores de Elementos 📐
+- [x] Substituir `.row` + `.col-*` por `.elemento-grid` (CSS multi-column)
+- [x] Ordem vertical (coluna a coluna) em vez de horizontal (linha a linha)
+- [x] CSS responsivo: 2 colunas mobile, 3 tablet, 4 desktop
+- [x] Mantém gutter e responsividade
+
 ## Fase 29: Correções RLS e Client Auth 🔒
 
 ### Problemas Identificados

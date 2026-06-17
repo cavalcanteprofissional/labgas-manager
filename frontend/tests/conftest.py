@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env.local"))
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 BASE_URL = os.getenv("TEST_BASE_URL", "http://localhost:5000")
@@ -86,9 +86,13 @@ def flask_app():
         stderr=subprocess.DEVNULL,
     )
 
-    for _ in range(60):
+    logger.info("Starting Flask server...")
+    for i in range(60):
         if is_port_open(5000):
+            logger.info(f"Flask ready after {i*0.5:.1f}s")
             break
+        if i % 10 == 0 and i > 0:
+            logger.info(f"Waiting for Flask... ({i*0.5:.0f}s)")
         time.sleep(0.5)
     else:
         proc.kill()
@@ -119,6 +123,8 @@ def page(page, flask_app):
 
 @pytest.fixture
 def login(page):
+    logger.info(f"Logging in as {TEST_EMAIL}")
+    page.context.clear_cookies()
     page.goto(f"{BASE_URL}/login", wait_until="networkidle")
     page.wait_for_selector("input[name='email']", timeout=10000)
     page.fill("input[name='email']", TEST_EMAIL)

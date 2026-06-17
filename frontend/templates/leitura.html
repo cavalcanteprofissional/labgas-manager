@@ -112,20 +112,20 @@
                             <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ a.elemento_nome or a.elemento_id }}</span>
                         </td>
                         <td>
-                            <span class="badge" style="background-color: var(--purple-light);">{{ a.quantidade }}</span>
+                            {{ a.quantidade }}
                         </td>
                         <td>
-                            <div class="d-flex flex-column gap-1">
-                                <button class="btn btn-sm admin-permission-btn btn-warning w-100 text-start" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">
-                                    <i class="bi bi-pencil me-1"></i> Editar
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                                <form method="POST" id="deleteForm{{ a.id }}">
+                                <form method="POST" id="deleteForm{{ a.id }}" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="leitura_id" value="{{ a.id }}">
                                 </form>
-                                <button type="button" class="btn btn-sm admin-permission-btn btn-danger w-100 text-start" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
-                                    <i class="bi bi-trash me-1"></i> Excluir
+                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </div>
                         </td>

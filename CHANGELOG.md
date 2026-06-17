@@ -2,6 +2,29 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.5] - 2026-06-17
+
+### Features
+
+- **Formato amostra no histórico**: nomes de amostra (`h.nome`) alterados de `#5603 Lote 13070` para `A/5603 L13070` — mais scannable
+- **Layout column-major nos seletores de elementos (aba Amostra)**: checkboxes agora preenchem de cima para baixo, depois para a próxima coluna, via CSS `column-count` (2/3/4 colunas responsivas)
+- **Padronização dos botões de ação (Editar/Excluir)**: cilindro, elemento, leitura e pressão agora usam o mesmo design da aba Amostra — botões `btn-outline-primary`/`btn-outline-danger` com ícones puros, layout horizontal
+- **Feedback visual na pipeline de testes**: logs de progresso durante startup do Flask (`"Waiting for Flask... (5s)"`, `"Flask ready after 2.0s"`)
+- **Validação "pelo menos um elemento" em amostras**: backend rejeita create/update sem elementos selecionados (flash `warning`); frontend bloqueia com `alert()` via JS
+
+### Bugfixes
+
+- **Pipeline de testes**: limpeza de cookies (`page.context.clear_cookies()`) no fixture `login` eliminou timeouts em cascata entre testes — 27/29 testes passando estáveis
+- **Tag roxa de quantidade removida da aba Leitura**: `var(--purple-light)` substituído por valor numérico puro
+
+## [2.6.4] - 2026-06-17
+
+### Bugfixes
+
+- **amostra.py**: não-admin agora usa `get_authenticated_client()` (JWT da session) em vez de `get_supabase_client()` (anon key puro) para INSERT/UPDATE/DELETE — `auth.uid()` no RLS agora resolve corretamente
+- **cilindro.py, elemento.py, leitura.py, pressao.py**: admin UPDATE usa `get_admin_client()` (bypass RLS) para permitir edição de dados de outros usuários
+- **database/rls.sql**: adicionada política `FOR UPDATE` em `amostra_elemento` (análoga à de DELETE, via subquery `amostra.user_id`)
+
 ## [2.6.3] - 2026-06-17
 
 ### Bugfixes

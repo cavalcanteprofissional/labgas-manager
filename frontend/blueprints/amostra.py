@@ -49,6 +49,10 @@ def list():
                 flash("Lote deve ser um número inteiro não negativo", "danger")
                 return redirect(url_for("amostra.list"))
 
+            if not elemento_ids:
+                flash("Selecione pelo menos um elemento para a amostra", "warning")
+                return redirect(url_for("amostra.list"))
+
             try:
                 client = admin_client if admin else authenticated
                 response = client.table("amostra").insert({
@@ -69,7 +73,7 @@ def list():
                     except (ValueError, Exception):
                         pass
 
-                registrar_historico("amostra", "criado", f"#{numero_val} Lote {lote_val}", user_id)
+                registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id)
                 flash(f"Amostra #{numero_val} criada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "criar amostra"), "danger")
@@ -110,6 +114,10 @@ def list():
                 flash("Lote inválido", "danger")
                 return redirect(url_for("amostra.list"))
 
+            if not elemento_ids:
+                flash("Selecione pelo menos um elemento para a amostra", "warning")
+                return redirect(url_for("amostra.list"))
+
             existing = supabase.table("amostra").select("id,user_id").eq("id", amostra_id).execute()
             if not existing.data:
                 flash("Amostra não encontrada", "danger")
@@ -136,7 +144,7 @@ def list():
                     except (ValueError, Exception):
                         pass
 
-                registro_nome = f"#{numero_val} Lote {lote_val}"
+                registro_nome = f"A/{numero_val} L{lote_val}"
                 registrar_historico("amostra", "atualizado", registro_nome, user_id)
                 flash("Amostra atualizada com sucesso!", "success")
             except Exception as e:
@@ -171,7 +179,7 @@ def list():
                 client = admin_client if admin else authenticated
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
                 client.table("amostra").delete().eq("id", amostra_id).execute()
-                registrar_historico("amostra", "excluido", f"#{num} Lote {lote_val}", user_id)
+                registrar_historico("amostra", "excluido", f"A/{num} L{lote_val}", user_id)
                 flash("Amostra excluída com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir amostra"), "danger")

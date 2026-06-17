@@ -3,6 +3,23 @@
 {% block content %}
 <h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Amostras</h2>
 
+<style>
+.elemento-grid {
+    column-count: 2;
+    column-gap: 1rem;
+}
+.elemento-grid > .form-check {
+    break-inside: avoid;
+    margin-bottom: 0.375rem;
+}
+@media (min-width: 768px) {
+    .elemento-grid { column-count: 3; }
+}
+@media (min-width: 992px) {
+    .elemento-grid { column-count: 4; }
+}
+</style>
+
 <div class="card mb-4">
     <div class="card-header">
         <button class="btn btn-primary btn-lg w-100 w-md-auto" data-bs-toggle="collapse" data-bs-target="#formAmostra">
@@ -24,17 +41,16 @@
                         <input type="number" name="lote" class="form-control form-control-lg" min="0" step="1" list="loteSuggestions" required>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Elementos</label>
-                        <div class="row g-2">
+                        <label class="form-label">Elementos <span class="text-warning">*</span></label>
+                        <div class="elemento-grid">
                             {% for e in elementos %}
-                            <div class="col-6 col-md-4 col-lg-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_create_{{ e.id }}">
-                                    <label class="form-check-label" for="elem_create_{{ e.id }}">{{ e.nome }}</label>
-                                </div>
+                            <div class="form-check">
+                                <input class="form-check-input elemento-checkbox" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_create_{{ e.id }}">
+                                <label class="form-check-label" for="elem_create_{{ e.id }}">{{ e.nome }}</label>
                             </div>
                             {% endfor %}
                         </div>
+                        <small class="text-muted">Marque pelo menos um elemento</small>
                         {% if not elementos %}
                         <p class="text-muted small mt-2">Nenhum elemento cadastrado. Crie elementos primeiro.</p>
                         {% endif %}
@@ -114,18 +130,17 @@
                                                 <input type="number" name="lote" class="form-control" value="{{ a.lote }}" min="0" step="1" list="loteSuggestions" required>
                                             </div>
                                             <div class="col-12">
-                                                <label class="form-label">Elementos</label>
-                                                <div class="row g-2">
+                                                <label class="form-label">Elementos <span class="text-warning">*</span></label>
+                                                <div class="elemento-grid">
                                                     {% for e in elementos %}
-                                                    <div class="col-6 col-md-4">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_edit_{{ a.id }}_{{ e.id }}"
-                                                            {% if e.nome in a.elementos_nomes %}checked{% endif %}>
-                                                            <label class="form-check-label" for="elem_edit_{{ a.id }}_{{ e.id }}">{{ e.nome }}</label>
-                                                        </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input elemento-checkbox" type="checkbox" name="elemento_ids" value="{{ e.id }}" id="elem_edit_{{ a.id }}_{{ e.id }}"
+                                                        {% if e.nome in a.elementos_nomes %}checked{% endif %}>
+                                                        <label class="form-check-label" for="elem_edit_{{ a.id }}_{{ e.id }}">{{ e.nome }}</label>
                                                     </div>
                                                     {% endfor %}
                                                 </div>
+                                                <small class="text-muted">Marque pelo menos um elemento</small>
                                             </div>
                                         </div>
                                     </div>
@@ -265,6 +280,30 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    function validateElementos(form) {
+        const checkboxes = form.querySelectorAll('.elemento-checkbox');
+        const checked = Array.from(checkboxes).some(cb => cb.checked);
+        if (!checked) {
+            alert('Selecione pelo menos um elemento para a amostra.');
+            return false;
+        }
+        return true;
+    }
+
+    document.getElementById('createForm')?.addEventListener('submit', function(e) {
+        if (!validateElementos(this)) {
+            e.preventDefault();
+        }
+    });
+
+    document.querySelectorAll('[id^="editModal"] form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!validateElementos(this)) {
+                e.preventDefault();
+            }
+        });
+    });
 
     if (selectAll) {
         selectAll.addEventListener('change', function() {
