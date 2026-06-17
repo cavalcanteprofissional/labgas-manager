@@ -209,3 +209,8 @@
 - [x] test_leitura.py: 3 testes modais (edit preenche, delete, bulk)
 - [x] test_pressao.py: 3 testes modais (edit preenche, delete, bulk)
 - [x] Total: 18 testes modais, executados com `pytest --run-modais`
+
+## Fase 40: Bugfix Leitura (v2.6.12) 🐛
+- [x] `formatar_tempo_chama(1 arg)` → TypeError (assinatura espera 3 args) — corrigir para aceitar string `HH:MM:SS` ✅
+- [x] `test_create_leitura`: falso positivo (não seleciona cilindro nem elemento) — refatorado cria dados frescos e preenche todos os campos ✅
+- [x] `test_create_leitura`: verifica persistência com assert no banco (`quantidade == 3`) ✅

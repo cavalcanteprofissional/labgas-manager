@@ -27,12 +27,21 @@ def validar_codigo_cilindro(codigo):
     return bool(re.match(r'^CIL-\d{3}$', codigo.upper()))
 
 
-def formatar_tempo_chama(hora, minuto, segundo):
-    """Formata tempo de chama para HH:MM:SS."""
-    h = hora.zfill(2) if hora else "00"
-    m = minuto.zfill(2) if minuto else "00"
-    s = segundo.zfill(2) if segundo else "00"
-    return f"{h}:{m}:{s}"
+def formatar_tempo_chama(tempo_str):
+    """Formata tempo de chama para HH:MM:SS.
+    Aceita string 'HH:MM:SS' ou 'HH:MM' e retorna 'HH:MM:SS'.
+    """
+    if not tempo_str:
+        return "00:00:00"
+    partes = tempo_str.strip().split(":")
+    if len(partes) == 3:
+        h, m, s = partes
+    elif len(partes) == 2:
+        h, m = partes
+        s = "00"
+    else:
+        raise ValueError("Formato de tempo inválido. Use HH:MM:SS ou HH:MM")
+    return f"{h.zfill(2)}:{m.zfill(2)}:{s.zfill(2)}"
 
 
 def remover_duplicatas_por_campo(items, campo):

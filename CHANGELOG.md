@@ -2,6 +2,18 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.12] - 2026-06-17
+
+### Bugfixes
+
+- **Registro de Leitura quebrava com erro 500**: `formatar_tempo_chama()` em `validators.py` esperava 3 argumentos (`hora, minuto, segundo`), mas era chamada com 1 string `"HH:MM:SS"` em `leitura.py:50` — TypeError não capturado pelo `except ValueError`, gerando Internal Server Error ao tentar registrar qualquer leitura
+- **formatar_tempo_chama refatorada**: função agora aceita string `"HH:MM:SS"` (ou `"HH:MM"`), faz o parsing internamente e retorna `"HH:MM:SS"` formatado
+
+### Testes
+
+- **test_create_leitura**: antes era falso positivo (não selecionava cilindro nem elemento, campos obrigatórios) — refatorado para criar cilindro+elemento via admin_client, preencher todos os campos do formulário e verificar persistência no banco (`assert result.data[0]["quantidade"] == 3`)
+- **test_create_leitura_with_existing_cilindro_elemento removido**: funcionalidade incorporada ao `test_create_leitura` reformulado (que sempre cria dados frescos em vez de depender de registros existentes)
+
 ## [2.6.11] - 2026-06-17
 
 ### Testes em Modais (Fase 39) 🧪
