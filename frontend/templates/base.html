@@ -342,7 +342,7 @@
             </a>
             {% endif %}
             {% if is_admin or pode_acessar_aba('pressao') %}
-            <a href="{{ url_for('pressao.pressao_list') }}" class="{% if request.endpoint == 'pressao.list' %}active{% endif %}">
+            <a href="{{ url_for('pressao.pressao_list') }}" class="{% if request.endpoint == 'pressao.pressao_list' %}active{% endif %}">
                 <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-2"></i> <span>Pressão</span>
             </a>
             {% endif %}
