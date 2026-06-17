@@ -2,6 +2,17 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.8] - 2026-06-17
+
+### Bugfixes
+
+- **Amostra sem elementos após registro**: batch insert `client.table("amostra_elemento").insert(ae_records)` (lista de dicts) não persistia registros — substituído por loop individual com `insert({...})`, comprovadamente funcional
+- **cleanup_amostras deletava todos os amostra_elemento**: cleanup removia registros de **todos os usuários** (`neq("id", 0)` sem filtro de `user_id`) — corrigido para deletar apenas `amostra_elemento` vinculado às amostras do usuário de teste
+
+### Testes
+
+- **test_create_amostra**: agora cria um elemento de teste, marca seu checkbox no formulário, e verifica se o badge do elemento aparece na listagem — garante que o fluxo amostra→amostra_elemento funciona de ponta a ponta
+
 ## [2.6.7] - 2026-06-17
 
 ### SQL Optimization (Fase 35)

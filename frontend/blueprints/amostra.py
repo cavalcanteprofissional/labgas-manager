@@ -63,14 +63,18 @@ def list():
 
                 amostra_id = response.data[0]["id"]
 
-                ae_records = []
+                falhas = 0
                 for elem_id in elemento_ids:
                     try:
-                        ae_records.append({"amostra_id": amostra_id, "elemento_id": int(elem_id)})
-                    except ValueError:
-                        pass
-                if ae_records:
-                    client.table("amostra_elemento").insert(ae_records).execute()
+                        eid = int(elem_id)
+                        client.table("amostra_elemento").insert({
+                            "amostra_id": amostra_id,
+                            "elemento_id": eid,
+                        }).execute()
+                    except (ValueError, Exception):
+                        falhas += 1
+                if falhas:
+                    flash(f"{falhas} elemento(s) não puderam ser associados à amostra.", "warning")
 
                 registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id)
                 flash(f"Amostra #{numero_val} criada com sucesso!", "success")
@@ -133,14 +137,18 @@ def list():
                 }).eq("id", amostra_id).execute()
 
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
-                ae_records = []
+                falhas = 0
                 for elem_id in elemento_ids:
                     try:
-                        ae_records.append({"amostra_id": amostra_id, "elemento_id": int(elem_id)})
-                    except ValueError:
-                        pass
-                if ae_records:
-                    client.table("amostra_elemento").insert(ae_records).execute()
+                        eid = int(elem_id)
+                        client.table("amostra_elemento").insert({
+                            "amostra_id": amostra_id,
+                            "elemento_id": eid,
+                        }).execute()
+                    except (ValueError, Exception):
+                        falhas += 1
+                if falhas:
+                    flash(f"{falhas} elemento(s) não puderam ser associados à amostra.", "warning")
 
                 registro_nome = f"A/{numero_val} L{lote_val}"
                 registrar_historico("amostra", "atualizado", registro_nome, user_id)
