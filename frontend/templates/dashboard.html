@@ -114,7 +114,7 @@
                     {% for item in elementos_mais_analisados %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--elemento);">{{ item.nome }}</span>
+                            <span class="badge" style="background-color: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
                         </div>
                         <span class="badge" style="background-color: {{ paleta_leitura[loop.index0 % (paleta_leitura|length)] }};">{{ item.quantidade }} leitura(s)</span>
                     </div>
@@ -180,7 +180,7 @@
                     {% for c in cilindro[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--cilindro);">{{ c.codigo }}</span>
+                            <span class="badge" style="background-color: {{ COR_TIPO['cilindro']['var'] }};">{{ c.codigo }}</span>
                             <small class="d-block text-muted">{{ c.data_compra|formatar_data }}</small>
                         </div>
                         <span class="badge bg-{{ 'success' if c.status == 'ativo' else 'danger' }}">
@@ -210,7 +210,7 @@
                     {% for e in elementos[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--elemento);">{{ e.nome }}</span>
+                            <span class="badge" style="background-color: {{ COR_TIPO['elemento']['var'] }};">{{ e.nome }}</span>
                             <small class="d-block text-muted">{{ "%.1f"|format(e.consumo_lpm) }} L/min</small>
                         </div>
                         {{ "%.1f"|format(e.consumo_lpm) }} L/min
@@ -238,8 +238,8 @@
                     {% for a in leituras[:5] %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge" style="background-color: var(--cilindro);">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
-                            <span class="badge mx-1" style="background-color: var(--elemento);">{{ elemento_dict.get(a.elemento_id, a.elemento_id) }}</span>
+                            <span class="badge" style="background-color: {{ COR_TIPO['cilindro']['var'] }};">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
+                            <span class="badge mx-1" style="background-color: {{ COR_TIPO['elemento']['var'] }};">{{ elemento_dict.get(a.elemento_id, a.elemento_id) }}</span>
                         </div>
                         <small class="text-muted">{{ a.data|formatar_data if a.data else '-' }}</small>
                     </div>
@@ -250,6 +250,62 @@
                 </div>
                 {% else %}
                 <p class="text-muted text-center py-4">Nenhuma leitura</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-4">
+        <div class="card h-100">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); color: white;">
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["pressao"] }}"></i> Últimas Pressões</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if pressoes[:5] %}
+                <div class="list-group list-group-flush">
+                    {% for p in pressoes[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge" style="background-color: {{ COR_TIPO['cilindro']['var'] }};">{{ cilindro_dict.get(p.cilindro_id, p.cilindro_id) }}</span>
+                            <span class="badge mx-1" style="background-color: {{ COR_TIPO['pressao']['var'] }};">{{ "%.1f"|format(p.pressao) }} bar</span>
+                        </div>
+                        <small class="text-muted">{{ p.data|formatar_data if p.data else '-' }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('pressao.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">Nenhuma pressão</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-lg-4">
+        <div class="card h-100">
+            <div class="card-header" style="background: var(--amostra-rainbow); color: white;">
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Últimas Amostras</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if amostras[:5] %}
+                <div class="list-group list-group-flush">
+                    {% for a in amostras[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge" style="background-color: {{ COR_TIPO['amostra']['var'] }};">#{{ a.numero_amostra }}</span>
+                            <small class="text-muted ms-1">Lote {{ a.lote }}</small>
+                        </div>
+                        <small class="text-muted">{{ a.created_at|formatar_data if a.created_at else '-' }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">Nenhuma amostra</p>
                 {% endif %}
             </div>
         </div>

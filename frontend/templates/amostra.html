@@ -74,7 +74,7 @@
                         <td>{{ a.lote }}</td>
                         <td>
                             {% for nome in a.elementos_nomes %}
-                            <span class="badge" style="background-color: var(--elemento);">{{ nome }}</span>
+                            <span class="badge" style="background-color: {{ COR_TIPO['elemento']['var'] }};">{{ nome }}</span>
                             {% endfor %}
                             {% if not a.elementos_nomes %}
                             <span class="text-muted small">—</span>

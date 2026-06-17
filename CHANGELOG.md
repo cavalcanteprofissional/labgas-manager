@@ -16,6 +16,10 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 - **Sugestão de Lotes na aba Amostra**: campo "lote" agora exibe lista de sugestão (`<datalist>`) com lotes já registrados, ordenados do mais recente para o mais antigo — HTML5 nativo, sem JS
 - **CHANGELOG.md**: criado a partir dos tópicos de atualização do README
 - **cleanup_historico**: nova fixture de teste que remove registros do `historico_log` criados durante os testes, seguindo o padrão das demais fixtures de cleanup
+- **Badges das entidades com COR_TIPO**: substituídas todas as referências `var(--X)` hardcoded nos templates por `COR_TIPO['X']['var']` (dashboard, amostra, leitura, pressao, elemento, cilindro)
+- **Cor sólida `--amostra` para badges**: criada variável `--amostra: #6a1b9a` no CSS e alterado `COR_TIPO["amostra"]["var"]` de `var(--amostra-rainbow)` (gradient) para `var(--amostra)` (sólido) — badges do histórico agora exibem cor roxa
+- **admin_user_data corrigido**: `background-color: var(--X)20` inválido trocado por `background-color: hex20` válido em todas as 4 ocorrências
+- **Dashboard: novos cards "Últimas Pressões" e "Últimas Amostras"** na seção Atividade Recente, com badges coloridas seguindo o padrão COR_TIPO
 
 ## [2.6.0] — Rainbow + Intensity (v3.0)
 

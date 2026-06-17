@@ -212,11 +212,13 @@ def dashboard():
     cilindro_response = supabase.table("cilindro").select("*").eq("user_id", user_id).execute()
     elementos_response = supabase.table("elemento").select("*").eq("user_id", user_id).order("nome").execute()
     leituras_response = supabase.table("leitura").select("*").eq("user_id", user_id).execute()
-    amostras_response = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).execute()
+    pressoes_response = supabase.table("pressao").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+    amostras_response = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).order("numero_amostra", desc=True).execute()
 
     cilindro = cilindro_response.data or []
     elementos = elementos_response.data or []
     leituras = leituras_response.data or []
+    pressoes = pressoes_response.data or []
 
     ativos = len([c for c in cilindro if c.get("status") == "ativo"])
 
@@ -295,11 +297,15 @@ def dashboard():
 
     total_quantidade = sum(a.get("quantidade", 1) for a in leituras)
 
+    amostras_data = amostras_response.data or []
+
     return render_template(
         "dashboard.html",
         cilindro=cilindro,
         elementos=elementos,
         leituras=leituras,
+        pressoes=pressoes,
+        amostras=amostras_data,
         ativos=ativos,
         status_counts=status_counts,
         status_labels=status_labels,

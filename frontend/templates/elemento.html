@@ -65,7 +65,7 @@
                     {% for e in elementos %}
                     <tr>
                         <td><input type="checkbox" name="elemento_ids" value="{{ e.id }}" class="item-checkbox"></td>
-                        <td><span class="badge" style="background-color: var(--elemento);">{{ e.nome }}</span></td>
+                        <td><span class="badge" style="background-color: {{ COR_TIPO['elemento']['var'] }};">{{ e.nome }}</span></td>
                         <td>{{ "%.2f"|format(e.consumo_lpm) }}</td>
                         <td>
                             <div class="d-flex flex-column gap-1">
