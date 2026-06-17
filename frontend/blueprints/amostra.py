@@ -265,6 +265,10 @@ def list():
     end = start + per_page
     paginated = amostras[start:end]
 
+    pages = (total + per_page - 1) // per_page
+    end = min(page * per_page, total)
+    max_pages = min(pages, 10)
+
     return render_template(
         "amostra.html",
         amostras=paginated,
@@ -273,6 +277,9 @@ def list():
         page=page,
         per_page=per_page,
         total=total,
+        pages=pages,
+        end=end,
+        max_pages=max_pages,
         user_id=user_id,
         admin=admin,
     )

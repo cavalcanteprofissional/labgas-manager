@@ -115,6 +115,15 @@
 - [x] Movidos para depois de `</table>` em loop separado
 - [x] Verificado: `registrar_historico("amostra", "atualizado")` presente no update
 
+## Fase 38: Padronizar Paginação da Aba Amostra 📄 (v2.6.10)
+- [x] amostra.py: adicionar `pages`, `end`, `max_pages` no backend
+- [x] amostra.html: substituir paginação simples pelo padrão leitura:
+  - Dropdown seletor de `per_page` (10/25/50/100)
+  - `per_page` em todas as URLs de paginação
+  - `Anterior`/`Próxima` com classe `disabled`
+  - `...` para N > 10 páginas
+  - Usar `end` e `max_pages` do backend
+
 ## Fase 34: Corrigir encoding no teste admin + padronizar warning elementos 🐛
 - [x] test_admin.py: substituir locator com `ç` por `text=Admin` estável
 - [x] amostra.html: substituir `alert()` por `div.alert-warning` inline (padrão flash)
