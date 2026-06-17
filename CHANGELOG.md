@@ -11,7 +11,7 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 
 ### Testes
 
-- **test_create_amostra**: agora cria um elemento de teste, marca seu checkbox no formulário, e verifica se o badge do elemento aparece na listagem — garante que o fluxo amostra→amostra_elemento funciona de ponta a ponta
+- **test_create_amostra**: agora cria um elemento de teste, marca seu checkbox no formulário, e verifica se o badge do elemento aparece na listagem — garante que o fluxo amostra→amostra_elemento funciona de ponta a ponta (antes o teste não selecionava checkbox algum, era um falso positivo)
 
 ## [2.6.7] - 2026-06-17
 

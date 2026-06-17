@@ -93,16 +93,22 @@
 - `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
 - Usa HTML5 nativo (`<datalist>`), sem dependência de JS
 
-## Fase 35: Otimização de Consultas SQL ⚡
-- [ ] database: add missing indexes (schema.sql + migration_v5)
-- [ ] amostra.py: batch insert elemento_ids (create + update)
-- [ ] amostra.py: batch delete_multiple com in_()
-- [ ] amostra.py: eliminar re-query de lotes (extrair do resultado principal)
-- [ ] cilindro.py: batch delete_multiple com in_()
-- [ ] elemento.py: batch delete_multiple com in_()
-- [ ] leitura.py: batch delete_multiple com in_()
-- [ ] pressao.py: batch delete_multiple com in_()
-- [ ] historico.py: count mais leve (select id)
+## Fase 35: Otimização de Consultas SQL ⚡ (parcial)
+- [x] database: add missing indexes (schema.sql + migration_v5) ✅
+- [x] amostra.py: batch insert elemento_ids (create + update) — 🔁 revertido em v2.6.8 (batch insert falhava, voltou para loop individual)
+- [x] amostra.py: batch delete_multiple com in_() ✅
+- [x] amostra.py: eliminar re-query de lotes (extrair do resultado principal) ✅
+- [x] cilindro.py: batch delete_multiple com in_() ✅
+- [x] elemento.py: batch delete_multiple com in_() ✅
+- [x] leitura.py: batch delete_multiple com in_() ✅
+- [x] pressao.py: batch delete_multiple com in_() ✅
+- [x] historico.py: count + data em 1 query ✅
+
+## Fase 36: Corrigir persistência de amostra_elemento 🐛 (v2.6.8)
+- [x] amostra.py: batch insert não persistia → voltar para loop individual
+- [x] cleanup_amostras: deletava registros de todos os usuários
+- [x] test_create_amostra: agora seleciona elemento e verifica badge
+- [x] 29/29 testes passando
 
 ## Fase 34: Corrigir encoding no teste admin + padronizar warning elementos 🐛
 - [x] test_admin.py: substituir locator com `ç` por `text=Admin` estável
@@ -169,5 +175,14 @@
 
 ### Geral
 - [ ] Badge `h.tipo == 'amostra'` com cor roxa no dashboard (últimas atividades)
-- [ ] Teste de criação com elementos selecionados (test_create_amostra_with_elementos)
+- [ ] Teste de criação com elementos selecionados (test_create_amostra_with_elementos) ✅ (v2.6.8)
 - [ ] Teste de bulk delete no Playwright
+
+### Testes em Modais 🧪
+- [ ] Abrir modal de edição da amostra e verificar se checkboxes de elemento estão marcados (`checked`)
+- [ ] Abrir modal de edição do cilindro e verificar campos preenchidos
+- [ ] Abrir modal de edição do elemento e verificar campos preenchidos
+- [ ] Abrir modal de edição da leitura e verificar campos preenchidos
+- [ ] Abrir modal de edição da pressão e verificar campos preenchidos
+- [ ] Abrir modal de exclusão e confirmar exclusão
+- [ ] Abrir modal de exclusão em massa e confirmar
