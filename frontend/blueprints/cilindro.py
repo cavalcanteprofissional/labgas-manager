@@ -154,7 +154,7 @@ def list():
                 if not admin:
                     get_supabase_client().table("cilindro").update(data).eq("id", cilindro_id).eq("user_id", user_id).execute()
                 else:
-                    get_supabase_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
+                    get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
                 
                 registrar_historico("cilindro", "atualizado", codigo, user_id)
                 flash("Cilindro atualizado com sucesso!", "success")

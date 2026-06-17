@@ -3,7 +3,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
+from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
 
 amostra_bp = Blueprint("amostra", __name__)
 
@@ -21,6 +21,7 @@ def list():
 
     supabase = get_supabase_client()
     admin_client = get_admin_client()
+    authenticated = get_authenticated_client()
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -49,7 +50,7 @@ def list():
                 return redirect(url_for("amostra.list"))
 
             try:
-                client = admin_client if admin else supabase
+                client = admin_client if admin else authenticated
                 response = client.table("amostra").insert({
                     "numero_amostra": numero_val,
                     "lote": lote_val,
@@ -118,7 +119,7 @@ def list():
                 return redirect(url_for("amostra.list"))
 
             try:
-                client = admin_client if admin else supabase
+                client = admin_client if admin else authenticated
                 client.table("amostra").update({
                     "numero_amostra": numero_val,
                     "lote": lote_val,
@@ -167,7 +168,7 @@ def list():
             try:
                 num = existing.data[0].get("numero_amostra", "?")
                 lote_val = existing.data[0].get("lote", "?")
-                client = admin_client if admin else supabase
+                client = admin_client if admin else authenticated
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
                 client.table("amostra").delete().eq("id", amostra_id).execute()
                 registrar_historico("amostra", "excluido", f"#{num} Lote {lote_val}", user_id)
@@ -194,7 +195,7 @@ def list():
                     if not admin and existing.data[0].get("user_id") != user_id:
                         continue
 
-                    client = admin_client if admin else supabase
+                    client = admin_client if admin else authenticated
                     client.table("amostra_elemento").delete().eq("amostra_id", aid).execute()
                     client.table("amostra").delete().eq("id", aid).execute()
                     deleted += 1

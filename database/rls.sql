@@ -141,3 +141,8 @@ CREATE POLICY "Users can delete amostra_elemento" ON amostra_elemento
     FOR DELETE USING (auth.uid() IN (
         SELECT user_id FROM amostra WHERE id = amostra_id
     ));
+
+CREATE POLICY "Users can update amostra_elemento" ON amostra_elemento
+    FOR UPDATE USING (auth.uid() IN (
+        SELECT user_id FROM amostra WHERE id = amostra_id
+    ));

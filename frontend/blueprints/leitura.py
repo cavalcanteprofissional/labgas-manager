@@ -135,7 +135,7 @@ def leitura_list():
                 if not admin:
                     get_supabase_client().table("leitura").update(data_update).eq("id", leitura_id).eq("user_id", user_id).execute()
                 else:
-                    get_supabase_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
+                    get_admin_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
 
                 leitura_info = get_supabase_client().table("leitura").select("cilindro_id,elemento_id").eq("id", leitura_id).execute().data
                 nome_leitura = "N/A"

@@ -156,7 +156,7 @@ def pressao_list():
                 if not admin:
                     get_supabase_client().table("pressao").update(data_update).eq("id", pressao_id).eq("user_id", user_id).execute()
                 else:
-                    get_supabase_client().table("pressao").update(data_update).eq("id", pressao_id).execute()
+                    get_admin_client().table("pressao").update(data_update).eq("id", pressao_id).execute()
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
                 registrar_historico("pressao", "atualizado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)

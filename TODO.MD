@@ -93,6 +93,29 @@
 - `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
 - Usa HTML5 nativo (`<datalist>`), sem dependência de JS
 
+## Fase 29: Correções RLS e Client Auth 🔒
+
+### Problemas Identificados
+
+1. **`amostra.py`** — Non-admin writes usam `get_supabase_client()` (anon key sem JWT).
+   `auth.uid()` fica NULL → RLS bloqueia INSERT/UPDATE/DELETE.
+   **Fix:** Usar `get_authenticated_client()` (com JWT da session) para não-admin.
+
+2. **`cilindro.py`, `elemento.py`, `leitura.py`, `pressao.py`** — Admin UPDATE usa `get_supabase_client()` sem `.eq("user_id", ...)`.
+   Admin logado como user_id=A, registro pertence a user_id=B → RLS exige `A = B` → bloqueia.
+   **Fix:** Admin UPDATE deve usar `get_admin_client()` (bypass RLS).
+
+3. **`database/rls.sql`** — Falta política `FOR UPDATE` em `amostra_elemento`.
+   **Fix:** Adicionar política análoga à de DELETE (subquery via `amostra.user_id`).
+
+- [x] Fix amostra.py: import + usar `get_authenticated_client()` para não-admin
+- [x] Fix cilindro.py: admin UPDATE usa `get_admin_client()`
+- [x] Fix elemento.py: admin UPDATE usa `get_admin_client()`
+- [x] Fix leitura.py: admin UPDATE usa `get_admin_client()`
+- [x] Fix pressao.py: admin UPDATE usa `get_admin_client()`
+- [x] Add FOR UPDATE policy for amostra_elemento em rls.sql
+- [x] Testes: 28 passed, 1 failed (pre-existing), 2 skipped
+
 ## Sugestões Futuras 🚀
 
 ### Exportação
