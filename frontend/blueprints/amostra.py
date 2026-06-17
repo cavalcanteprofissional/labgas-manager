@@ -217,7 +217,7 @@ def list():
     if amostra_ids:
         ae_response = supabase.table("amostra_elemento").select("amostra_id, elemento_id").in_("amostra_id", amostra_ids).execute()
         if ae_response.data:
-            elem_ids = list(set(ae["elemento_id"] for ae in ae_response.data))
+            elem_ids = sorted(set(ae["elemento_id"] for ae in ae_response.data))
             elem_response = supabase.table("elemento").select("id, nome").in_("id", elem_ids).execute()
             elem_nomes = {e["id"]: e["nome"] for e in (elem_response.data or [])}
             for ae in ae_response.data:
