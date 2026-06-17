@@ -179,3 +179,10 @@ def cleanup_amostras(supabase_admin, test_user_id):
     if test_user_id:
         supabase_admin.table("amostra_elemento").delete().neq("id", 0).execute()
         supabase_admin.table("amostra").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+
+
+@pytest.fixture
+def cleanup_historico(supabase_admin, test_user_id):
+    yield
+    if test_user_id:
+        supabase_admin.table("historico_log").delete().eq("user_id", test_user_id).neq("id", 0).execute()

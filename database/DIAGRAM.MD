@@ -62,7 +62,7 @@ erDiagram
 
     AMOSTRA {
         int id PK
-        numeric numero_amostra
+        int numero_amostra
         int lote
         uuid user_id FK
         timestamp created_at
@@ -211,7 +211,7 @@ flowchart TB
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | SERIAL | PK - ID automático |
-| numero_amostra | NUMERIC | Número da amostra (real positivo) |
+| numero_amostra | INTEGER | Número da amostra (inteiro positivo) |
 | lote | INTEGER | Lote da amostra |
 | user_id | UUID | FK - Usuário dono |
 | created_at | TIMESTAMP | Data de criação |

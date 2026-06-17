@@ -8,7 +8,7 @@ def test_amostra_page_loads(login, page):
     assert "Amostras" in text
 
 
-def test_create_amostra(login, page, cleanup_amostras):
+def test_create_amostra(login, page, cleanup_amostras, cleanup_historico):
     page.goto("http://localhost:5000/amostras")
     page.wait_for_selector("body")
 
@@ -16,7 +16,7 @@ def test_create_amostra(login, page, cleanup_amostras):
     page.wait_for_timeout(2000)
 
     form = page.locator("#formAmostra")
-    form.locator("input[name='numero_amostra']").fill("1.5")
+    form.locator("input[name='numero_amostra']").fill("2")
     form.locator("input[name='lote']").fill("42")
     form.locator("button[type='submit']").click()
     page.wait_for_timeout(3000)

@@ -8,7 +8,7 @@ def test_elemento_list_page_loads(login, page):
     assert "Elemento" in text
 
 
-def test_create_elemento(login, page, cleanup_elementos):
+def test_create_elemento(login, page, cleanup_elementos, cleanup_historico):
     page.goto("http://localhost:5000/elementos")
     page.wait_for_selector("body")
 

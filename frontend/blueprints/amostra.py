@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from utils.supabase_utils import get_supabase_client, get_admin_client
-from utils.validators import safe_float
+from utils.validators import safe_int
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
@@ -38,16 +38,13 @@ def list():
                 flash("Lote é obrigatório", "danger")
                 return redirect(url_for("amostra.list"))
 
-            numero_val = safe_float(numero_amostra)
+            numero_val = safe_int(numero_amostra)
             if numero_val is None or numero_val <= 0:
-                flash("N° da Amostra deve ser um número real positivo", "danger")
+                flash("N° da Amostra deve ser um número inteiro positivo", "danger")
                 return redirect(url_for("amostra.list"))
 
-            try:
-                lote_val = int(lote)
-                if lote_val < 0:
-                    raise ValueError
-            except ValueError:
+            lote_val = safe_int(lote)
+            if lote_val is None or lote_val < 0:
                 flash("Lote deve ser um número inteiro não negativo", "danger")
                 return redirect(url_for("amostra.list"))
 
@@ -92,17 +89,19 @@ def list():
                 flash("N° da Amostra é obrigatório", "danger")
                 return redirect(url_for("amostra.list"))
 
-            numero_val = safe_float(numero_amostra)
+            numero_val = safe_int(numero_amostra)
             if numero_val is None or numero_val <= 0:
-                flash("N° da Amostra deve ser um número real positivo", "danger")
+                flash("N° da Amostra deve ser um número inteiro positivo", "danger")
                 return redirect(url_for("amostra.list"))
 
             try:
                 amostra_id = int(amostra_id)
-                lote_val = int(lote) if lote else None
-                if lote_val is None or lote_val < 0:
-                    raise ValueError
             except (ValueError, TypeError):
+                flash("ID inválido", "danger")
+                return redirect(url_for("amostra.list"))
+
+            lote_val = safe_int(lote)
+            if lote_val is None or lote_val < 0:
                 flash("Lote inválido", "danger")
                 return redirect(url_for("amostra.list"))
 

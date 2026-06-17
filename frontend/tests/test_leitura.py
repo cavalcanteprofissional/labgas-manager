@@ -7,7 +7,7 @@ def test_leitura_list_page_loads(login, page):
     assert "Leitura" in page.text_content("body")
 
 
-def test_create_leitura(login, page, cleanup_leituras):
+def test_create_leitura(login, page, cleanup_leituras, cleanup_historico):
     page.goto("http://localhost:5000/leituras")
     page.wait_for_selector("body")
 
@@ -25,7 +25,7 @@ def test_create_leitura(login, page, cleanup_leituras):
     assert "/leituras" in page.url
 
 
-def test_create_leitura_with_existing_cilindro_elemento(login, page, supabase_admin, test_user_id, cleanup_leituras):
+def test_create_leitura_with_existing_cilindro_elemento(login, page, supabase_admin, test_user_id, cleanup_leituras, cleanup_historico):
     if not test_user_id:
         pytest.skip("No test user found")
 

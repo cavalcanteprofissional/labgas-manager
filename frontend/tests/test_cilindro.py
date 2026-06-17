@@ -8,7 +8,7 @@ def test_cilindro_list_page_loads(login, page):
     assert "Cilindro" in text
 
 
-def test_create_cilindro(login, page, cleanup_cilindros):
+def test_create_cilindro(login, page, cleanup_cilindros, cleanup_historico):
     page.goto("http://localhost:5000/cilindros")
     page.wait_for_selector("body")
 

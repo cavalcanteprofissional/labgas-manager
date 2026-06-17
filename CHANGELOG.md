@@ -9,11 +9,13 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 - **Admin não conseguia ativar/desativar aba "amostra"**: `"amostra"` faltando na validação (`admin.py:207`) e no dicionário padrão (`admin.py:213`) — corrigido
 - **Histórico exibia UUID em vez do nome do usuário**: `buscar_perfis_usuarios()` usava `get_supabase_client()` (anon key com RLS restrito), impedia leitura dos nomes de outros usuários — alterado para `get_admin_client()` (bypass RLS)
 - **Nome vazio no perfil**: fallback para exibir UUID quando `nome` é `None` ou string vazia
+- **numero_amostra/lote agora apenas inteiros**: campo `numero_amostra` alterado de `NUMERIC` para `INTEGER` no banco; validação no backend trocada de `safe_float` para `safe_int`; frontend com `step="1"`
 
 ### Features
 
 - **Sugestão de Lotes na aba Amostra**: campo "lote" agora exibe lista de sugestão (`<datalist>`) com lotes já registrados, ordenados do mais recente para o mais antigo — HTML5 nativo, sem JS
 - **CHANGELOG.md**: criado a partir dos tópicos de atualização do README
+- **cleanup_historico**: nova fixture de teste que remove registros do `historico_log` criados durante os testes, seguindo o padrão das demais fixtures de cleanup
 
 ## [2.6.0] — Rainbow + Intensity (v3.0)
 

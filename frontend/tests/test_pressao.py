@@ -8,7 +8,7 @@ def test_pressao_list_page_loads(login, page):
     assert "Pressão" in text or "pressao" in text
 
 
-def test_create_pressao(login, page, supabase_admin, test_user_id, cleanup_pressoes):
+def test_create_pressao(login, page, supabase_admin, test_user_id, cleanup_pressoes, cleanup_historico):
     if not test_user_id:
         pytest.skip("No test user found")
 

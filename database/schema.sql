@@ -75,7 +75,7 @@ CREATE TABLE historico_log (
 -- Tabela: amostra
 CREATE TABLE amostra (
     id SERIAL PRIMARY KEY,
-    numero_amostra NUMERIC NOT NULL,
+    numero_amostra INTEGER NOT NULL,
     lote INTEGER NOT NULL,
     user_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMP DEFAULT NOW(),
