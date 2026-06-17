@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.1** (Branch: master)
+**Versão: 2.6.3** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
