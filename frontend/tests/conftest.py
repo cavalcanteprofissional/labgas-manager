@@ -168,28 +168,28 @@ def test_user_id(supabase_admin):
 def cleanup_leituras(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("leitura").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+        supabase_admin.table("leitura").delete().eq("user_id", test_user_id).execute()
 
 
 @pytest.fixture
 def cleanup_cilindros(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("cilindro").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+        supabase_admin.table("cilindro").delete().eq("user_id", test_user_id).execute()
 
 
 @pytest.fixture
 def cleanup_elementos(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("elemento").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+        supabase_admin.table("elemento").delete().eq("user_id", test_user_id).execute()
 
 
 @pytest.fixture
 def cleanup_pressoes(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("pressao").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+        supabase_admin.table("pressao").delete().eq("user_id", test_user_id).execute()
 
 
 @pytest.fixture
@@ -197,14 +197,14 @@ def cleanup_amostras(supabase_admin, test_user_id):
     yield
     if test_user_id:
         amostras = supabase_admin.table("amostra").select("id").eq("user_id", test_user_id).execute().data or []
-        ids = [a["id"] for a in amostras]
+        ids = [a["id"] for a in amostras if a.get("id")]
         if ids:
             supabase_admin.table("amostra_elemento").delete().in_("amostra_id", ids).execute()
-            supabase_admin.table("amostra").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+            supabase_admin.table("amostra").delete().eq("user_id", test_user_id).execute()
 
 
 @pytest.fixture
 def cleanup_historico(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("historico_log").delete().eq("user_id", test_user_id).neq("id", 0).execute()
+        supabase_admin.table("historico_log").delete().eq("user_id", test_user_id).execute()

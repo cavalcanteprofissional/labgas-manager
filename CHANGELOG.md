@@ -2,6 +2,18 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.13] - 2026-06-17
+
+### Segurança dos Cleanups 🛡️
+
+- **`.neq("id", 0)` removido de todos os 6 cleanups** em `conftest.py` — esse filtro casava com todo registro (todos têm `id >= 1`), não protegia nada e criava falsa sensação de segurança. Se alguém removesse o `.eq("user_id", ...)` por engano, o resultado seria um `DELETE ALL` via admin_client (bypass RLS).
+- **`amostra_elemento` cleanup reforçado**: filtro adicional `if a.get("id")` garante que só IDs válidos sejam passados ao `in_()`, e a SELECT de amostras já é escopada por `user_id` antes do delete
+- **`test_user_id = None`**: todos os cleanups já possuem guard `if test_user_id:`, pulando execução quando o usuário de teste não existe
+
+### Alterações
+
+- `frontend/tests/conftest.py`: linhas 171, 178, 185, 192, 203, 210 — `.neq("id", 0)` removidos; linha 200 — filtro `if a.get("id")` adicionado
+
 ## [2.6.12] - 2026-06-17
 
 ### Bugfixes
