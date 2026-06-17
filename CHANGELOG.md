@@ -2,6 +2,13 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.6] - 2026-06-17
+
+### Bugfixes
+
+- **test_admin.py**: seletor com `ç` em `text=Administração` causava encoding mismatch — substituído por `text=Admin` (estável)
+- **Warning de elementos na aba Amostra**: `alert()` do navegador substituído por `<div class="alert alert-warning">` inline (padrão flash do Bootstrap), some ao marcar um checkbox
+
 ## [2.6.5] - 2026-06-17
 
 ### Features

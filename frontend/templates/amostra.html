@@ -51,6 +51,7 @@
                             {% endfor %}
                         </div>
                         <small class="text-muted">Marque pelo menos um elemento</small>
+                        <div class="alert alert-warning py-2 mt-2 d-none mb-0 elemento-warning">Selecione pelo menos um elemento para a amostra.</div>
                         {% if not elementos %}
                         <p class="text-muted small mt-2">Nenhum elemento cadastrado. Crie elementos primeiro.</p>
                         {% endif %}
@@ -141,6 +142,7 @@
                                                     {% endfor %}
                                                 </div>
                                                 <small class="text-muted">Marque pelo menos um elemento</small>
+                                                <div class="alert alert-warning py-2 mt-2 d-none mb-0 elemento-warning">Selecione pelo menos um elemento para a amostra.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -284,10 +286,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function validateElementos(form) {
         const checkboxes = form.querySelectorAll('.elemento-checkbox');
         const checked = Array.from(checkboxes).some(cb => cb.checked);
+        const warning = form.querySelector('.elemento-warning');
         if (!checked) {
-            alert('Selecione pelo menos um elemento para a amostra.');
+            if (warning) warning.classList.remove('d-none');
             return false;
         }
+        if (warning) warning.classList.add('d-none');
         return true;
     }
 
@@ -296,12 +300,25 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
         }
     });
+    document.getElementById('createForm')?.querySelectorAll('.elemento-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const warning = document.querySelector('#createForm .elemento-warning');
+            if (warning) warning.classList.add('d-none');
+        });
+    });
 
     document.querySelectorAll('[id^="editModal"] form').forEach(form => {
         form.addEventListener('submit', function(e) {
             if (!validateElementos(this)) {
                 e.preventDefault();
             }
+        });
+        const checkboxes = form.querySelectorAll('.elemento-checkbox');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const warning = form.querySelector('.elemento-warning');
+                if (warning) warning.classList.add('d-none');
+            });
         });
     });
 

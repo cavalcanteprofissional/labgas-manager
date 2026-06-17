@@ -13,7 +13,7 @@ def test_admin_page_redirects_if_not_admin(login, page, supabase_admin, test_use
 
     if is_admin:
         assert "/admin" in page.url
-        assert page.locator("text=Administração, text=Admin").first.is_visible()
+        assert page.locator("text=Admin").first.is_visible()
     else:
         assert "/dashboard" in page.url or "403" in page.text_content("body") or "Acesso" in page.text_content("body")
 

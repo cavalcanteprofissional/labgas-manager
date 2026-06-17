@@ -93,6 +93,10 @@
 - `frontend/templates/amostra.html` — `<datalist id="loteSuggestions">` com os lotes; inputs de criação e edição vinculados via `list="loteSuggestions"`
 - Usa HTML5 nativo (`<datalist>`), sem dependência de JS
 
+## Fase 34: Corrigir encoding no teste admin + padronizar warning elementos 🐛
+- [x] test_admin.py: substituir locator com `ç` por `text=Admin` estável
+- [x] amostra.html: substituir `alert()` por `div.alert-warning` inline (padrão flash)
+
 ## Fase 33: Formatar nomes do histórico (amostra) ✏️
 - [x] amostra.py: `f"#{n} Lote {l}"` → `f"A/{n} L{l}"` (4 calls)
 
