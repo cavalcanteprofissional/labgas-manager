@@ -1,50 +1,36 @@
 -- =====================================================
--- DADOS INICIAIS (SEED) - LabGas Manager
+-- SEED (SQL) — LabGas Manager
+-- Apenas upsert do perfil (seguro para versionar).
+-- O auth.user deve ser criado primeiro via:
+--   python scripts/seed.py
 -- =====================================================
 
--- Observação: Os elementos padrão são inseridos automaticamente
--- pelo código Python (constants.py) quando o usuário cria seu perfil.
--- Este arquivo serve como referência.
+DO $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    SELECT id INTO v_user_id FROM auth.users WHERE email = 'teste@labgas.com';
 
--- =====================================================
--- Elementos Padrão (referência)
--- =====================================================
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Usuário auth.users não encontrado. Execute "python scripts/seed.py" primeiro.';
+    END IF;
 
--- | Nome          | Consumo LPM |
--- |---------------|-------------|
--- | Antimônio     | 1.5         |
--- | Alumínio      | 4.5         |
--- | Arsênio       | 1.5         |
--- | Bário         | 4.5         |
--- | Cádmio        | 1.5         |
--- | Chumbo        | 2.0         |
--- | Cobalto       | 1.5         |
--- | Cobre         | 1.5         |
--- | Cromo         | 4.5         |
--- | Estanho FAAS  | 4.5         |
--- | Estanho HG    | 1.5         |
--- | Ferro         | 2.0         |
--- | Manganês      | 1.5         |
--- | Mercúrio      | 0           |
--- | Molibdênio    | 4.5         |
--- | Níquel        | 1.5         |
--- | Prata         | 1.5         |
--- | Selênio       | 2.0         |
--- | Zinco         | 1.5         |
--- | Tálio         | 1.5         |
+    INSERT INTO perfil (id, role, ativo, nome, email, habilitar_abas)
+    VALUES (
+        v_user_id,
+        'admin',
+        true,
+        'Usuário Teste',
+        'teste@labgas.com',
+        '{"cilindro":true,"pressao":true,"elemento":true,"leitura":true,"amostra":true,"historico":true}'
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET role = 'admin',
+        ativo = true,
+        nome = 'Usuário Teste',
+        email = 'teste@labgas.com',
+        habilitar_abas = '{"cilindro":true,"pressao":true,"elemento":true,"leitura":true,"amostra":true,"historico":true}';
 
--- =====================================================
--- Constantes do Sistema
--- =====================================================
-
--- LITROS_EQUIVALENTES_KG = 956.0
---   1 kg de gás = 956 litros
-
--- GAS_KG_DEFAULT = 1.0
---   Valor padrão para gas_kg ao criar cilindro
-
--- CUSTO_DEFAULT = 290.00
---   Valor padrão para custo ao criar cilindro
-
--- CILINDRO_STATUS = ['ativo', 'esgotado']
---   Status possíveis do cilindro
+    RAISE NOTICE 'Perfil do usuário teste@labgas.com atualizado com sucesso.';
+END;
+$$;

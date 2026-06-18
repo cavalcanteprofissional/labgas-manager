@@ -224,3 +224,23 @@
 - [x] JS `autoFormatTime()`: digitar só números no campo hora insere `:` automaticamente ✅
   - `tempo_chama` (leitura.html): HH:MM:SS com 6 dígitos
   - `hora` (pressao.html): HH:MM com 4 dígitos
+
+## Fase 43: Padronizar Header da Tabela de Histórico 🎨 (v2.6.15)
+- [x] historico.html: remover gradiente escuro do card-header, usar `bg-light` como as outras abas ✅
+- [x] Separar filtros em card próprio (igual cilindro.html), tabela em card separado ✅
+
+## Fase 44: Seed com Senha no .env.local 🔐
+- [x] `database/seed.sql`: remover manipulação de `auth.users` (senha não fica no SQL versionado) ✅
+  - Agora só faz upsert do `perfil` — seguro para commit
+- [x] `scripts/seed.py`: novo script Python que lê `TEST_PASSWORD` do `.env.local` e cria/reseta:
+  - `auth.users` via Admin API (update_user_by_id se existir, create_user se não)
+  - `perfil` via upsert (admin + todas as abas)
+- [x] `frontend/.env.local`: adicionado `TEST_EMAIL` e `TEST_PASSWORD` ✅
+- [x] `frontend/.env.example`: adicionado `TEST_EMAIL` e `TEST_PASSWORD` (comentados) ✅
+
+## Fase 44: Seed SQL com Usuário Teste Admin 🗄️ (v2.6.15)
+- [x] database/seed.sql: script executável que cria/reseta `teste@labgas.com` / `123456` com `role=admin` ✅
+  - `auth.users`: cria com `crypt('123456', gen_salt('bf'))` se não existir; se existir, só reseta a senha
+  - `auth.identities`: criada apenas para usuários novos (exigência do Supabase Auth)
+  - `perfil`: upsert com `ON CONFLICT DO UPDATE` — sempre sobrescreve nome, role e abas habilitadas
+  - Idempotente: pode rodar quantas vezes quiser sem erro

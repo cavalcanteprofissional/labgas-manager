@@ -2,6 +2,16 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.15] - 2026-06-17
+
+### Padronização
+
+- **Header da tabela de histórico** 🎨: removido gradiente escuro (`linear-gradient(135deg, #002a47, #003a5e)`) do `card-header` — agora usa `bg-light` igual cilindro, elemento, leitura, pressão e amostra. Filtros foram separados em um card próprio (com `mb-4`), e a tabela ficou em um segundo card, seguindo exatamente o padrão das demais abas. O `<thead>` permanece `class="table-light"`, idêntico a todos os outros templates.
+
+### Segurança
+
+- **Seed com senha no .env.local** 🔐: `database/seed.sql` não contém mais senhas (só upsert do `perfil`). Novo `scripts/seed.py` lê `TEST_PASSWORD` do `frontend/.env.local` e cria/reseta o auth user via Admin API, sem expor credenciais no repositório.
+
 ## [2.6.14] - 2026-06-17
 
 ### Features

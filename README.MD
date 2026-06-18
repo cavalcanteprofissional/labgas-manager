@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.11** (Branch: master)
+**Versão: 2.6.15** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -455,10 +455,13 @@ labgas-manager/
 ├── LICENSE                    # Licença MIT
 ├── TODO.MD                    # Tarefas e histórico do projeto
 │
+├── scripts/                   # Scripts auxiliares
+│   └── seed.py              # Seed do usuário de teste (lê .env.local)
+│
 ├── database/                  # Banco de dados
 │   ├── schema.sql            # CREATE TABLE + índices
 │   ├── rls.sql              # Políticas RLS
-│   ├── seed.sql             # Dados iniciais (elementos padrão)
+│   ├── seed.sql             # Dados iniciais (perfil admin)
 │   └── DIAGRAM.MD           # Diagramas (ER, Fluxo)
 │
 ├── frontend/                  # Aplicação Flask (Web)
@@ -555,6 +558,10 @@ SUPABASE_URL=https://seu-projeto.supabase.co
 # Desenvolvimento local
 SUPABASE_KEY=sua_chave_anon
 SUPABASE_SERVICE_KEY=sua_service_role_key
+
+# Credenciais do usuário de teste (para scripts/seed.py)
+TEST_EMAIL=teste@labgas.com
+TEST_PASSWORD=123456
 ```
 
 **Nota**: A `service_role_key` é necessária para operações de admin (bypass RLS).
@@ -565,6 +572,7 @@ SUPABASE_SERVICE_KEY=sua_service_role_key
 > O código automaticamente detecta qual nome usar em cada ambiente.
 
 > **Arquitetura de Configuração**: O projeto usa `.env.local` em vez de `.env` para manter as secrets separadas do repositório. O arquivo `.env.example` contém os placeholders. O `.gitignore` já está configurado para ignorar arquivos `.env.local`.
+> - `TEST_EMAIL` / `TEST_PASSWORD`: usados por `scripts/seed.py` e pelos testes (`conftest.py`)
 
 ### Executar
 
@@ -573,6 +581,16 @@ python app.py
 ```
 
 O frontend estará disponível em: `http://localhost:5000`
+
+### Seed (criar/resetar usuário de teste)
+
+```bash
+python scripts/seed.py
+```
+
+Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.env.local`) com role `admin` e todas as abas habilitadas.
+
+> **Segurança**: a senha **não fica no SQL** (`database/seed.sql` só faz upsert do perfil). O `scripts/seed.py` lê do `.env.local` (ignorado pelo `.gitignore`).
 
 ---
 
