@@ -7,7 +7,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba
 from utils.cache_utils import invalidate_user_caches
 
 cilindro_bp = Blueprint('cilindro', __name__)
@@ -21,7 +21,7 @@ def list():
         return redirect(current_app.config.get("LOGIN_VIEW", "/dashboard"))
     
     user_id = get_user_id()
-    admin = is_admin()
+    dev = is_dev()
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
@@ -64,9 +64,9 @@ def list():
                 flash(f"Valores inválidos.", "danger")
                 return redirect(url_for("cilindro.list"))
             
-            if not admin:
+            if not dev:
                 try:
-                    existing = get_admin_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).execute()
+                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).execute()
                     if existing.data:
                         flash("Código já existe para este usuário", "danger")
                         return redirect(url_for("cilindro.list"))
@@ -88,7 +88,7 @@ def list():
                 }
                 
                 from blueprints.helpers import get_authenticated_client
-                if admin:
+                if dev:
                     client = get_admin_client()
                 else:
                     client = get_authenticated_client()
@@ -132,8 +132,8 @@ def list():
                 return redirect(url_for("cilindro.list"))
             
             try:
-                if not admin:
-                    existing = get_admin_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).neq("id", cilindro_id).execute()
+                if not dev:
+                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).neq("id", cilindro_id).execute()
                     if existing.data:
                         flash("Código já existe para este usuário", "danger")
                         return redirect(url_for("cilindro.list"))
@@ -153,7 +153,7 @@ def list():
                     "status": status
                 }
                 
-                if not admin:
+                if not dev:
                     get_supabase_client().table("cilindro").update(data).eq("id", cilindro_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()

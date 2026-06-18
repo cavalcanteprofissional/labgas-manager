@@ -157,10 +157,12 @@ def inject_user_info():
         if perfil_response.data:
             perfil = perfil_response.data[0]
             from blueprints.helpers import ABAS_DEFAULT
+            user_role = perfil.get('role', 'usuario')
             session['cached_user_info'] = {
-                'user_role': perfil.get('role', 'usuario'),
+                'user_role': user_role,
                 'user_name': perfil.get('nome', ''),
-                'is_admin': perfil.get('role') == 'admin',
+                'is_admin': user_role in ('admin', 'dev'),
+                'is_dev': user_role == 'dev',
                 'habilitar_abas': perfil.get('habilitar_abas') or ABAS_DEFAULT
             }
         else:
@@ -417,12 +419,12 @@ def api_buscar_codigo():
         return {"error": "Código é obrigatório"}, 400
     
     try:
-        from blueprints.helpers import get_user_id, is_admin
+        from blueprints.helpers import get_user_id, is_dev
         user_id = get_user_id()
-        admin = is_admin()
+        dev = is_dev()
         
         # Buscar cilindro pelo código
-        if admin:
+        if dev:
             response = supabase.table("cilindro").select("id,codigo").eq("codigo", codigo).execute()
         else:
             response = supabase.table("cilindro").select("id,codigo").eq("codigo", codigo).eq("user_id", user_id).execute()
@@ -446,15 +448,15 @@ def api_buscar_elemento():
         return {"error": "Nome é obrigatório"}, 400
     
     try:
-        from blueprints.helpers import get_user_id, is_admin
+        from blueprints.helpers import get_user_id, is_dev
         user_id = get_user_id()
-        admin = is_admin()
+        dev = is_dev()
         
         # Normalizar nome para busca (primeira maiúscula)
         nome_normalizado = nome.title()
         
         # Buscar elemento pelo nome
-        if admin:
+        if dev:
             response = supabase.table("elemento").select("id,nome").eq("nome", nome_normalizado).execute()
         else:
             response = supabase.table("elemento").select("id,nome").eq("nome", nome_normalizado).eq("user_id", user_id).execute()
@@ -472,7 +474,7 @@ def api_buscar_elemento():
 def api_dados_usuario():
     """Retorna cilindro e elementos do usuário para quick-select"""
     try:
-        from blueprints.helpers import get_user_id, is_admin
+        from blueprints.helpers import get_user_id
         user_id = get_user_id()
         
         # Buscar cilindos

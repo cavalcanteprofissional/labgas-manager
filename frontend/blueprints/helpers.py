@@ -4,16 +4,31 @@ from flask import session
 
 logger = logging.getLogger(__name__)
 
+ROLES_HIERARCHY = {"dev": 3, "admin": 2, "usuario": 1}
+
 
 def get_user_id():
     """Retorna o ID do usuário atual"""
     return session.get("user_id")
 
 
+def role_at_least(min_role):
+    """Verifica se o usuário atual tem role >= min_role na hierarquia"""
+    user_role = get_user_role()
+    min_level = ROLES_HIERARCHY.get(min_role, 0)
+    user_level = ROLES_HIERARCHY.get(user_role, 0)
+    return user_level >= min_level
+
+
 def is_admin():
-    """Verifica se o usuário atual é admin - usa cache da sessão"""
+    """Verifica se o usuário atual é admin ou dev - usa cache da sessão"""
     cached = session.get('cached_user_info', {})
     return cached.get('is_admin', False)
+
+
+def is_dev():
+    """Verifica se o usuário atual é dev (supremo) - usa cache da sessão"""
+    return get_user_role() == 'dev'
 
 
 def is_user_active(user_id):

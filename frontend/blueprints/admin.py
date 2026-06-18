@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from openpyxl import Workbook
 
 from utils.supabase_utils import get_admin_client
-from blueprints.helpers import get_user_id, is_admin, get_user_role, get_habilitar_abas, registrar_historico
+from blueprints.helpers import get_user_id, is_admin, is_dev, get_user_role, get_habilitar_abas, registrar_historico
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -86,7 +86,7 @@ def panel():
         user["leituras"] = leitura_counts.get(uid, 0)
         user["pressoes"] = pre_counts.get(uid, 0)
         user["amostras"] = amostra_counts.get(uid, 0)
-        if user.get("role") == "admin":
+        if user.get("role") in ("admin", "dev"):
             user["habilitar_abas"] = {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
         else:
             user["habilitar_abas"] = get_habilitar_abas(user["id"])
@@ -138,18 +138,30 @@ def set_role():
     target_user_id = request.form.get("user_id")
     role = request.form.get("role")
     
-    if role not in ["admin", "usuario"]:
+    if role not in ("admin", "usuario"):
         flash("Função inválida.", "danger")
         return redirect(url_for("admin.panel"))
     
-    if target_user_id == get_user_id():
-        flash("Você não pode alterar sua própria função.", "warning")
-        return redirect(url_for("admin.panel"))
+    target_is_self = target_user_id == get_user_id()
     
     client = get_admin_client()
+    target_perfil = client.table("perfil").select("role").eq("id", target_user_id).execute()
+    if not target_perfil.data:
+        flash("Usuário não encontrado.", "danger")
+        return redirect(url_for("admin.panel"))
+    
+    if not is_dev():
+        if target_is_self:
+            if role == "usuario":
+                flash("Você se rebaixou para usuário. Esta ação não pode ser desfeita por você.", "warning")
+            else:
+                flash("Você alterou sua própria função.", "warning")
+        else:
+            target_name = target_perfil.data[0].get("role", "?")
+            flash(f"Atenção: você alterou a role de {target_user_id} de '{target_perfil.data[0].get('role', '?')}' para '{role}'.", "warning")
+    
     client.table("perfil").update({"role": role}).eq("id", target_user_id).execute()
     
-    # Registrar alteração de role no histórico
     registrar_historico("perfil", "atualizado", f"Role alterada para {role}", get_user_id())
     
     flash(f"Função do usuário alterada para {role}!", "success")
@@ -159,8 +171,8 @@ def set_role():
 
 @admin_bp.route("/admin/delete-user", methods=["POST"])
 def delete_user():
-    if not is_admin():
-        flash("Acesso restrito a administradores.", "danger")
+    if not is_dev():
+        flash("Acesso restrito a desenvolvedores.", "danger")
         return redirect(url_for("dashboard"))
     
     user_id, error = validate_admin_token()
@@ -174,6 +186,11 @@ def delete_user():
         return redirect(url_for("admin.panel"))
     
     client = get_admin_client()
+    target_perfil = client.table("perfil").select("role").eq("id", target_user_id).execute()
+    if target_perfil.data and target_perfil.data[0].get("role") == "dev":
+        flash("Não é possível deletar outro desenvolvedor.", "danger")
+        return redirect(url_for("admin.panel"))
+    
     client.table("cilindro").delete().eq("user_id", target_user_id).execute()
     client.table("elemento").delete().eq("user_id", target_user_id).execute()
     client.table("leitura").delete().eq("user_id", target_user_id).execute()
@@ -267,7 +284,7 @@ def user_data(target_user_id):
     perfil = client.table("perfil").select("*").eq("id", target_user_id).execute().data
     target_user = perfil[0] if perfil else {"id": target_user_id, "role": "unknown"}
     
-    habilitar_abas = get_habilitar_abas(target_user_id) if target_user.get("role") != "admin" else {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
+    habilitar_abas = get_habilitar_abas(target_user_id) if target_user.get("role") not in ("admin", "dev") else {"cilindro": True, "pressao": True, "elemento": True, "leitura": True, "amostra": True, "historico": True}
     
     return render_template(
         "admin_user_data.html",

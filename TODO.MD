@@ -265,3 +265,381 @@ Usuários relatavam timeout/rate limit ao fazer múltiplos registros consecutivo
 - [x] Cache de 5 minutos nas queries de listagem (dashboard, cilindro, elemento, leitura, pressao, amostra)
 - [x] Otimizar dashboard: combinar queries de contagem, cachear resultados
 - [x] Registrar `AVISO` no .env.example sobre configuração de `RATE_LIMIT`
+
+## Fase 46: Análise de Segurança 🔒 (Relatório — Nenhuma Implementação)
+
+### Contexto
+Revisão completa de segurança baseada na `ANALISE_SEGURANCA.MD` (v1.4.1) versus estado atual (v2.6.16).
+Itens já corrigidos desde o relatório original foram marcados como ✅. Os pendentes seguem listados abaixo com severidade, localização e recomendação técnica.
+
+---
+
+### 🔴 CRÍTICOS
+
+#### 1. IDOR em DELETE via get_admin_client() — ⚠️ PENDENTE
+**Localização:** `cilindro.py:165`, `elemento.py:96`, `amostra.py:139`
+**Problema:** Operações DELETE usam `get_admin_client()` (service_role, bypass RLS) sem verificar se o registro pertence ao usuário logado. Qualquer usuário autenticado pode deletar dados de terceiros.
+**Recomendação:** Antes do DELETE, fazer SELECT do `user_id` com `get_supabase_client()`, comparar com `get_user_id()`, e só então executar o DELETE com admin client.
+**Mitigação atual:** O frontend só expõe registros do próprio usuário (filtro por `user_id` na query), mas a API backend não valida no servidor. Um request malicioso via curl/Postman contorna o frontend.
+
+---
+
+### 🟠 ALTOS
+
+#### 2. Sem HSTS / CSP / Security Headers em Produção — ⚠️ PENDENTE
+**Localização:** `app.py:121-140` (`after_request`)
+**Problema:** Apenas `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` em produção. Faltam:
+- `Strict-Transport-Security` (HSTS) — evitar downgrade HTTP
+- `Content-Security-Policy` — mitigar XSS
+- `Permissions-Policy` — controlar APIs do browser
+**Recomendação:** Adicionar no `after_request`:
+```python
+response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+response.headers['Content-Security-Policy'] = "default-src 'self' ..."
+response.headers['Permissions-Policy'] = 'geolocation=()'
+```
+
+#### 3. Flask Debug Mode Acessível em Produção — ⚠️ PENDENTE
+**Localização:** `app.py:512`
+```python
+debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+app.run(host="0.0.0.0", port=port, debug=debug)
+```
+**Problema:** Se `FLASK_DEBUG=true` for acidentalmente configurado na Vercel, o debugger do Werkzeug fica exposto, permitindo execução remota de código (RCE).
+**Recomendação:** Forçar `debug=False` em produção:
+```python
+if os.getenv('VERCEL_ENV') == 'production':
+    debug = False
+```
+
+#### 4. CORS Permissivo Demais — ⚠️ PENDENTE
+**Localização:** `app.py:121-129`
+**Problema:** `ALLOWED_ORIGINS=*` é o default. `Access-Control-Allow-Origin: *` liberado sem restrição de origens confiáveis.
+**Recomendação:** Remover suporte a `*` em produção; exigir lista explícita de origens.
+
+---
+
+### 🟡 MÉDIOS
+
+#### 5. Validação de Role Ausente — ⚠️ PENDENTE
+**Localização:** `admin.py:97`
+```python
+role = request.form.get("role")  # Sem validação!
+```
+**Recomendação:** Validar contra whitelist `["admin", "usuario"]` e garantir que apenas admins possam alterar roles.
+
+#### 6. Validação de Status Ausente — ⚠️ PENDENTE
+**Localização:** `cilindro.py:30,95`
+```python
+status = request.form.get("status", "ativo")  # Qualquer string aceita
+```
+**Recomendação:** Validar contra `utils.constants.STATUS_VALIDOS` ou whitelist inline.
+
+#### 7. Perfil UPDATE Policy Insegura — ⚠️ PENDENTE
+**Localização:** `database/rls.sql:79`
+```sql
+CREATE POLICY "Users can update own perfil" ON perfil
+    FOR UPDATE USING (true) WITH CHECK (true);
+```
+**Problema:** Qualquer usuário autenticado pode alterar o `role` ou `habilitar_abas` de qualquer perfil via UPDATE direto.
+**Recomendação:** Restringir `USING (auth.uid() = id)` e `WITH CHECK (auth.uid() = id)`. Admin deve usar service_role.
+
+#### 8. JWT Validation usa app.secret_key — ⚠️ PENDENTE
+**Localização:** `admin.py:26`
+```python
+decoded = jwt.decode(token, current_app.secret_key, algorithms=["HS256"])
+```
+**Problema:** Usa a mesma chave de sessão Flask para validar JWTs de usuário. Idealmente o JWT deve usar uma chave dedicada ou ser validado pelo Supabase Auth.
+**Recomendação:** Validar JWT via `supabase.auth.get_user(token)` em vez de decodificar localmente.
+
+#### 9. Auth Endpoints sem Rate Limit Específico — ⚠️ PENDENTE
+**Localização:** `auth.py` (login/register)
+**Problema:** O rate limit global (200/hora) protege de forma genérica, mas não há limite restrito específico para tentativas de login (ex: 5/min).
+**Recomendação:** Adicionar `@limiter.limit("5 per minute")` nas rotas POST de login e register.
+
+---
+
+### 🟢 BAIXOS
+
+#### 10. cache_utils.py não Integrado — ⚠️ PENDENTE
+**Localização:** `utils/cache_utils.py`, `blueprints/*.py`
+**Problema:** O módulo de cache foi criado com funções como `invalidate_user_caches`, mas nenhum blueprint chama essas funções. Cache está inoperante.
+**Recomendação:** Chamar `invalidate_user_caches(user_id)` após cada CREATE/UPDATE/DELETE nos 5 blueprints de domínio.
+
+#### 11. Session Cached User Info Pode Ficar Stale — ⚠️ PENDENTE
+**Localização:** `app.py:151-173`
+**Problema:** `cached_user_info` na session é populado uma vez (primeiro request) e nunca atualizado até o usuário fazer logout. Se um admin alterar a role do usuário, a mudança só reflete após relogin.
+**Recomendação:** Invalidar o cache da session quando `perfil` for alterado, ou recarregar a cada request (trocando session por cache do flask-caching).
+
+#### 12. Logging Pode Expor Dados Sensíveis — ⚠️ PENDENTE
+**Localização:** `app.py:61-62`, `blueprints/helpers.py`
+```python
+logging.basicConfig(level=logging.INFO)
+logger.info(f"Histórico registrado: {tipo} | {acao} | {nome} | User: {user_id}")
+```
+**Problema:** Em produção com nível DEBUG, dados como tokens JWT ou emails podem ser logados.
+**Recomendação:** Garantir `level=logging.WARNING` em produção; revisar todas as calls `logger.info`/`logger.debug` para não incluírem dados sensíveis.
+
+#### 13. Vercel sem Security Headers Configurados — ⚠️ PENDENTE
+**Localização:** `vercel.json`
+**Problema:** Nenhum header de segurança configurado no vercel.json (CSP, HSTS, X-Frame-Options).
+**Recomendação:** Adicionar bloco `"headers"` no vercel.json com as políticas de segurança.
+
+---
+
+### ✅ Itens Já Corrigidos desde a v1.4.1
+
+| # | Item | Severidade | Status |
+|---|------|------------|--------|
+| 1 | CSRF Protection (`app.py:35`) | CRITICAL | ✅ CORRIGIDO |
+| 2 | Secret Key Fallback removido (`app.py:24-26`) | HIGH | ✅ CORRIGIDO |
+| 3 | Rate Limiting implementado (`app.py:37-42`) | MEDIUM | ✅ CORRIGIDO |
+| 4 | Session Security Headers (Secure, HttpOnly, SameSite) | MEDIUM | ✅ CORRIGIDO |
+| 5 | Security Headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy) | MEDIUM | ✅ CORRIGIDO |
+| 6 | Mensagens de erro amigáveis | MEDIUM | ✅ CORRIGIDO (v1.4.1) |
+| 7 | Safe int/float validators | LOW | ✅ CORRIGIDO (v1.4.1) |
+
+---
+
+### 📊 Resumo
+
+| Severidade | Pendentes | Corrigidos |
+|------------|-----------|------------|
+| 🔴 CRITICAL | 1 | 1 |
+| 🟠 HIGH | 3 | 1 |
+| 🟡 MEDIUM | 5 | 4 |
+| 🟢 LOW | 4 | 1 |
+| **Total** | **13** | **7** |
+
+### 🎯 Recomendação de Ordem de Implementação
+
+1. 🔴 **IDOR DELETE** — risco imediato de perda de dados
+2. 🟠 **HSTS/CSP headers** — segurança de produção
+3. 🟠 **CORS restrito** — evitar vazamento cross-origin
+4. 🟠 **Debug mode** — risco RCE
+5. 🟡 **Role validation** — escalada de privilégio
+6. 🟡 **Perfil RLS policy** — escalada de privilégio
+7. 🟡 **Auth rate limit** — brute force
+8. 🟡 **JWT validation** — falsificação de token
+9. Restante (cache, logging, vercel, status) — baixo risco
+
+---
+
+## Fase 47: Hierarquia de Roles — Dev (supremo) vs Admin (restrito) ✅ (v2.6.17)
+
+### Contexto
+Atualmente a role `admin` tem acesso total via `get_admin_client()` (service_role, bypass RLS): deleta dados de qualquer usuário, gerencia contas, promove outros admins. Isso concentra **poder excessivo** em uma única role — se um admin for comprometido, todo o sistema é comprometido.
+
+A solução é quebrar em 3 roles com responsabilidades distintas:
+
+| Role | Acesso a dados próprios | Acesso a dados alheios | Gerenciar usuários | Export total | Deletar usuários |
+|------|------------------------|----------------------|-------------------|-------------|------------------|
+| `dev` | ✅ | ✅ (supremo) | ✅ | ✅ | ✅ (qualquer um) |
+| `admin` | ✅ | ❌ (só dele) | ✅ (nunca p/ dev) | ✅ | ❌ (só a própria conta) |
+| `usuario` | ✅ | ❌ | ❌ | ❌ | ❌ (só a própria conta) |
+
+**Princípio:** `admin` gerencia usuários (promove/rebaixa entre admin/usuario) e exporta dados totais, mas no CRUD de dados (cilindro, elemento, leitura, pressao, amostra) só enxerga os próprios — como `usuario`. `dev` substitui o poder absoluto que `admin` tinha antes, incluindo deletar qualquer dado ou conta.
+
+---
+
+### 1. Seed SQL — Novo role `dev`
+
+**Arquivo:** `database/seed.sql`
+
+**Mudança:** Trocar `role = 'admin'` por `role = 'dev'`:
+```sql
+INSERT INTO perfil (id, role, ativo, nome, email, habilitar_abas)
+VALUES (v_user_id, 'dev', true, 'Usuário Teste', 'teste@labgas.com', ...)
+ON CONFLICT (id) DO UPDATE SET role = 'dev', ...;
+```
+
+Também adicionar no comentário/README que:
+- `dev` é a role de desenvolvimento/super-admin (criada via seed, não via UI)
+- `admin` pode gerenciar usuários (promover/rebaixar para admin/usuario) e exportar dados totais, mas no CRUD de dados só enxerga os próprios registros (como `usuario`)
+
+---
+
+### 2. Backend — Novas funções de role check
+
+**Arquivo:** `frontend/blueprints/helpers.py`
+
+**Adicionar:**
+```python
+ROLES_HIERARCHY = {"dev": 3, "admin": 2, "usuario": 1}
+
+def get_user_role():
+    cached = session.get('cached_user_info', {})
+    return cached.get('user_role', 'usuario')
+
+def is_dev():
+    return get_user_role() == 'dev'
+
+def is_admin():
+    role = get_user_role()
+    return role == 'admin' or role == 'dev'
+
+def role_at_least(min_role):
+    return ROLES_HIERARCHY.get(get_user_role(), 0) >= ROLES_HIERARCHY.get(min_role, 0)
+```
+
+**Importante:** `is_admin()` continua retornando `True` para `dev` também (para não quebrar `pode_acessar_aba` e o template context). A distinção real entre `dev` e `admin` será feita com `is_dev()` nas rotas que exigem poder supremo.
+
+---
+
+### 3. Backend — `cached_user_info` guarda role literal
+
+**Arquivo:** `frontend/app.py` (context_processor, ~linha 160)
+
+**Mudança:** Em vez de `'is_admin': perfil.get('role') == 'admin'`, guardar a role literal:
+```python
+user_role = perfil.get('role', 'usuario')
+session['cached_user_info'] = {
+    'user_role': user_role,
+    'user_name': perfil.get('nome', ''),
+    'is_admin': user_role in ('admin', 'dev'),
+    'is_dev': user_role == 'dev',
+    'habilitar_abas': ...
+}
+```
+
+---
+
+### 4. Backend — Escolha do cliente Supabase nos CRUDs
+
+**Arquivo:** Todos os blueprints de domínio (cilindro, elemento, leitura, pressao, amostra)
+
+**Regra atual:**
+```python
+client = get_admin_client() if admin else get_authenticated_client()
+```
+
+**Nova regra:**
+```python
+client = get_admin_client() if is_dev() else get_authenticated_client()
+```
+
+Apenas `dev` usa service_role (bypass RLS). `admin` e `usuario` usam `get_authenticated_client()` que respeita RLS — só acessam dados próprios.
+
+**Efeito colateral:** As verificações de duplicidade (SELECT antes de INSERT/UPDATE) que hoje usam `get_admin_client()` para admin ver globalmente também precisam mudar — `admin` só verifica duplicidade dentro dos próprios dados, `dev` verifica globalmente.
+
+---
+
+### 5. Backend — Rotas do admin panel
+
+**Arquivo:** `frontend/blueprints/admin.py`
+
+**Regra geral:**
+- Rotas que **gerenciam usuários** (panel, toggle_user, set_role, update_habilitar_abas, user_data) e **export_data**: guard `if not is_admin()` — admin e dev acessam.
+- Rota **delete_user**: guard `if not is_dev()` — só dev pode deletar contas.
+
+**Mudanças em `set_role()`:**
+- Validar que a role alvo só pode ser `'admin'` ou `'usuario'` (nunca `'dev'`)
+- Se admin (não-dev) estiver alterando a própria role para `'usuario'`: exibir `flash` de warning (`"Você está se rebaixando para usuário. Esta ação não pode ser desfeita por você."`)
+- Se admin (não-dev) estiver promovendo um `usuario` para `admin` ou rebaixando outro `admin` para `usuario`: exibir `flash` de warning (`"Atenção: você alterou a role de {nome} para {role}."`)
+- Se dev estiver alterando roles: sem warning (silencioso)
+
+```python
+ROLES_VALIDAS = ("admin", "usuario")
+if role not in ROLES_VALIDAS:
+    flash("Role inválida.", "danger")
+    return redirect(...)
+
+if role == "admin" and target_user_id == user_id and not is_dev():
+    flash("Você se promoveu para admin.", "warning")
+elif not is_dev():
+    flash(f"Atenção: você alterou a role de {target_name} para {role}.", "warning")
+```
+
+**Mudanças em `delete_user()`:**
+- Guard `if not is_dev()` — só dev pode deletar contas
+- Adicionar proteção extra: não permitir deletar outro `dev`:
+```python
+target_perfil = client.table("perfil").select("role").eq("id", target_user_id).execute()
+if target_perfil.data and target_perfil.data[0].get("role") == "dev":
+    flash("Não é possível deletar outro desenvolvedor.", "danger")
+    return redirect(...)
+```
+
+**Mudanças em `toggle_user()`:**
+- Guard permanece `if not is_admin()` — admin e dev podem ativar/desativar
+- Se admin (não-dev) estiver desativando outro admin: exibir `flash` de warning
+
+**Mudanças em `export_data()`:**
+- Guard permanece `if not is_admin()` — admin e dev podem exportar dados totais
+
+---
+
+### 6. Backend — API endpoints de busca
+
+**Arquivo:** `frontend/app.py` (rotas `/api/buscar-codigo`, `/api/buscar-elemento`)
+
+**Regra atual:** `if admin:` busca global (sem filtro user_id)
+**Nova regra:** `if is_dev():` busca global
+
+---
+
+### 7. Backend — `validate_admin_token()` permanece
+
+**Arquivo:** `frontend/blueprints/admin.py`
+
+A função `validate_admin_token()` continua válida — ela valida JWT + user_id match. Apenas os guards das rotas mudam (de `is_admin()` para `is_dev()`).
+
+---
+
+### 8. Seed SQL corrigido
+
+O seed atual cria `role = 'admin'`. Após a implementação, deve criar `role = 'dev'`:
+
+```sql
+-- database/seed.sql (versão atualizada)
+INSERT INTO perfil (id, role, ativo, nome, email, habilitar_abas)
+VALUES (v_user_id, 'dev', true, 'Usuário Teste', 'teste@labgas.com', ...)
+ON CONFLICT (id) DO UPDATE SET role = 'dev', ...;
+```
+
+---
+
+### 9. Resumo de arquivos que serão alterados (quando implementar)
+
+| Arquivo | Tipo de mudança |
+|---------|----------------|
+| `database/seed.sql` | role `admin` → `dev` |
+| `frontend/blueprints/helpers.py` | + `is_dev()`, + `role_at_least()`, refatorar `is_admin()` usa hierarchy |
+| `frontend/app.py` | `cached_user_info` guarda `user_role` literal + `is_dev` |
+| `frontend/blueprints/admin.py` | `delete_user`: guard `is_admin()` → `is_dev()`. Demais rotas: mantêm `is_admin()` (admins continuam acessando). `set_role()`: valida whitelist + warnings |
+| `frontend/blueprints/cilindro.py` | client choice: `is_admin()` → `is_dev()` |
+| `frontend/blueprints/elemento.py` | client choice: `is_admin()` → `is_dev()` |
+| `frontend/blueprints/leitura.py` | client choice: `is_admin()` → `is_dev()` |
+| `frontend/blueprints/pressao.py` | client choice: `is_admin()` → `is_dev()` |
+| `frontend/blueprints/amostra.py` | client choice: `is_admin()` → `is_dev()` |
+| `frontend/app.py` (APIs) | `is_admin()` → `is_dev()` nas buscas globais |
+
+**Total estimado: ~10 arquivos, ~50 linhas alteradas**
+
+---
+
+### 10. Observações Importantes
+
+1. **Não mexer em RLS:** As policies atuais (`auth.uid() = user_id`) continuam protegendo os dados. Dev usa service_role (bypass), admin e usuario respeitam RLS. Nenhuma migration SQL de RLS é necessária.
+
+2. **`pode_acessar_aba`:** Continua funcionando — `is_admin()` retorna True para dev e admin, ambos veem todas as abas. A diferença é que admin vê as abas mas só com dados próprios no CRUD.
+
+3. **Template context:** `is_admin` no template continua True para dev e admin. Ambos veem o link "Admin" no sidebar. A diferenciação visual entre dev e admin nos templates é opcional e pode vir depois.
+
+4. **Ordem de implementação:** Esta fase (Fase 47) deve ser implementada **antes** da correção de IDOR (Fase 46, item 1), porque a correção de IDOR depende da hierarquia de roles — dev pode deletar de outros, admin não. Implementar a hierarquia primeiro evita refatorar duas vezes.
+
+5. **Warnings de ação:** Toda vez que um admin (não-dev) alterar a role de alguém (incluindo a si mesmo), exibir `flash("...", "warning")` para deixar explícito no histórico visual que a ação foi tomada. Dev não recebe warnings — as ações de dev são silenciosas (presume-se que dev sabe o que está fazendo).
+
+6. **Admin pode se rebaixar:** Se um admin alterar a própria role para `'usuario'`, perde acesso ao admin panel imediatamente (o guard `is_admin()` para de passar). A mensagem de warning deve deixar claro que é irreversível pelo próprio usuário.
+
+---
+
+## Fase 48: Remover Senha Fraca do .env.example e Validar no seed.py 🔒 (v2.6.17) ✅
+
+### Problema
+A senha `123456` estava hardcoded como default no `scripts/seed.py` e referenciada no `frontend/.env.example`. Qualquer desenvolvedor que clonasse o repositório e criasse um `.env.local` baseado no exemplo automaticamente usaria uma senha fraca e previsível.
+
+### Mudanças Implementadas
+- [x] `frontend/.env.example`: `# TEST_PASSWORD=123456` → `# TEST_PASSWORD=` (sem valor, sem sugestão de senha fraca)
+- [x] `scripts/seed.py`: default `"123456"` removido — se `TEST_PASSWORD` não estiver no `.env.local`, o script exibe erro e aborta
+- [x] `scripts/seed.py`: role do perfil alterada de `'admin'` para `'dev'` (consistência com Fase 47)

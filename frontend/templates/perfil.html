@@ -64,7 +64,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block">Função</small>
-                        <strong>{{ 'Administrador' if user_role == 'admin' else 'Usuário' }}</strong>
+                        <strong>{{ 'Desenvolvedor' if user_role == 'dev' else 'Administrador' if user_role == 'admin' else 'Usuário' }}</strong>
                     </div>
                 </div>
             </div>

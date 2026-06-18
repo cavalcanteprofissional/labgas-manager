@@ -5,7 +5,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba
 from utils.cache_utils import invalidate_user_caches
 
 elemento_bp = Blueprint('elemento', __name__)
@@ -19,7 +19,7 @@ def list():
         return redirect(current_app.config.get("LOGIN_VIEW", "/dashboard"))
     
     user_id = get_user_id()
-    admin = is_admin()
+    dev = is_dev()
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
@@ -35,12 +35,12 @@ def list():
                 flash("Nome e consumo são obrigatórios", "danger")
                 return redirect(url_for("elemento.list"))
             
-            existing = get_admin_client().table("elemento").select("id").eq("nome", nome).execute()
+            if dev:
+                existing = get_admin_client().table("elemento").select("id").eq("nome", nome).execute()
+            else:
+                existing = get_supabase_client().table("elemento").select("id").eq("user_id", user_id).eq("nome", nome).execute()
             if existing.data:
-                if admin:
-                    flash(f"Elemento '{nome}' já existe no sistema", "danger")
-                else:
-                    flash("Elemento com este nome já existe para este usuário", "danger")
+                flash("Elemento com este nome já existe.", "danger")
                 return redirect(url_for("elemento.list"))
             
             data = {
@@ -51,7 +51,7 @@ def list():
             
             try:
                 from blueprints.helpers import get_authenticated_client
-                if admin:
+                if dev:
                     client = get_admin_client()
                 else:
                     client = get_authenticated_client()
@@ -73,10 +73,10 @@ def list():
                 flash("ID do elemento, nome e consumo são obrigatórios", "danger")
                 return redirect(url_for("elemento.list"))
             
-            if not admin:
-                existing = get_admin_client().table("elemento").select("id").eq("user_id", user_id).eq("nome", nome).neq("id", elemento_id).execute()
+            if not dev:
+                existing = get_supabase_client().table("elemento").select("id").eq("user_id", user_id).eq("nome", nome).neq("id", elemento_id).execute()
                 if existing.data:
-                    flash("Elemento com este nome já existe para este usuário", "danger")
+                    flash("Elemento com este nome já existe.", "danger")
                     return redirect(url_for("elemento.list"))
             
             data = {
@@ -84,7 +84,7 @@ def list():
                 "consumo_lpm": safe_float(consumo_lpm, 0)
             }
             
-            if not admin:
+            if not dev:
                 get_supabase_client().table("elemento").update(data).eq("id", elemento_id).eq("user_id", user_id).execute()
             else:
                 get_admin_client().table("elemento").update(data).eq("id", elemento_id).execute()

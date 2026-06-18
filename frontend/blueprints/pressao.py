@@ -6,7 +6,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
 
 pressao_bp = Blueprint('pressao', __name__)
@@ -19,7 +19,7 @@ def pressao_list():
         return redirect(url_for("dashboard"))
     
     user_id = get_user_id()
-    admin = is_admin()
+    dev = is_dev()
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
@@ -75,7 +75,7 @@ def pressao_list():
                 return redirect(url_for("pressao.pressao_list"))
             
             cilindro_id_int = int(cilindro_id)
-            if not admin:
+            if not dev:
                 if cilindro_id_int not in cilindro_dict_lookup:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("pressao.pressao_list"))
@@ -91,7 +91,7 @@ def pressao_list():
                     "user_id": user_id
                 }
                 
-                if admin:
+                if dev:
                     client = get_admin_client()
                 else:
                     client = get_authenticated_client()
@@ -138,7 +138,7 @@ def pressao_list():
                     return redirect(url_for("pressao.pressao_list"))
             
             cilindro_id_int = int(cilindro_id)
-            if not admin:
+            if not dev:
                 if cilindro_id_int not in cilindro_dict_lookup:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("pressao.pressao_list"))
@@ -153,7 +153,7 @@ def pressao_list():
                     "hora": hora
                 }
                 
-                if not admin:
+                if not dev:
                     get_supabase_client().table("pressao").update(data_update).eq("id", pressao_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("pressao").update(data_update).eq("id", pressao_id).execute()
@@ -178,7 +178,7 @@ def pressao_list():
                     flash("Registro de pressão não encontrado", "danger")
                     return redirect(url_for("pressao.pressao_list"))
                 
-                if not admin and pressao_info[0].get("user_id") != user_id:
+                if not dev and pressao_info[0].get("user_id") != user_id:
                     flash("Você não tem permissão para excluir este registro.", "danger")
                     return redirect(url_for("pressao.pressao_list"))
                 
@@ -220,7 +220,7 @@ def pressao_list():
                 supabase = get_supabase_client()
                 rows = supabase.table("pressao").select("id,cilindro_id,pressao,temperatura,user_id").in_("id", ids).execute().data or []
 
-                permitted = [r for r in rows if admin or r.get("user_id") == user_id]
+                permitted = [r for r in rows if dev or r.get("user_id") == user_id]
                 not_owned_count = len(ids) - len(permitted)
 
                 if not permitted:

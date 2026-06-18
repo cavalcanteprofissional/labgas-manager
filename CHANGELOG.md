@@ -2,6 +2,36 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.17] - 2026-06-18
+
+### Remover Senha Fraca do Seed 🔒
+
+- **`.env.example`**: `TEST_PASSWORD` agora aparece sem valor (`# TEST_PASSWORD=`) — não sugere mais senha fraca
+- **`scripts/seed.py`**: default `"123456"` removido — aborta com erro se `TEST_PASSWORD` não estiver definida no `.env.local`
+- **`scripts/seed.py`**: role do perfil alinhada com Fase 47 — agora cria `'dev'` em vez de `'admin'`
+
+### Hierarquia de Roles — Dev vs Admin 🔐
+
+#### Nova Role `dev`
+- **`database/seed.sql`**: seed do usuário de teste agora cria `role = 'dev'` em vez de `'admin'`
+- **`helpers.py`**: adicionadas `is_dev()`, `ROLES_HIERARCHY`, `role_at_least()`
+- **`app.py`**: `cached_user_info` agora guarda `user_role` literal e flag `is_dev`
+
+#### Admin Restrito (só dados próprios no CRUD)
+- Todos os blueprints de domínio (cilindro, elemento, leitura, pressao, amostra) agora usam `is_dev()` para escolher entre `get_admin_client()` (bypass RLS) e `get_authenticated_client()` (respeita RLS)
+- **Efeito**: admin só vê/edita/exclui os próprios registros; dev mantém visão global
+
+#### Admin ainda gerencia usuários e exporta
+- `delete_user()`: guard mudou de `is_admin()` → `is_dev()` — só dev pode excluir contas
+- `delete_user()`: proteção extra — não permite deletar outro dev
+- `set_role()`: whitelist `('admin', 'usuario')` — dev role intocável pelo admin
+- `set_role()`: warnings para auto-rebaixamento e alteração de role de terceiros (admin não-dev)
+
+#### API e Templates
+- `/api/buscar-codigo` e `/api/buscar-elemento`: busca global só para `is_dev()`
+- Templates: badges com cor roxa para dev, permission buttons desabilitados para admin e dev
+- `admin.html`: role toggle oculto para usuários dev
+
 ## [2.6.16] - 2026-06-18
 
 ### Correção de Rate Limiting e Otimização de Consultas ⚡

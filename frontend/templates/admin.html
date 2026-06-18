@@ -48,7 +48,7 @@
                             <div class="small text-muted text-truncate" style="max-width: 120px;">{{ user.email }}</div>
                         </td>
                         <td data-label="Função">
-                            <span class="badge" style="background-color: {{ '#0070b8' if user.role == 'admin' else '#6cccff' }};">
+                            <span class="badge" style="background-color: {{ '#6f42c1' if user.role == 'dev' else '#0070b8' if user.role == 'admin' else '#6cccff' }};">
                                 {{ user.role|title }}
                             </span>
                         </td>
@@ -75,7 +75,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="cilindro">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if cil_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros
                                     </button>
                                 </form>
@@ -84,7 +84,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="pressao">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if temp_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-1"></i> Pressão
                                     </button>
                                 </form>
@@ -93,7 +93,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="elemento">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ele_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos
                                     </button>
                                 </form>
@@ -102,7 +102,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="leitura">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leitura
                                     </button>
                                 </form>
@@ -111,7 +111,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="amostra">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ams_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostra
                                     </button>
                                 </form>
@@ -120,7 +120,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="historico">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if his_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100 text-start" {% if user.role == 'admin' %}disabled title="Admin sempre tem acesso"{% endif %}>
+                                    <button type="submit" class="btn btn-sm btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100 text-start" {% if user.role in ('admin', 'dev') %}disabled title="Admin/Dev sempre tem acesso"{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico
                                     </button>
                                 </form>
@@ -140,6 +140,7 @@
                                         <i class="bi bi-{{ 'person-dash' if user.ativo else 'person-check' }} me-1"></i> {{ 'Desativar' if user.ativo else 'Ativar' }}
                                     </button>
                                 </form>
+                                {% if user.role != 'dev' %}
                                 <form method="POST" action="{{ url_for('admin.set_role') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -149,6 +150,7 @@
                                         <i class="bi bi-{{ 'arrow-down-circle' if user.role == 'admin' else 'arrow-up-circle' }} me-1"></i> {{ 'Tornar User' if user.role == 'admin' else 'Tornar Admin' }}
                                     </button>
                                 </form>
+                                {% endif %}
                                 <form method="POST" action="{{ url_for('admin.delete_user') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -182,7 +184,7 @@
                         <div class="small text-muted text-truncate" style="max-width: 150px;">{{ user.email }}</div>
                     </div>
                     <div class="d-flex gap-1">
-                        <span class="badge" style="background-color: {{ '#0070b8' if user.role == 'admin' else '#6cccff' }};">{{ user.role|title }}</span>
+                        <span class="badge" style="background-color: {{ '#6f42c1' if user.role == 'dev' else '#0070b8' if user.role == 'admin' else '#6cccff' }};">{{ user.role|title }}</span>
                         <span class="badge" style="background-color: {{ '#005f96' if user.ativo else '#f59e0b' }};">{{ 'Ativo' if user.ativo else 'Inativo' }}</span>
                     </div>
                 </div>
@@ -221,7 +223,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="cilindro">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if cil_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if cil_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros
                                     </button>
                                 </form>
@@ -230,7 +232,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="pressao">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if temp_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if temp_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["pressao"] }} me-1"></i> Pressão
                                     </button>
                                 </form>
@@ -239,7 +241,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="elemento">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ele_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ele_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos
                                     </button>
                                 </form>
@@ -248,7 +250,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="leitura">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if amo_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if amo_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leitura
                                     </button>
                                 </form>
@@ -257,7 +259,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="amostra">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if ams_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if ams_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostra
                                     </button>
                                 </form>
@@ -266,7 +268,7 @@
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
                                     <input type="hidden" name="aba" value="historico">
                                     <input type="hidden" name="habilitar" value="{{ 'false' if his_checked else 'true' }}">
-                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100" {% if user.role == 'admin' %}disabled{% endif %}>
+                                    <button type="submit" class="btn btn-sm admin-permission-btn btn-{{ 'primary' if his_checked else 'outline-secondary' }} w-100" {% if user.role in ('admin', 'dev') %}disabled{% endif %}>
                                         <i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico
                                     </button>
                                 </form>
@@ -290,6 +292,7 @@
                                         <i class="bi bi-{{ 'person-dash' if user.ativo else 'person-check' }} me-1"></i> {{ 'Desativar' if user.ativo else 'Ativar' }}
                                     </button>
                                 </form>
+                                {% if user.role != 'dev' %}
                                 <form method="POST" action="{{ url_for('admin.set_role') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -298,6 +301,7 @@
                                         <i class="bi bi-{{ 'arrow-down-circle' if user.role == 'admin' else 'arrow-up-circle' }} me-1"></i> {{ 'Tornar User' if user.role == 'admin' else 'Tornar Admin' }}
                                     </button>
                                 </form>
+                                {% endif %}
                                 <form method="POST" action="{{ url_for('admin.delete_user') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -352,7 +356,7 @@
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja <strong>{{ 'remover a função admin' if user.role == 'admin' else 'tornar admin' }}</strong> do usuário <strong>{{ user.email }}</strong>?</p>
-                <p class="text-muted small">{{ 'O usuário perderá acesso às funções administrativas.' if user.role == 'admin' else 'O usuário terá acesso completo ao painel administrativo.' }}</p>
+                <p class="text-muted small">{{ 'O usuário perderá acesso à gestão de usuários e exportação de dados.' if user.role == 'admin' else 'O usuário poderá gerenciar usuários e exportar dados.' }}</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

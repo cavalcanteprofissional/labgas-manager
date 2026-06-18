@@ -16,12 +16,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / "frontend" / ".env.local")
 
 TEST_EMAIL = os.getenv("TEST_EMAIL", "teste@labgas.com")
-TEST_PASSWORD = os.getenv("TEST_PASSWORD", "123456")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("ERRO: SUPABASE_URL e SUPABASE_SERVICE_KEY são obrigatórios no .env.local")
+    sys.exit(1)
+
+if not TEST_PASSWORD:
+    print("ERRO: TEST_PASSWORD não definida no .env.local.")
+    print("Adicione TEST_PASSWORD=sua-senha ao frontend/.env.local")
     sys.exit(1)
 
 admin = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -51,7 +56,7 @@ def seed():
     perfil_data = {
         "id": user_id,
         "email": TEST_EMAIL,
-        "role": "admin",
+        "role": "dev",
         "ativo": True,
         "nome": "Usuário Teste",
         "habilitar_abas": {

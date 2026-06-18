@@ -18,14 +18,14 @@ BEGIN
     INSERT INTO perfil (id, role, ativo, nome, email, habilitar_abas)
     VALUES (
         v_user_id,
-        'admin',
+        'dev',
         true,
         'Usuário Teste',
         'teste@labgas.com',
         '{"cilindro":true,"pressao":true,"elemento":true,"leitura":true,"amostra":true,"historico":true}'
     )
     ON CONFLICT (id) DO UPDATE
-    SET role = 'admin',
+    SET role = 'dev',
         ativo = true,
         nome = 'Usuário Teste',
         email = 'teste@labgas.com',

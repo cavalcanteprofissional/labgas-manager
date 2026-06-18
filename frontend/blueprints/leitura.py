@@ -5,7 +5,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int, safe_float, formatar_tempo_chama
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
 
 leitura_bp = Blueprint('leitura', __name__)
@@ -18,7 +18,7 @@ def leitura_list():
         return redirect(url_for("dashboard"))
     
     user_id = get_user_id()
-    admin = is_admin()
+    dev = is_dev()
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
@@ -68,7 +68,7 @@ def leitura_list():
             cilindro_id_int = int(cilindro_id)
             elemento_id_int = int(elemento_id)
 
-            if not admin:
+            if not dev:
                 if cilindro_id_int not in cilindro_dict:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("leitura.leitura_list"))
@@ -86,7 +86,7 @@ def leitura_list():
                     "user_id": user_id
                 }
                 
-                if admin:
+                if dev:
                     client = get_admin_client()
                 else:
                     client = get_authenticated_client()
@@ -132,7 +132,7 @@ def leitura_list():
                 "quantidade": quantidade_val
             }
             
-            if not admin:
+            if not dev:
                 if cilindro_id_int not in cilindro_dict:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("leitura.leitura_list"))
@@ -143,7 +143,7 @@ def leitura_list():
             nome_leitura = f"{cilindro_dict.get(cilindro_id_int, 'N/A')} - {elemento_dict.get(elemento_id_int, 'N/A')}"
 
             try:
-                if not admin:
+                if not dev:
                     get_supabase_client().table("leitura").update(data_update).eq("id", leitura_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
