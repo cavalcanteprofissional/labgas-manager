@@ -4,6 +4,7 @@ from utils.validators import safe_int
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
+from utils.cache_utils import invalidate_user_caches
 
 amostra_bp = Blueprint("amostra", __name__)
 
@@ -63,20 +64,22 @@ def list():
 
                 amostra_id = response.data[0]["id"]
 
-                falhas = 0
+                registros = []
                 for elem_id in elemento_ids:
                     try:
                         eid = int(elem_id)
-                        client.table("amostra_elemento").insert({
-                            "amostra_id": amostra_id,
-                            "elemento_id": eid,
-                        }).execute()
-                    except (ValueError, Exception):
-                        falhas += 1
-                if falhas:
-                    flash(f"{falhas} elemento(s) não puderam ser associados à amostra.", "warning")
+                        registros.append({"amostra_id": amostra_id, "elemento_id": eid})
+                    except (ValueError, TypeError):
+                        pass
+
+                if registros:
+                    try:
+                        client.table("amostra_elemento").insert(registros).execute()
+                    except Exception:
+                        flash("Erro ao associar elementos à amostra.", "warning")
 
                 registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id)
+                invalidate_user_caches(user_id)
                 flash(f"Amostra #{numero_val} criada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "criar amostra"), "danger")
@@ -137,21 +140,23 @@ def list():
                 }).eq("id", amostra_id).execute()
 
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
-                falhas = 0
+                registros = []
                 for elem_id in elemento_ids:
                     try:
                         eid = int(elem_id)
-                        client.table("amostra_elemento").insert({
-                            "amostra_id": amostra_id,
-                            "elemento_id": eid,
-                        }).execute()
-                    except (ValueError, Exception):
-                        falhas += 1
-                if falhas:
-                    flash(f"{falhas} elemento(s) não puderam ser associados à amostra.", "warning")
+                        registros.append({"amostra_id": amostra_id, "elemento_id": eid})
+                    except (ValueError, TypeError):
+                        pass
+
+                if registros:
+                    try:
+                        client.table("amostra_elemento").insert(registros).execute()
+                    except Exception:
+                        flash("Erro ao associar elementos à amostra.", "warning")
 
                 registro_nome = f"A/{numero_val} L{lote_val}"
                 registrar_historico("amostra", "atualizado", registro_nome, user_id)
+                invalidate_user_caches(user_id)
                 flash("Amostra atualizada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "atualizar amostra"), "danger")
@@ -186,6 +191,7 @@ def list():
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
                 client.table("amostra").delete().eq("id", amostra_id).execute()
                 registrar_historico("amostra", "excluido", f"A/{num} L{lote_val}", user_id)
+                invalidate_user_caches(user_id)
                 flash("Amostra excluída com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir amostra"), "danger")
@@ -223,6 +229,7 @@ def list():
                 client.table("amostra_elemento").delete().in_("amostra_id", permitted).execute()
                 client.table("amostra").delete().in_("id", permitted).execute()
                 registrar_historico("amostra", "excluido", f"{len(permitted)} amostras", user_id)
+                invalidate_user_caches(user_id)
                 flash(f"{len(permitted)} amostra(s) excluída(s) com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir amostras"), "danger")

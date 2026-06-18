@@ -6,6 +6,7 @@ from utils.validators import safe_int, safe_float, formatar_tempo_chama
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
+from utils.cache_utils import invalidate_user_caches
 
 leitura_bp = Blueprint('leitura', __name__)
 
@@ -25,6 +26,9 @@ def leitura_list():
     cilindro = get_authenticated_client().table("cilindro").select("id,codigo,status").eq("user_id", user_id).order("codigo").execute().data or []
     
     elementos = get_authenticated_client().table("elemento").select("id,nome").eq("user_id", user_id).order("nome").execute().data or []
+    
+    cilindro_dict = {c["id"]: c["codigo"] for c in cilindro}
+    elemento_dict = {e["id"]: e["nome"] for e in elementos}
     
     if request.method == "POST":
         action = request.form.get("action")
@@ -61,30 +65,23 @@ def leitura_list():
                 flash("Quantidade inválida.", "danger")
                 return redirect(url_for("leitura.leitura_list"))
 
-            try:
-                cilindro_nome = get_admin_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute().data
-                if not cilindro_nome:
+            cilindro_id_int = int(cilindro_id)
+            elemento_id_int = int(elemento_id)
+
+            if not admin:
+                if cilindro_id_int not in cilindro_dict:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("leitura.leitura_list"))
-            except Exception as e:
-                flash(formatar_erro_supabase(str(e), "buscar cilindro"), "danger")
-                return redirect(url_for("leitura.leitura_list"))
-
-            try:
-                elemento_nome = get_admin_client().table("elemento").select("nome").eq("id", elemento_id).execute().data
-                if not elemento_nome:
+                if elemento_id_int not in elemento_dict:
                     flash("Elemento não encontrado", "danger")
                     return redirect(url_for("leitura.leitura_list"))
-            except Exception as e:
-                flash(formatar_erro_supabase(str(e), "buscar elemento"), "danger")
-                return redirect(url_for("leitura.leitura_list"))
 
             try:
                 data_insert = {
                     "data": data_leitura,
                     "tempo_chama": tempo_val,
-                    "cilindro_id": int(cilindro_id),
-                    "elemento_id": int(elemento_id),
+                    "cilindro_id": cilindro_id_int,
+                    "elemento_id": elemento_id_int,
                     "quantidade": quantidade_val,
                     "user_id": user_id
                 }
@@ -95,8 +92,9 @@ def leitura_list():
                     client = get_authenticated_client()
                 
                 client.table("leitura").insert(data_insert).execute()
-                nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
+                nome_leitura = f"{cilindro_dict.get(cilindro_id_int, 'N/A')} - {elemento_dict.get(elemento_id_int, 'N/A')}"
                 registrar_historico("leitura", "criado", nome_leitura, user_id)
+                invalidate_user_caches(user_id)
                 flash("Leitura registrada com sucesso!", "success")
             except Exception as e:
                 error_str = str(e)
@@ -123,28 +121,35 @@ def leitura_list():
                 flash("Quantidade inválida.", "danger")
                 return redirect(url_for("leitura.leitura_list"))
 
+            cilindro_id_int = int(cilindro_id)
+            elemento_id_int = int(elemento_id)
+
             data_update = {
                 "data": data_leitura,
                 "tempo_chama": tempo_chama,
-                "cilindro_id": int(cilindro_id),
-                "elemento_id": int(elemento_id),
+                "cilindro_id": cilindro_id_int,
+                "elemento_id": elemento_id_int,
                 "quantidade": quantidade_val
             }
             
+            if not admin:
+                if cilindro_id_int not in cilindro_dict:
+                    flash("Cilindro não encontrado", "danger")
+                    return redirect(url_for("leitura.leitura_list"))
+                if elemento_id_int not in elemento_dict:
+                    flash("Elemento não encontrado", "danger")
+                    return redirect(url_for("leitura.leitura_list"))
+
+            nome_leitura = f"{cilindro_dict.get(cilindro_id_int, 'N/A')} - {elemento_dict.get(elemento_id_int, 'N/A')}"
+
             try:
                 if not admin:
                     get_supabase_client().table("leitura").update(data_update).eq("id", leitura_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
 
-                leitura_info = get_supabase_client().table("leitura").select("cilindro_id,elemento_id").eq("id", leitura_id).execute().data
-                nome_leitura = "N/A"
-                if leitura_info:
-                    cilindro_nome = get_supabase_client().table("cilindro").select("codigo").eq("id", leitura_info[0]["cilindro_id"]).execute().data
-                    elemento_nome = get_supabase_client().table("elemento").select("nome").eq("id", leitura_info[0]["elemento_id"]).execute().data
-                    nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
-
                 registrar_historico("leitura", "atualizado", nome_leitura, user_id)
+                invalidate_user_caches(user_id)
                 flash("Leitura atualizada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "atualizar leitura"), "danger")
@@ -173,6 +178,7 @@ def leitura_list():
 
                 get_admin_client().table("leitura").delete().eq("id", leitura_id).execute()
                 registrar_historico("leitura", "excluido", nome_leitura, user_id)
+                invalidate_user_caches(user_id)
                 flash("Leitura excluída com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir leitura"), "danger")
@@ -219,6 +225,7 @@ def leitura_list():
                 for l in permitted:
                     nome = f"{cil_map.get(l['cilindro_id'], 'N/A')} - {elem_map.get(l['elemento_id'], 'N/A')}"
                     registrar_historico("leitura", "excluido", nome, user_id)
+                invalidate_user_caches(user_id)
 
                 flash(f"{len(permitted)} leitura(s) excluída(s) com sucesso!", "success")
                 if not_owned_count:

@@ -6,6 +6,7 @@ from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
+from utils.cache_utils import invalidate_user_caches
 
 elemento_bp = Blueprint('elemento', __name__)
 
@@ -57,6 +58,7 @@ def list():
                 
                 client.table("elemento").insert(data).execute()
                 registrar_historico("elemento", "criado", nome, user_id)
+                invalidate_user_caches(user_id)
                 flash("Elemento criado com sucesso!", "success")
             except Exception as e:
                 error_str = str(e)
@@ -88,6 +90,7 @@ def list():
                 get_admin_client().table("elemento").update(data).eq("id", elemento_id).execute()
             
             registrar_historico("elemento", "atualizado", nome, user_id)
+            invalidate_user_caches(user_id)
             flash("Elemento atualizado com sucesso!", "success")
             
         elif action == "delete":
@@ -117,6 +120,7 @@ def list():
                 get_admin_client().table("elemento").delete().eq("id", elemento_id).execute()
                 
                 registrar_historico("elemento", "excluido", elemento_nome, user_id)
+                invalidate_user_caches(user_id)
                 flash("Elemento excluído com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir elemento"), "danger")
@@ -163,6 +167,7 @@ def list():
                     get_admin_client().table("elemento").delete().in_("id", [e["id"] for e in permitidos]).execute()
                     for e in permitidos:
                         registrar_historico("elemento", "excluido", e.get("nome", str(e["id"])), user_id)
+                    invalidate_user_caches(user_id)
 
                 if permitidos:
                     flash(f"{len(permitidos)} elemento(s) excluído(s) com sucesso!", "success")

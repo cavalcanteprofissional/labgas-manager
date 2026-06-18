@@ -7,6 +7,7 @@ from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba, get_authenticated_client
+from utils.cache_utils import invalidate_user_caches
 
 pressao_bp = Blueprint('pressao', __name__)
 
@@ -22,6 +23,10 @@ def pressao_list():
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
+    
+    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,codigo").eq("user_id", user_id).order("codigo").execute()
+    cilindro_list = cilindro_list_response.data or []
+    cilindro_dict_lookup = {c["id"]: c["codigo"] for c in cilindro_list}
     
     if request.method == "POST":
         action = request.form.get("action")
@@ -69,19 +74,16 @@ def pressao_list():
                 flash("Hora inválida", "danger")
                 return redirect(url_for("pressao.pressao_list"))
             
-            try:
-                cilindro_check = get_admin_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute()
-                if not cilindro_check.data:
+            cilindro_id_int = int(cilindro_id)
+            if not admin:
+                if cilindro_id_int not in cilindro_dict_lookup:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("pressao.pressao_list"))
-                cilindro_codigo = cilindro_check.data[0].get("codigo")
-            except Exception as e:
-                flash(formatar_erro_supabase(str(e), "buscar cilindro"), "danger")
-                return redirect(url_for("pressao.pressao_list"))
+            cilindro_codigo = cilindro_dict_lookup.get(cilindro_id_int, str(cilindro_id_int))
             
             try:
                 data_insert = {
-                    "cilindro_id": int(cilindro_id),
+                    "cilindro_id": cilindro_id_int,
                     "pressao": pressao_val,
                     "temperatura": temp_val,
                     "data": data,
@@ -97,6 +99,7 @@ def pressao_list():
                 client.table("pressao").insert(data_insert).execute()
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
                 registrar_historico("pressao", "criado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                invalidate_user_caches(user_id)
                 flash("Pressão registrada com sucesso!", "success")
             except Exception as e:
                 error_str = str(e)
@@ -134,19 +137,16 @@ def pressao_list():
                     flash("Temperatura inválida.", "danger")
                     return redirect(url_for("pressao.pressao_list"))
             
-            try:
-                cilindro_check = get_admin_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute()
-                if not cilindro_check.data:
+            cilindro_id_int = int(cilindro_id)
+            if not admin:
+                if cilindro_id_int not in cilindro_dict_lookup:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("pressao.pressao_list"))
-                cilindro_codigo = cilindro_check.data[0].get("codigo")
-            except Exception as e:
-                flash(formatar_erro_supabase(str(e), "buscar cilindro"), "danger")
-                return redirect(url_for("pressao.pressao_list"))
+            cilindro_codigo = cilindro_dict_lookup.get(cilindro_id_int, str(cilindro_id_int))
             
             try:
                 data_update = {
-                    "cilindro_id": int(cilindro_id),
+                    "cilindro_id": cilindro_id_int,
                     "pressao": pressao_val,
                     "temperatura": temp_val,
                     "data": data,
@@ -160,6 +160,7 @@ def pressao_list():
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
                 registrar_historico("pressao", "atualizado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                invalidate_user_caches(user_id)
                 flash("Pressão atualizada com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "atualizar pressão"), "danger")
@@ -192,6 +193,7 @@ def pressao_list():
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
                 registrar_historico("pressao", "excluido", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                invalidate_user_caches(user_id)
                 flash("Registro de pressão excluído com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir pressão"), "danger")
@@ -235,6 +237,7 @@ def pressao_list():
                     cod = cil_map.get(r["cilindro_id"], str(r["cilindro_id"]))
                     temp_str = f", {r['temperatura']}°C" if r.get("temperatura") is not None else ""
                     registrar_historico("pressao", "excluido", f"{cod} - {r['pressao']} bar{temp_str}", user_id)
+                invalidate_user_caches(user_id)
 
                 flash(f"{len(permitted)} registro(s) excluído(s) com sucesso!", "success")
                 if not_owned_count:
@@ -247,13 +250,8 @@ def pressao_list():
     response = get_supabase_client().table("pressao").select("*").order("created_at", desc=True).execute()
     pressoes = response.data or []
     
-    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,codigo").eq("user_id", user_id).order("codigo").execute()
-    cilindro_list = cilindro_list_response.data or []
-    
-    cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro_list}
-    
     for p in pressoes:
-        p["cilindro_codigo"] = cilindro_dict.get(p.get("cilindro_id"), "")
+        p["cilindro_codigo"] = cilindro_dict_lookup.get(p.get("cilindro_id"), "")
     
     total = len(pressoes)
     start = (page - 1) * per_page

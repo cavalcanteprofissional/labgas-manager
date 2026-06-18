@@ -2,6 +2,47 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.16] - 2026-06-18
+
+### Correção de Rate Limiting e Otimização de Consultas ⚡
+
+#### Rate Limiting
+
+- **Flask-Limiter**: limites aumentados de `200/dia;50/hora` para **`500/dia;200/hora`** — elimina falsos positivos de rate limit durante uso normal
+- **`RATE_LIMIT` documentado** no `.env.example` com aviso sobre impacto no plano Free do Supabase
+
+#### Consultas Redundantes Eliminadas
+
+- **leitura.py**: verificações de existência via `get_admin_client()` antes de INSERT removidas — usam dict local pré-carregado (0 API calls extras). Update não faz mais 3 re-queries pós-atualização para buscar nomes
+- **pressao.py**: `cilindro_check` redundante no create e update removido — usa dict lookup local
+- **Impacto**: cada CREATE/UPDATE de leitura economiza **2-3 chamadas Supabase**; pressão economiza **1-2 chamadas**
+
+#### Batch Insert no amostra_elemento
+
+- Loop de N inserts individuais → **batch único** com `insert(lista_de_dicts)` — 1 chamada independente do número de elementos
+- Aplicado tanto no create quanto no update
+
+#### Caching
+
+- Adicionado `flask-caching` (`SimpleCache`, timeout 300s) para reduzir queries repetitivas em renderizações de página
+- Cache invalidado automaticamente via `invalidate_user_caches(user_id)` após qualquer CREATE/UPDATE/DELETE em todos os 5 blueprints
+
+#### Arquivos Modificados
+
+- `frontend/app.py` — rate limit, cache config, dashboard refatorado
+- `frontend/utils/cache_utils.py` — **novo**: funções de cache com invalidation patterns
+- `frontend/blueprints/leitura.py` — queries redundantes eliminadas
+- `frontend/blueprints/pressao.py` — queries redundantes eliminadas
+- `frontend/blueprints/amostra.py` — batch insert + cache invalidation
+- `frontend/blueprints/cilindro.py` — cache invalidation
+- `frontend/blueprints/elemento.py` — cache invalidation
+- `frontend/requirements.txt` — adicionado `flask-caching`
+- `frontend/.env.example` — adicionado `RATE_LIMIT` e `REDIS_URL`
+
+#### Testes
+
+- 28 passed, 1 skipped, 0 failed ✅
+
 ## [2.6.15] - 2026-06-17
 
 ### Padronização

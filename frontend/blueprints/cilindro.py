@@ -8,6 +8,7 @@ from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_admin, registrar_historico, pode_acessar_aba
+from utils.cache_utils import invalidate_user_caches
 
 cilindro_bp = Blueprint('cilindro', __name__)
 
@@ -94,6 +95,7 @@ def list():
                 
                 client.table("cilindro").insert(data).execute()
                 registrar_historico("cilindro", "criado", codigo, user_id)
+                invalidate_user_caches(user_id)
                 flash("Cilindro criado com sucesso!", "success")
             except Exception as e:
                 error_str = str(e)
@@ -157,6 +159,7 @@ def list():
                     get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
                 
                 registrar_historico("cilindro", "atualizado", codigo, user_id)
+                invalidate_user_caches(user_id)
                 flash("Cilindro atualizado com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "atualizar cilindro"), "danger")
@@ -188,6 +191,7 @@ def list():
                 get_admin_client().table("cilindro").delete().eq("id", cilindro_id).execute()
                 
                 registrar_historico("cilindro", "excluido", cilindro_codigo, user_id)
+                invalidate_user_caches(user_id)
                 flash("Cilindro excluído com sucesso!", "success")
             except Exception as e:
                 flash(formatar_erro_supabase(str(e), "excluir cilindro"), "danger")
@@ -234,6 +238,7 @@ def list():
                     get_admin_client().table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
                     for c in permitidos:
                         registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id)
+                    invalidate_user_caches(user_id)
 
                 if permitidos:
                     flash(f"{len(permitidos)} cilindro(s) excluído(s) com sucesso!", "success")

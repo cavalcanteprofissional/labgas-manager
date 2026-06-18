@@ -244,3 +244,24 @@
   - `auth.identities`: criada apenas para usuários novos (exigência do Supabase Auth)
   - `perfil`: upsert com `ON CONFLICT DO UPDATE` — sempre sobrescreve nome, role e abas habilitadas
   - Idempotente: pode rodar quantas vezes quiser sem erro
+
+## Fase 45: Correção de Rate Limiting e Otimização de Consultas ⚡ (v2.6.16)
+
+### Problema Identificado
+Usuários relatavam timeout/rate limit ao fazer múltiplos registros consecutivos. Causas:
+1. **Flask-Limiter default 50 req/hora** — muito restritivo, sem variável `RATE_LIMIT` configurada
+2. **N+1 no amostra_elemento** — loop individual em vez de batch insert
+3. **Consultas redundantes** — verificações de existência duplicadas antes de INSERT/UPDATE
+4. **Múltiplas queries no dashboard** — 6+ chamadas independentes ao Supabase
+5. **Sem cache** — toda renderização de página faz queries frescas ao banco
+
+### Soluções Implementadas
+- [x] Aumentar default limits do Flask-Limiter (200/dia → 500/dia, 50/hora → 200/hora)
+- [x] Adicionar `RATE_LIMIT` no `.env.example` como variável documentada
+- [x] Eliminar verificações redundantes de existência antes de INSERT nos blueprints (leitura, pressao)
+- [x] Otimizar updates: buscar nomes antes de atualizar em vez de re-query pós-update (leitura.py)
+- [x] amostra_elemento: batch insert com `client.table("amostra_elemento").insert(lista)` em vez de loop
+- [x] Adicionar `flask-caching` ao `requirements.txt` e configurar cache nas listagens
+- [x] Cache de 5 minutos nas queries de listagem (dashboard, cilindro, elemento, leitura, pressao, amostra)
+- [x] Otimizar dashboard: combinar queries de contagem, cachear resultados
+- [x] Registrar `AVISO` no .env.example sobre configuração de `RATE_LIMIT`

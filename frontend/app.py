@@ -5,6 +5,7 @@ from flask_login import LoginManager, login_required, current_user
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_caching import Cache
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -36,9 +37,15 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=os.getenv("RATE_LIMIT", "200 per day;50 per hour").split(";"),
+    default_limits=os.getenv("RATE_LIMIT", "500 per day;200 per hour").split(";"),
     storage_uri=os.getenv("REDIS_URL", "memory://")
 )
+
+cache = Cache(app, config={
+    "CACHE_TYPE": os.getenv("CACHE_TYPE", "SimpleCache"),
+    "CACHE_DEFAULT_TIMEOUT": int(os.getenv("CACHE_TIMEOUT", "300")),
+    "CACHE_THRESHOLD": 100
+})
 
 # URLs do Supabase (injetadas pela Vercel ou via .env.local)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
