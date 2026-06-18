@@ -1,7 +1,7 @@
 # Auth blueprint - Login, register, logout
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, current_user
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 import logging
 
@@ -79,7 +79,7 @@ def login():
                 secret_key = current_app.secret_key
                 
                 session.clear()
-                session["last_activity"] = datetime.utcnow().isoformat()
+                session["last_activity"] = datetime.now(timezone.utc).isoformat()
                 
                 session["user_id"] = response.user.id
                 session["supabase_token"] = response.session.access_token

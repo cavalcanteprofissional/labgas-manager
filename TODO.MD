@@ -627,6 +627,36 @@ A senha `123456` estava hardcoded como default no `scripts/seed.py` e referencia
 
 ---
 
+## Bugfix: Footer Sumindo (Timezone Mismatch) 🐛 (v2.6.21)
+
+### Problema
+`auth.py:82` armazenava `last_activity` com `datetime.utcnow().isoformat()` (naive, sem timezone), mas `inject_user_info` calculava `remaining` com `datetime.now(timezone.utc)` (aware). A subtração naive − aware levantava `TypeError`, engolido por `except (ValueError, TypeError): pass`, deixando `remaining = 0` — o JS então escondia o footer imediatamente.
+
+`check_inactivity()` sofria do mesmo bug, mas "se curava" no primeiro request (catch → reescreve com `now.isoformat()` que inclui `+00:00`). Já `inject_user_info` só engolia o erro sem se curar.
+
+### Correção (3 arquivos)
+- [x] `app.py` (`inject_user_info`): tornar `last_dt` aware com `replace(tzinfo=timezone.utc)` se naive
+- [x] `auth.py`: armazenar `last_activity` já aware (`datetime.now(timezone.utc)`) — preventivo
+- [x] `test_session_footer.py`: locator mais específico (`> div:first-child`) + `wait_for` explícito
+
+## v2.6.22: Footer Global Fixed sobre o Sidebar 🦶
+
+### Mudanças
+- [x] `base.html`: footer movido para fora de `.content-wrapper` — vira filho direto do `<body>`
+- [x] `base.html` CSS: `position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1050`
+- [x] `base.html` CSS: `.content-wrapper` perde `display:flex`, ganha `padding-bottom: 36px`
+- [x] `base.html` JS: timer usa `sessionStorage` — persiste entre páginas sem reiniciar
+- [x] `base.html` JS: `sessionStorage` limpo no logout e ao expirar
+
+### Comportamento
+| Situação | Timer |
+|----------|-------|
+| Login | Inicia com `data-seconds` do servidor (600) |
+| Navegação entre páginas | Continua do `sessionStorage` |
+| F5 / reload | Continua do `sessionStorage` (desconta tempo perdido) |
+| Logout | `sessionStorage` limpo |
+| Sessão expira | Footer some, `sessionStorage` limpo |
+
 ## Fase 49: Footer de Sessão com Timer Regressivo 🔄
 
 ### Contexto

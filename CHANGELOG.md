@@ -2,7 +2,34 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
-## [2.6.19] - 2026-06-18
+## [2.6.22] - 2026-06-18
+
+### Footer Global Fixed sobre o Sidebar 🦶
+
+- **`base.html`**: footer movido para fora de `.content-wrapper` — agora é filho direto do `<body>`, fixo na viewport
+- **CSS**: `.session-footer` agora com `position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1050` — sobrepõe o sidebar
+- **CSS**: `.content-wrapper` perde `display: flex`, ganha `padding-bottom: 36px` para não esconder conteúdo atrás do footer
+- **JS**: timer agora usa `sessionStorage` — persiste entre navegações sem reiniciar
+- **JS**: à prova de F5 — desconta segundos perdidos via timestamp; limpo no logout e ao expirar
+
+## [2.6.21] - 2026-06-18
+
+### Bugfix: Footer Sumindo (Timezone Mismatch) 🐛
+
+- **`app.py` (`inject_user_info`)**: `last_dt` agora verifica se é naive (`tzinfo is None`) e aplica `replace(tzinfo=timezone.utc)` antes de subtrair — `remaining` nunca mais será 0 por incompatibilidade de timezone
+- **`auth.py`**: `last_activity` agora armazenado com `datetime.now(timezone.utc).isoformat()` já aware — elimina o TypeError no primeiro request pós-login
+- **`test_session_footer.py`**: locator mais específico (`> div:first-child span.small`) + `wait_for(timeout=5000)` explícito — elimina falso-negativo por ambiguidade de seletor
+
+## [2.6.20] - 2026-06-18
+
+### Footer de Sessão com Timer Regressivo 🦶
+
+- **`app.py`**: `session_remaining_seconds` injetado no context processor — calculado a partir de `last_activity` e `INACTIVITY_TIMEOUT` (10 min)
+- **`base.html`**: Footer sticky com nome do usuário (`bi-person-circle`) e timer MM:SS (`bi-clock-history`)
+- Layout flexbox: `content-wrapper` com `min-height: 100vh` — footer sempre no final da viewport
+- JS countdown: `setInterval(1000)` — cor muda para 🟡 warning (<60s) e 🔴 danger (<30s); some ao expirar
+- **`test_session_footer.py`**: 4 testes marcados com `@pytest.mark.footer`
+- **`pytest.ini`**: marcador `footer` registrado — `pytest -m footer` executa só footer, `-m "not footer"` pula, default executa todos
 
 ### Hotfix: CSP font-src bloqueava Bootstrap Icons 🔧
 

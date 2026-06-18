@@ -140,7 +140,7 @@ def add_cors_headers(response):
 @app.context_processor
 def inject_user_info():
     from blueprints.helpers import get_habilitar_abas
-    from datetime import datetime
+    from datetime import datetime, timezone
     from utils.constants import ICON_TIPO, COR_TIPO
     
     user_id = session.get('user_id')
@@ -171,12 +171,13 @@ def inject_user_info():
                 'habilitar_abas': ABAS_DEFAULT
             }
     
-    from datetime import timezone
     last_activity = session.get('last_activity')
     remaining = 0
     if last_activity:
         try:
             last_dt = datetime.fromisoformat(last_activity)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
             elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
             remaining = max(0, int(INACTIVITY_TIMEOUT.total_seconds() - elapsed))
         except (ValueError, TypeError):

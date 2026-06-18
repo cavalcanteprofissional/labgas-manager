@@ -26,7 +26,8 @@ def test_footer_visible_after_login(page, base_url):
 
 def test_footer_shows_user_name(page, base_url):
     login(page, base_url)
-    name_el = page.locator("footer.session-footer span.small").first
+    name_el = page.locator("footer.session-footer > div:first-child span.small")
+    name_el.wait_for(timeout=5000)
     text = name_el.text_content()
     assert text and text.strip(), "User name should not be empty"
 
