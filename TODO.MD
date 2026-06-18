@@ -395,9 +395,14 @@ if status not in CILINDRO_STATUS: status = "ativo"
 | 🟢 LOW | 0 | 5 |
 | **Total** | **0** | **20** |
 
-### 🎯 Fase 46 Concluída
+### 🎯 Fase 46 Concluída — Hotfix CSP (v2.6.19)
 
 Todos os 13 itens de segurança identificados na análise foram corrigidos entre as fases 46-48 (v2.6.17 + v2.6.18). Nenhum item pendente.
+
+#### Hotfix: CSP font-src bloqueava Bootstrap Icons no Vercel
+- **Problema:** `font-src 'self' https://cdnjs.cloudflare.com` impedia carregamento das fontes dos ícones servidas de `cdn.jsdelivr.net`
+- **Correção:** `font-src 'self' https://cdn.jsdelivr.net` (v2.6.19, `app.py:134`)
+- Limpeza: `style-src` também removido o `cdnjs.cloudflare.com` não utilizado
 
 ---
 

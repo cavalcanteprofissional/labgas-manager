@@ -2,6 +2,14 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.19] - 2026-06-18
+
+### Hotfix: CSP font-src bloqueava Bootstrap Icons 🔧
+
+- **`app.py`**: `font-src` corrigido de `https://cdnjs.cloudflare.com` para `https://cdn.jsdelivr.net` — todas as fontes dos ícones são servidas via jsdelivr
+- Limpeza: `style-src` também removido `cdnjs.cloudflare.com` (não utilizado por nenhum template)
+- **Impacto**: Ícones Bootstrap voltam a funcionar em produção (Vercel)
+
 ## [2.6.18] - 2026-06-18
 
 ### Segurança: Fase 46 Completa — 13 Vulnerabilidades Corrigidas 🔒
