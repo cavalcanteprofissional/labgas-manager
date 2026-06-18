@@ -63,6 +63,8 @@ ensure_test_user()
 def pytest_addoption(parser):
     parser.addoption("--run-modais", action="store_true", default=False,
                      help="Run modal tests (edit/delete/bulk)")
+    parser.addoption("--run-export", action="store_true", default=False,
+                     help="Run export download tests")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -71,6 +73,11 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "modais" in item.keywords:
                 item.add_marker(skip_modais)
+    if not config.getoption("--run-export"):
+        skip_export = pytest.mark.skip(reason="use --run-export to run export tests")
+        for item in items:
+            if "export" in item.keywords:
+                item.add_marker(skip_export)
 
 
 def is_port_open(port, host="127.0.0.1"):

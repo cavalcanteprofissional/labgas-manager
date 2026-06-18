@@ -21,6 +21,6 @@ def test_dashboard_elementos_mais_analisados(login, page):
     assert section.is_visible()
 
 
-def test_dashboard_eficiencia_section(login, page):
-    section = page.locator("text=Eficiência")
+def test_dashboard_ultimas_amostras_section(login, page):
+    section = page.locator("text=Últimas Amostras")
     assert section.is_visible()

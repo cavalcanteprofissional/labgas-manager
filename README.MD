@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.22** (Branch: master)
+**Versão: 2.6.23** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -57,7 +57,7 @@ Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os
 
 | Aba | Funcionalidades |
 |-----|-----------------|
-| **Dashboard** | Cards com estatísticas, gráficos de leituras por cilindro, elementos mais analisados, eficiência |
+| **Dashboard** | 6 KPIs, 4 gráficos, top elementos, últimas leituras e amostras |
 | **Cilindros** | CRUD completo, código CIL-XXX, status (ativo/esgotado) |
 | **Pressão** | CRUD completo, pressão (bar), temperatura (°C), data e hora, vinculado a cilindro |
 | **Elementos** | CRUD completo, consumo em L/min, 20 elementos padrão pré-carregados |
@@ -66,6 +66,45 @@ Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os
 | **Histórico** | Log de todas as operações CRUD, filtros por tipo/ação |
 | **Perfil** | Edição de nome, visualização de role e permissões |
 | **Administração** | Painel admin, gerenciar usuários, controle de acesso por abas, exportar dados |
+
+---
+
+### Dashboard Analítico
+
+O dashboard é o coração do sistema — uma visão geral do laboratório com **6 indicadores (KPIs)**, **4 gráficos interativos** e **listas de atividade recente**.
+
+#### KPIs (Linha 1)
+
+| KPI | Cálculo | Exemplo | Pra que serve? |
+|-----|---------|---------|----------------|
+| **Cilindros Ativos** | `COUNT(cilindro WHERE status = "ativo")` | 3 | Quantos cilindros estão em uso |
+| **Gás Restante** | `Σ(litros_equivalentes - gas_consumido)` por cilindro ativo | 845L | Quanto gás ainda dá pra usar |
+| **Leituras** | `Σ(quantidade)` de todas as leituras | 127 | Total de análises realizadas |
+| **Amostras** | `COUNT(amostra)` | 24 | Total de amostras cadastradas |
+| **Custo/Leitura** | `Σ(custo dos cilindros) ÷ Σ(quantidade das leituras)` | R$ 4,57 | Quanto custa cada análise em média |
+| **Gás Consumido** | `Σ(minutos_de_chama ÷ 60 × consumo_lpm)` | 112L | Total de gás já consumido |
+
+> **Gás Consumido** = para cada leitura, o tempo de chama (HH:MM:SS) é convertido para minutos e multiplicado pelo consumo do elemento (L/min). O resultado é somado entre todos os cilindros.
+
+> **Gás Restante** = para cada cilindro ativo, pega os litros equivalentes e subtrai o quanto já foi consumido naquele cilindro. Só considera cilindros que ainda têm gás positivo.
+
+> **Custo/Leitura** = divisão simples do custo total de todos os cilindros pelo número total de leituras. É uma estimativa — se um cilindro custou R$ 290 e você fez 100 leituras no total, cada leitura "custa" R$ 2,90.
+
+#### Gráficos (Linhas 2 e 3)
+
+**Curva de Pressão por Cilindro** — gráfico de linha que mostra a evolução da pressão (bar) ao longo do tempo para cada cilindro. Cada cilindro ganha uma cor diferente. O sistema pega as **últimas 10 medições** de pressão de cada cilindro e plota lado a lado, permitindo visualizar o decaimento natural do gás.
+
+**Leituras por Mês** — gráfico de barras que agrupa as leituras por mês (últimos 12 meses). O eixo X são os meses, o eixo Y é a soma das quantidades. Ideal para enxergar sazonalidade: "em abril o laboratório trabalhou mais que em janeiro".
+
+**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra quantas leituras foram feitas em cada cilindro. As cores variam por intensidade: cilindro com mais leituras ganha a cor mais escura. Útil para saber qual cilindro está sendo mais usado.
+
+**Elementos por Amostra** — gráfico de barras que mostra a distribuição de quantos elementos cada amostra tem: amostras com 1, 2, 3 ou 4+ elementos. Se 10 amostras têm 1 elemento cada e 5 amostras têm 3 elementos cada, o gráfico mostra essa proporção. Ajuda a entender a complexidade média das amostras.
+
+#### Listas (Linha 4)
+
+- **Elementos mais analisados** — top 5 elementos com mais leituras, em ordem decrescente. Cada elemento aparece com seu nome e quantidade de leituras.
+- **Últimas Leituras** — as 5 leituras mais recentes, mostrando o cilindro e o elemento usados. Botão "Ver todas" leva à página de leituras.
+- **Últimas Amostras** — as 5 amostras mais recentes, com número e lote. Botão "Ver todas" leva à página de amostras.
 
 ---
 

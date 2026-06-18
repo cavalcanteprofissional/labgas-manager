@@ -5,9 +5,6 @@
 {% block content %}
 <h2 class="mb-4">
     <i class="bi bi-{{ ICON_TIPO["dashboard"] }}"></i> Dashboard
-    <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#voice-modal" title="Assistente de Voz">
-        <i class="bi bi-mic d-lg-none"></i><span class="d-none d-lg-inline"><i class="bi bi-mic"></i> Voice</span>
-    </button>
     {% if is_admin %}
     <div class="dropdown d-inline-block ms-3">
         <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -24,59 +21,105 @@
     {% endif %}
 </h2>
 
+<!-- LINHA 1: 6 KPI Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card cilindro h-100">
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card cilindro h-100 text-center">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }} me-1"></i> Cilindros</h5>
-                <h2 class="mb-0">{{ cilindro|length }}</h2>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }}"></i> Cilindros Ativos</h5>
+                <h2 class="mb-0">{{ cilindros_ativos }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card green h-100">
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card green h-100 text-center">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["ativos"] }} me-1"></i> Ativos</h5>
-                <h2 class="mb-0">{{ ativos }}</h2>
+                <h5 class="card-title"><i class="bi bi-fuel-pump"></i> Gás Restante</h5>
+                <h2 class="mb-0">{{ gas_restante }}L</h2>
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card elemento h-100">
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card leitura h-100 text-center">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["elemento"] }} me-1"></i> Elementos</h5>
-                <h2 class="mb-0">{{ elementos|length }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card leitura h-100">
-            <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }} me-1"></i> Leituras</h5>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Leituras</h5>
                 <h2 class="mb-0">{{ total_quantidade }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card stat-card amostra h-100">
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card amostra h-100 text-center">
             <div class="card-body d-flex flex-column justify-content-center">
-                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["amostra"] }} me-1"></i> Amostras</h5>
-                <h2 class="mb-0">{{ amostras_total or 0 }}</h2>
+                <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Amostras</h5>
+                <h2 class="mb-0">{{ amostras_total }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card pressao h-100 text-center">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5 class="card-title"><i class="bi bi-cash-coin"></i> Custo/Leitura</h5>
+                <h2 class="mb-0">R${{ "%.2f"|format(custo_por_leitura) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-4 col-lg-2">
+        <div class="card stat-card orange h-100 text-center">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5 class="card-title"><i class="bi bi-fire"></i> Gás Consumido</h5>
+                <h2 class="mb-0">{{ total_gas_consumido }}L</h2>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12 col-lg-6 mb-4">
+<!-- LINHA 2: Gráficos Principais -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); color: white;">
+                <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Curva de Pressão por Cilindro</h5>
+            </div>
+            <div class="card-body">
+                {% if pressao_chart %}
+                <div class="chart-container" style="position: relative; height: 250px;">
+                    <canvas id="pressaoChart"></canvas>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-5">Nenhuma medição de pressão.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Leituras por Mês</h5>
+            </div>
+            <div class="card-body">
+                {% if leituras_mes_labels %}
+                <div class="chart-container" style="position: relative; height: 250px;">
+                    <canvas id="leiturasMesChart"></canvas>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-5">Nenhuma leitura registrada.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LINHA 3: Análise -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); color: white;">
-                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Quantidade de Leituras por Cilindro</h5>
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Leituras por Cilindro</h5>
             </div>
             <div class="card-body">
                 {% if cilindro_leituras_values %}
                 <div class="chart-container" style="position: relative; height: 250px;">
-                    <canvas id="statusChart"></canvas>
+                    <canvas id="cilindroChart"></canvas>
                 </div>
                 {% else %}
                 <p class="text-muted text-center py-5">Nenhuma leitura cadastrada.</p>
@@ -84,39 +127,38 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-6 mb-4">
+    <div class="col-12 col-lg-6">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
-                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Consumo por Elemento × Tempo de Chama</h5>
+            <div class="card-header" style="background: var(--amostra-rainbow); color: white;">
+                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Elementos por Amostra</h5>
             </div>
             <div class="card-body">
-                {% if elementos_labels %}
+                {% if dist_values and dist_values|sum > 0 %}
                 <div class="chart-container" style="position: relative; height: 250px;">
-                    <canvas id="elementosChart"></canvas>
+                    <canvas id="distChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhum elemento cadastrado.</p>
+                <p class="text-muted text-center py-5">Nenhuma amostra com elementos.</p>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- LINHA 4: Top Elementos + Atividade Recente -->
 <div class="row g-3 mb-4">
-    <div class="col-12 col-lg-6 mb-4">
+    <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
-                <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> Elementos mais analisados</h5>
+            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
+                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Elementos mais analisados</h6>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 {% if elementos_mais_analisados %}
                 <div class="list-group list-group-flush">
                     {% for item in elementos_mais_analisados %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
-                        </div>
-                        <span class="badge" style="background-color: {{ paleta_leitura[loop.index0 % (paleta_leitura|length)] }};">{{ item.quantidade }} leitura(s)</span>
+                        <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
+                        <span class="badge bg-secondary">{{ item.quantidade }} leitura(s)</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -126,116 +168,15 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-lg-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--amostra-rainbow); color: white;">
-                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Eficiência por Elemento</h5>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-funnel"></i> Filtrar
-                    </button>
-                    <div class="dropdown-menu p-3" style="min-width: 250px; max-height: 300px; overflow-y: auto;">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="selectAllCilindros" checked>
-                            <label class="form-check-label fw-bold" for="selectAllCilindros">Todos os Cilindros</label>
-                        </div>
-                        <hr class="dropdown-divider">
-                        <div id="cilindroFilters">
-                            {% for c in cilindro|sort(attribute='codigo') %}
-                            <div class="form-check">
-                                <input class="form-check-input cilindro-checkbox" type="checkbox" value="{{ c.id }}" id="cil-{{ c.id }}" checked>
-                                <label class="form-check-label" for="cil-{{ c.id }}">{{ c.codigo }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                {% if eficiencia_labels %}
-                <div class="chart-container" style="position: relative; height: 200px;">
-                    <canvas id="eficienciaChart"></canvas>
-                </div>
-                {% else %}
-                <p class="text-muted text-center py-4">Nenhuma leitura registrada.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <h4 class="mb-3"><i class="bi bi-{{ ICON_TIPO["historico"] }}"></i> Atividade Recente</h4>
-    </div>
-    
-    <div class="col-12 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); color: white;">
-                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["cilindro"] }}"></i> Últimos Cilindros</h6>
-            </div>
-            <div class="card-body p-0">
-                {% if cilindro[:5] %}
-                <div class="list-group list-group-flush">
-                    {% for c in cilindro[:5] %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ c.codigo }}</span>
-                            <small class="d-block text-muted">{{ c.data_compra|formatar_data }}</small>
-                        </div>
-                        <span class="badge bg-{{ 'success' if c.status == 'ativo' else 'danger' }}">
-                            {{ c.status|title }}
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('cilindro.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
-                </div>
-                {% else %}
-                <p class="text-muted text-center py-4">Nenhum cilindro</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-12 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
-                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Últimos Elementos</h6>
-            </div>
-            <div class="card-body p-0">
-                {% if elementos[:5] %}
-                <div class="list-group list-group-flush">
-                    {% for e in elementos[:5] %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ e.nome }}</span>
-                            <small class="d-block text-muted">{{ "%.1f"|format(e.consumo_lpm) }} L/min</small>
-                        </div>
-                        {{ "%.1f"|format(e.consumo_lpm) }} L/min
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('elemento.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
-                </div>
-                {% else %}
-                <p class="text-muted text-center py-4">Nenhum elemento</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Últimas Leituras</h6>
             </div>
             <div class="card-body p-0">
-                {% if leituras[:5] %}
+                {% if leituras %}
                 <div class="list-group list-group-flush">
-                    {% for a in leituras[:5] %}
+                    {% for a in leituras %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
@@ -246,7 +187,7 @@
                     {% endfor %}
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{{ url_for('leitura.leitura_list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                    <a href="{{ url_for('leitura.leitura_list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
                 </div>
                 {% else %}
                 <p class="text-muted text-center py-4">Nenhuma leitura</p>
@@ -254,44 +195,15 @@
             </div>
         </div>
     </div>
-    
-    <div class="col-12 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); color: white;">
-                <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["pressao"] }}"></i> Últimas Pressões</h6>
-            </div>
-            <div class="card-body p-0">
-                {% if pressoes[:5] %}
-                <div class="list-group list-group-flush">
-                    {% for p in pressoes[:5] %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ cilindro_dict.get(p.cilindro_id, p.cilindro_id) }}</span>
-                            <span class="badge mx-1" style="background: {{ COR_TIPO['pressao']['var'] }};">{{ "%.1f"|format(p.pressao) }} bar</span>
-                        </div>
-                        <small class="text-muted">{{ p.data|formatar_data if p.data else '-' }}</small>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('pressao.pressao_list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
-                </div>
-                {% else %}
-                <p class="text-muted text-center py-4">Nenhuma pressão</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
     <div class="col-12 col-lg-4">
         <div class="card h-100">
             <div class="card-header" style="background: var(--amostra-rainbow); color: white;">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Últimas Amostras</h6>
             </div>
             <div class="card-body p-0">
-                {% if amostras[:5] %}
+                {% if amostras %}
                 <div class="list-group list-group-flush">
-                    {% for a in amostras[:5] %}
+                    {% for a in amostras %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <span class="badge" style="background: {{ COR_TIPO['amostra']['var'] }};">#{{ a.numero_amostra }}</span>
@@ -302,7 +214,7 @@
                     {% endfor %}
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                    <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
                 </div>
                 {% else %}
                 <p class="text-muted text-center py-4">Nenhuma amostra</p>
@@ -316,8 +228,15 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-{% if status_counts %}
-new Chart(document.getElementById('statusChart'), {
+{% if cilindro_leituras_values %}
+function getColorByIntensity(values, palette) {
+    var sorted = [...values].sort(function(a, b){return a-b;});
+    return values.map(function(v){
+        var rank = sorted.indexOf(v) / (values.length - 1 || 1);
+        return palette[Math.round(rank * (palette.length - 1))];
+    });
+}
+new Chart(document.getElementById('cilindroChart'), {
     type: 'doughnut',
     data: {
         labels: {{ cilindro_leituras_labels|tojson }},
@@ -326,149 +245,82 @@ new Chart(document.getElementById('statusChart'), {
             backgroundColor: getColorByIntensity({{ cilindro_leituras_values|tojson }}, {{ paleta_cilindro|tojson }})
         }]
     },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { padding: 15, usePointStyle: true } } } }
+});
+{% endif %}
+
+{% if pressao_chart %}
+var pressaoCtx = document.getElementById('pressaoChart');
+var pressaoDatasets = [];
+var coresLinha = ['#e63946','#f77f00','#2a9d8f','#457b9d','#6a1b9a','#e76f51','#f4a261','#264653'];
+var i = 0;
+{% for cod, serie in pressao_chart.items() %}
+pressaoDatasets.push({
+    label: '{{ cod }}',
+    data: {{ serie.get('values', [])|tojson }},
+    borderColor: coresLinha[i % coresLinha.length],
+    backgroundColor: coresLinha[i % coresLinha.length] + '33',
+    fill: true,
+    tension: 0.3,
+    pointRadius: 3
+});
+i++;
+{% endfor %}
+new Chart(pressaoCtx, {
+    type: 'line',
+    data: {
+        labels: {{ pressao_chart_labels|tojson }},
+        datasets: pressaoDatasets
+    },
     options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'right',
-                labels: {
-                    padding: 15,
-                    usePointStyle: true
-                }
-            }
-        }
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' } } },
+        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } }
     }
 });
 {% endif %}
 
-{% if elementos_labels %}
-function getColorByIntensity(values, palette) {
-    const sorted = [...values].sort(function(a, b) { return a - b; });
-    return values.map(function(v) {
-        var rank = sorted.indexOf(v) / (values.length - 1);
-        var idx = Math.round(rank * (palette.length - 1));
-        return palette[idx];
-    });
-}
-function getCoresPorElemento(labels, values) {
-    return getColorByIntensity(values, {{ paleta_elemento|tojson }});
-}
-new Chart(document.getElementById('elementosChart'), {
+{% if leituras_mes_labels %}
+new Chart(document.getElementById('leiturasMesChart'), {
     type: 'bar',
     data: {
-        labels: {{ elementos_labels|tojson }},
+        labels: {{ leituras_mes_labels|tojson }},
         datasets: [{
-            label: 'Consumo × Tempo (L)',
-            data: {{ elementos_consumo_tempo|tojson }},
-            backgroundColor: getCoresPorElemento({{ elementos_labels|tojson }}, {{ elementos_consumo_tempo|tojson }}),
+            label: 'Leituras',
+            data: {{ leituras_mes_values|tojson }},
+            backgroundColor: getColorByIntensity({{ leituras_mes_values|tojson }}, {{ paleta_elemento|tojson }}),
             borderRadius: 4
         }]
     },
     options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true
-            }
-        }
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
     }
 });
 {% endif %}
 
-{% if eficiencia_labels %}
-const cilindroDict = {{ cilindro_dict|tojson }};
-const elementoDict = {{ elemento_dict|tojson }};
-const eficienciaData = {{ eficiencia_data|tojson }};
-
-function getSelectedCilindros() {
-    const checkboxes = document.querySelectorAll('.cilindro-checkbox:checked');
-    return Array.from(checkboxes).map(cb => String(cb.value));
-}
-
-function getEficienciaFiltered() {
-    const selectedCilindros = getSelectedCilindros();
-    
-    const filtered = {};
-    for (const [key, value] of Object.entries(eficienciaData)) {
-        const [cilId, elemId] = key.split('-');
-        if (selectedCilindros.includes(String(cilId))) {
-            filtered[key] = value;
-        }
-    }
-    
-    const sorted = Object.entries(filtered).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    
-    const labels = [];
-    const data = [];
-    for (const [key, value] of sorted) {
-        const [cilId, elemId] = key.split('-');
-        const nomeElem = elementoDict[elemId] || String(elemId);
-        labels.push(nomeElem);
-        data.push(value);
-    }
-    
-    return { labels, data };
-}
-
-const eficienciaChart = new Chart(document.getElementById('eficienciaChart'), {
+{% if dist_values and dist_values|sum > 0 %}
+new Chart(document.getElementById('distChart'), {
     type: 'bar',
     data: {
-        labels: getEficienciaFiltered().labels,
+        labels: {{ dist_labels|tojson }},
         datasets: [{
-            label: 'Qtd Amostras',
-            data: getEficienciaFiltered().data,
-            backgroundColor: getCoresPorElemento(getEficienciaFiltered().labels, getEficienciaFiltered().data),
+            label: 'Amostras',
+            data: {{ dist_values|tojson }},
+            backgroundColor: {{ paleta_cilindro|tojson }},
             borderRadius: 4
         }]
     },
     options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
         scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1
-                }
-            }
+            x: { title: { display: true, text: 'Nº de Elementos' } },
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
         }
     }
 });
-
-document.getElementById('selectAllCilindros').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.cilindro-checkbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-    updateEficienciaChart();
-});
-
-document.getElementById('cilindroFilters').addEventListener('change', function(e) {
-    if (e.target.classList.contains('cilindro-checkbox')) {
-        const allCheckboxes = document.querySelectorAll('.cilindro-checkbox');
-        const selectAll = document.getElementById('selectAllCilindros');
-        selectAll.checked = allCheckboxes.length === document.querySelectorAll('.cilindro-checkbox:checked').length;
-        updateEficienciaChart();
-    }
-});
-
-function updateEficienciaChart() {
-    const filtered = getEficienciaFiltered();
-    eficienciaChart.data.labels = filtered.labels;
-    eficienciaChart.data.datasets[0].data = filtered.data;
-    eficienciaChart.update();
-}
 {% endif %}
 </script>
 {% endblock %}

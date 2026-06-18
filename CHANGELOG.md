@@ -2,6 +2,15 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.23] - 2026-06-18
+
+### Bugfix: TypeError Object of type builtin_function_or_method no Dashboard 🐛
+
+- **`app.py` (`_compute_kpis`)**: sanitização defensiva do `pressao_chart` — garante que todo entry tenha chaves `"labels"` e `"values"` (previne `serie.values` cair em `getattr` e retornar método nativo)
+- **`templates/dashboard.html`**: `serie.values` → `serie.get('values', [])` — Jinja2 delega a `dict.get()` e retorna lista vazia se chave ausente, em vez do método `dict.values`
+- **`app.py` (`_compute_kpis`)**: extrai `pressao_chart_labels` no backend — elimina cadeia frágil `pressao_chart.values()|first|attr('labels')` no template, que quebrava com `TypeError: Object of type Undefined` se `pressao_chart` tivesse chave `"values"` (colisão Jinja2 entre acesso por chave e `getattr`)
+- **`templates/dashboard.html`**: `pressao_chart.values()|first|attr('labels')` → `pressao_chart_labels` — variável já serializada pelo backend
+
 ## [2.6.22] - 2026-06-18
 
 ### Footer Global Fixed sobre o Sidebar 🦶

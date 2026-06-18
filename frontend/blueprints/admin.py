@@ -1,6 +1,7 @@
 # Admin blueprint - Administrative functions
 import json
 import io
+from collections import defaultdict
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response
 from openpyxl import Workbook
@@ -307,6 +308,57 @@ def user_data(target_user_id):
     )
 
 
+def _compute_kpis_export(leituras_data, cilindro_data, elementos_data, pressoes_data, amostras_data):
+    from collections import defaultdict
+    elemento_dict = {e["id"]: e for e in elementos_data}
+
+    def parse_tempo(t):
+        if not t:
+            return 0
+        p = t.split(":")
+        try:
+            if len(p) == 3:
+                return int(p[0]) * 60 + int(p[1]) + int(p[2]) / 60
+            if len(p) == 2:
+                return int(p[0]) * 60 + int(p[1])
+        except (ValueError, IndexError):
+            pass
+        return 0
+
+    total_qtd = sum(a.get("quantidade", 1) for a in leituras_data)
+    cilindros_ativos = sum(1 for c in cilindro_data if c.get("status") == "ativo")
+
+    gas_por_cilindro = defaultdict(float)
+    total_gas = 0.0
+    for a in leituras_data:
+        cid, eid = a.get("cilindro_id"), a.get("elemento_id")
+        if cid and eid:
+            mins = parse_tempo(a.get("tempo_chama"))
+            cons = float(elemento_dict.get(eid, {}).get("consumo_lpm", 0))
+            g = mins / 60 * cons
+            gas_por_cilindro[cid] += g
+            total_gas += g
+
+    gas_restante = 0.0
+    for c in cilindro_data:
+        if c.get("status") == "ativo":
+            rest = float(c.get("litros_equivalentes", 0)) - gas_por_cilindro.get(c["id"], 0)
+            if rest > 0:
+                gas_restante += rest
+
+    custo_total = sum(float(c.get("custo", 0)) for c in cilindro_data if c.get("custo"))
+    custo_leitura = round(custo_total / total_qtd, 2) if total_qtd > 0 else 0
+
+    return {
+        "cilindros_ativos": cilindros_ativos,
+        "gas_restante_litros": round(gas_restante, 1),
+        "total_leituras_quantidade": total_qtd,
+        "total_amostras": len(amostras_data),
+        "custo_medio_por_leitura": custo_leitura,
+        "gas_consumido_litros": round(total_gas, 1),
+    }
+
+
 @admin_bp.route("/admin/export")
 def export_data():
     if not is_admin():
@@ -329,10 +381,20 @@ def export_data():
     elementos_data = client.table("elemento").select("*").execute().data or []
     leituras_data = client.table("leitura").select("*").execute().data or []
     pressoes_data = client.table("pressao").select("*").execute().data or []
+
+    try:
+        amostras_data = client.table("amostra").select("*").execute().data or []
+    except Exception:
+        amostras_data = []
+
+    try:
+        ae_data = client.table("amostra_elemento").select("*").execute().data or []
+    except Exception:
+        ae_data = []
+    
     usuarios_data = client.table("perfil").select("id,email,nome").execute().data or []
-    
     usuarios_dict = {u.get("id"): u for u in usuarios_data}
-    
+
     for c in cilindro_data:
         uid = c.get("user_id")
         if uid:
@@ -347,6 +409,20 @@ def export_data():
             e["usuario_email"] = u.get("email", "")
             e["usuario_nome"] = u.get("nome", "")
     
+    for p in pressoes_data:
+        uid = p.get("user_id")
+        if uid:
+            u = usuarios_dict.get(uid, {})
+            p["usuario_email"] = u.get("email", "")
+            p["usuario_nome"] = u.get("nome", "")
+    
+    for a in amostras_data:
+        uid = a.get("user_id")
+        if uid:
+            u = usuarios_dict.get(uid, {})
+            a["usuario_email"] = u.get("email", "")
+            a["usuario_nome"] = u.get("nome", "")
+    
     cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro_data}
     elemento_dict = {e.get("id"): e.get("nome") for e in elementos_data}
     
@@ -359,28 +435,53 @@ def export_data():
         a["cilindro_codigo"] = cilindro_dict.get(a.get("cilindro_id"), "")
         a["elemento_nome"] = elemento_dict.get(a.get("elemento_id"), "")
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    for p in pressoes_data:
+        p["cilindro_codigo"] = cilindro_dict.get(p.get("cilindro_id"), "")
+    
+    # Agrupa elementos por amostra
+    amostra_e_ids = defaultdict(list)
+    for ae in ae_data:
+        amostra_e_ids[ae.get("amostra_id")].append(ae.get("elemento_id"))
+    
+    for a in amostras_data:
+        eids = amostra_e_ids.get(a.get("id"), [])
+        a["elementos_nomes"] = ", ".join(elemento_dict.get(eid, str(eid)) for eid in eids if eid)
+        a["qtd_elementos"] = len(eids)
+    
+    cached = session.get('cached_user_info', {})
+    user_name = (cached.get('user_name', '') or 'unknown').replace(' ', '_').replace('/', '_')
+    data_str = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    filename_base = f"labgas_export_{data_str}_{user_name}"
+    
+    kpis = _compute_kpis_export(leituras_data, cilindro_data, elementos_data, pressoes_data, amostras_data)
     
     if formato == "json":
         data = {
             "exportado_em": datetime.now().isoformat(),
+            "exportado_por": user_name,
+            "kpis": kpis,
             "cilindros": cilindro_data,
             "elementos": elementos_data,
             "leituras": leituras_data,
-            "pressoes": pressoes_data
+            "pressoes": pressoes_data,
+            "amostras": amostras_data,
         }
         response = make_response(json.dumps(data, indent=2, default=str))
-        response.headers["Content-Disposition"] = f"attachment; filename=labgas_export_{timestamp}.json"
+        response.headers["Content-Disposition"] = f"attachment; filename={filename_base}.json"
         response.headers["Content-Type"] = "application/json"
         return response
     
     elif formato == "csv":
         output = io.StringIO()
+        output.write(f"# Exportado por: {user_name} em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+        output.write(f"# KPIs: Cilindros Ativos={kpis['cilindros_ativos']}, Gas Restante={kpis['gas_restante_litros']}L, "
+                     f"Leituras={kpis['total_leituras_quantidade']}, Amostras={kpis['total_amostras']}, "
+                     f"Custo/Leitura=R${kpis['custo_medio_por_leitura']}, Gas Consumido={kpis['gas_consumido_litros']}L\n\n")
         
         output.write("# CILINDROS\n")
         if cilindro_data:
-            headers = ["id", "codigo", "data_compra", "data_inicio_consumo", "data_fim", 
-                      "gas_kg", "litros_equivalentes", "custo", "status", 
+            headers = ["id", "codigo", "data_compra", "data_inicio_consumo", "data_fim",
+                      "gas_kg", "litros_equivalentes", "custo", "status",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
             for row in cilindro_data:
@@ -397,7 +498,7 @@ def export_data():
         
         output.write("\n# LEITURAS\n")
         if leituras_data:
-            headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_codigo", 
+            headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_codigo",
                       "elemento_id", "elemento_nome", "quantidade",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
@@ -407,13 +508,6 @@ def export_data():
         
         output.write("\n# PRESSOES\n")
         if pressoes_data:
-            for t in pressoes_data:
-                uid = t.get("user_id")
-                if uid:
-                    u = usuarios_dict.get(uid, {})
-                    t["usuario_email"] = u.get("email", "")
-                    t["usuario_nome"] = u.get("nome", "")
-                t["cilindro_codigo"] = cilindro_dict.get(t.get("cilindro_id"), "")
             headers = ["id", "cilindro_id", "cilindro_codigo", "pressao", "temperatura", "data", "hora",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
@@ -421,19 +515,35 @@ def export_data():
                 values = [str(row.get(h, "")) for h in headers]
                 output.write(",".join(values) + "\n")
         
+        output.write("\n# AMOSTRAS\n")
+        if amostras_data:
+            headers = ["id", "numero_amostra", "lote", "elementos", "qtd_elementos",
+                      "usuario_email", "usuario_nome", "created_at"]
+            output.write(",".join(headers) + "\n")
+            for row in amostras_data:
+                values = [str(row.get(h, "")) for h in headers]
+                output.write(",".join(values) + "\n")
+        
         response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = f"attachment; filename=labgas_export_{timestamp}.csv"
+        response.headers["Content-Disposition"] = f"attachment; filename={filename_base}.csv"
         response.headers["Content-Type"] = "text/csv"
         return response
     
     elif formato == "excel":
         wb = Workbook()
         
-        ws_cilindros = wb.active
-        ws_cilindros.title = "Cilindros"
+        ws_resumo = wb.active
+        ws_resumo.title = "Resumo"
+        ws_resumo.append(["Indicador", "Valor"])
+        for k, v in kpis.items():
+            ws_resumo.append([k.replace("_", " ").title(), v])
+        ws_resumo.append(["Exportado por", user_name])
+        ws_resumo.append(["Exportado em", datetime.now().strftime('%d/%m/%Y %H:%M:%S')])
+        
+        ws_cilindros = wb.create_sheet("Cilindros")
         if cilindro_data:
-            headers = ["ID", "Código", "Data Compra", "Data Início", "Data Fim", 
-                      "Gas (kg)", "Litros", "Custo", "Status", 
+            headers = ["ID", "Código", "Data Compra", "Data Início", "Data Fim",
+                      "Gas (kg)", "Litros", "Custo", "Status",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_cilindros.append(headers)
             for row in cilindro_data:
@@ -441,7 +551,7 @@ def export_data():
                     row.get("id"), row.get("codigo"), row.get("data_compra"),
                     row.get("data_inicio_consumo"), row.get("data_fim"),
                     row.get("gas_kg"), row.get("litros_equivalentes"), row.get("custo"),
-                    row.get("status"), 
+                    row.get("status"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
         
@@ -472,8 +582,6 @@ def export_data():
         
         ws_pressoes = wb.create_sheet("Pressoes")
         if pressoes_data:
-            for t in pressoes_data:
-                t["cilindro_codigo"] = cilindro_dict.get(t.get("cilindro_id"), "")
             headers = ["ID", "Cilindro ID", "Cilindro Código", "Pressão (bar)", "Temperatura (°C)", "Data", "Hora",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_pressoes.append(headers)
@@ -484,21 +592,37 @@ def export_data():
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
         
+        ws_amostras = wb.create_sheet("Amostras")
+        if amostras_data:
+            headers = ["ID", "Número", "Lote", "Elementos", "Qtd Elementos",
+                      "Usuário Email", "Usuário Nome", "Criado em"]
+            ws_amostras.append(headers)
+            for row in amostras_data:
+                ws_amostras.append([
+                    row.get("id"), row.get("numero_amostra"), row.get("lote"),
+                    row.get("elementos_nomes"), row.get("qtd_elementos"),
+                    row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
+                ])
+        
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
         
         response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = f"attachment; filename=labgas_export_{timestamp}.xlsx"
+        response.headers["Content-Disposition"] = f"attachment; filename={filename_base}.xlsx"
         response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         return response
     
     elif formato == "md":
         md_output = io.StringIO()
-        
-        md_output.write(f"# LabGas Manager - Exportação\n\n")
+        md_output.write(f"# LabGas Manager — Exportação\n\n")
+        md_output.write(f"**Exportado por:** {user_name}\n")
         md_output.write(f"**Exportado em:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n\n")
-        md_output.write(f"**Total:** {len(cilindro_data)} Cilindros | {len(pressoes_data)} Pressoes | {len(elementos_data)} Elementos | {len(leituras_data)} Leituras\n\n")
+        md_output.write(f"## KPIs\n\n")
+        md_output.write(f"| Indicador | Valor |\n|---|---|\n")
+        for k, v in kpis.items():
+            md_output.write(f"| {k.replace('_', ' ').title()} | {v} |\n")
+        md_output.write(f"\n**Totais:** {len(cilindro_data)} Cilindros | {len(pressoes_data)} Pressões | {len(elementos_data)} Elementos | {len(leituras_data)} Leituras | {len(amostras_data)} Amostras\n\n")
         
         md_output.write("## Cilindros\n\n")
         if cilindro_data:
@@ -509,16 +633,14 @@ def export_data():
         else:
             md_output.write("*Nenhum cilindro encontrado.*\n\n")
         
-        md_output.write("\n## Pressoes\n\n")
+        md_output.write("\n## Pressões\n\n")
         if pressoes_data:
-            for t in pressoes_data:
-                t["cilindro_codigo"] = cilindro_dict.get(t.get("cilindro_id"), "")
-            md_output.write("| ID | Cilindro | Temperatura | Data | Hora | Usuário |\n")
-            md_output.write("|---|---|---|---|---|---|\n")
+            md_output.write("| ID | Cilindro | Pressão (bar) | Temperatura (°C) | Data | Hora | Usuário |\n")
+            md_output.write("|---|---|---|---|---|---|---|\n")
             for row in pressoes_data:
-                md_output.write(f"| {row.get('id')} | {row.get('cilindro_codigo')} | {row.get('temperatura')}°C | {row.get('data')} | {row.get('hora')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {row.get('id')} | {row.get('cilindro_codigo')} | {row.get('pressao')} | {row.get('temperatura')} | {row.get('data')} | {row.get('hora')} | {row.get('usuario_email')} |\n")
         else:
-            md_output.write("*Nenhum registro de temperatura encontrado.*\n\n")
+            md_output.write("*Nenhuma pressão encontrada.*\n\n")
         
         md_output.write("\n## Elementos\n\n")
         if elementos_data:
@@ -538,8 +660,17 @@ def export_data():
         else:
             md_output.write("*Nenhuma leitura encontrada.*\n\n")
         
+        md_output.write("\n## Amostras\n\n")
+        if amostras_data:
+            md_output.write("| ID | Número | Lote | Elementos | Qtd | Usuário |\n")
+            md_output.write("|---|---|---|---|---|---|\n")
+            for row in amostras_data:
+                md_output.write(f"| {row.get('id')} | {row.get('numero_amostra')} | {row.get('lote')} | {row.get('elementos_nomes')} | {row.get('qtd_elementos')} | {row.get('usuario_email')} |\n")
+        else:
+            md_output.write("*Nenhuma amostra encontrada.*\n\n")
+        
         response = make_response(md_output.getvalue())
-        response.headers["Content-Disposition"] = f"attachment; filename=labgas_export_{timestamp}.md"
+        response.headers["Content-Disposition"] = f"attachment; filename={filename_base}.md"
         response.headers["Content-Type"] = "text/markdown"
         return response
     

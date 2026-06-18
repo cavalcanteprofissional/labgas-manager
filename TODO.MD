@@ -70,6 +70,21 @@
 - [x] admin_user_data.html, perfil.html, historico.html com novas cores
 - [x] 3/3 testes passando
 
+## v2.6.23 — Dashboard pressao_chart TypeError 🐛
+
+### 3. Dashboard: TypeError com builtin_function_or_method em serie.values
+**Arquivos:** `app.py:295-302`, `templates/dashboard.html:260`
+- Quando `pressao_chart` tem entries sem a chave `"values"`, Jinja2 cai de `serie['values']` (KeyError) para `getattr(serie, 'values')`, retornando `dict.values` (um método nativo) em vez de uma lista — `tojson` falha com `TypeError: Object of type builtin_function_or_method is not JSON serializable`
+- **Causa raiz:** dado corrompido no banco ou construção inconsistente de `pressao_chart[cod]`
+- **Correção:** sanitização defensiva pós-construção + template usa `serie.get('values', [])` que delega a `dict.get()` no lugar de acesso direto por atributo
+- **Status:** ✅ Corrigido (v2.6.23)
+
+### 4. Dashboard: TypeError com Undefined em pressao_chart.values()|first|attr('labels')
+**Arquivos:** `app.py:342`, `templates/dashboard.html:272`
+- `pressao_chart.values()|first|attr('labels')` no template depende de Jinja2 resolver `dict.values` como método (via `getattr`) em vez de chave `"values"` (via `__getitem__`). Se `pressao_chart` contém uma chave cujo codigo do cilindro coincide literalmente com o string `"values"`, `pressao_chart["values"]` retorna o entry do cilindro em vez do método nativo, e `|first` retorna `Undefined` — `tojson` falha com `TypeError: Object of type Undefined is not JSON serializable`
+- **Correção:** extrair `pressao_chart_labels` no backend (dict key `labels` do primeiro entry), passar como variável flat — elimina a cadeia frágil de filtros Jinja2
+- **Status:** ✅ Corrigido (v2.6.23)
+
 ## Bugs Encontrados 🐛
 
 ### 1. Admin não consegue ativar/desativar aba "amostra"
@@ -656,6 +671,123 @@ A senha `123456` estava hardcoded como default no `scripts/seed.py` e referencia
 | F5 / reload | Continua do `sessionStorage` (desconta tempo perdido) |
 | Logout | `sessionStorage` limpo |
 | Sessão expira | Footer some, `sessionStorage` limpo |
+
+## Fase 50: Refatoração do Dashboard 📊 (Análise — Plano)
+
+### Problemas do Dashboard Atual
+
+| # | Problema | Localização |
+|---|----------|-------------|
+| 1 | **Cards são contadores crus** — Cilindros, Elementos, Leituras, Amostras não contam história | `app.py:231-246` |
+| 2 | **"Eficiência" é misnamed** — na verdade conta `quantidade` de leituras por par (cilindro, elemento), não eficiência real (consumo_lpm × tempo_chama / gas_disponivel) | `app.py:310-325` | 
+| 3 | **Atividade Recente redundante** — "Últimos Cilindros" e "Últimos Elementos" só duplicam CRUD; 5 cards ocupam 2 linhas | `dashboard.html:167-313` |
+| 4 | **Elemento mostra `consumo_lpm` duplicado** — linha 214 e 216 do template | `dashboard.html:214,216` |
+| 5 | **Pressão não integrada** — sem gráfico de tendência (curva de decaimento por cilindro) | ausente |
+| 6 | **Amostra não integrada** — sem distribuição por lote, sem correlação com leituras | `app.py:240-246` |
+| 7 | **Sem série temporal** — nada mostra evolução ao longo do tempo (leituras/mês, pressão/dia) | todo o `app.py:224-357` |
+| 8 | **Nenhum KPI de negócio** — custo médio por leitura, gás restante, vida útil estimada | ausente |
+| 9 | **3 queries separadas no backend** — cilindro, elementos, leituras são independentes, sem JOIN | `app.py:231-233` |
+
+### Schema e Correlações Possíveis
+
+```
+┌──────────┐     ┌──────────┐     ┌───────────┐
+│ cilindro │────→│ leitura  │←────│ elemento  │
+│  - gas_kg│     │ - tempo  │     │consumo_lpm│
+│litros_eq │     │quantidade│     └───────────┘
+│  - custo │     │ - data   │         
+│  -status │     └──────────┘         
+└────┬─────┘     ┌──────────┐         
+     └──────────→│ pressao  │         
+                  │ - valor  │
+                  │ - data   │
+                  └──────────┘
+
+┌──────────┐     ┌──────────────────┐
+│ amostra  │────→│ amostra_elemento │────→│elemento│
+│ - lote   │     └──────────────────┘     └────────┘
+│ - num    │
+└──────────┘
+```
+
+**Correlações que o dashboard DEVERIA mostrar:**
+
+| Correlação | Fórmula | Insight |
+|------------|---------|---------|
+| Gás consumido | `Σ(leitura.tempo_chama × elemento.consumo_lpm)` | Quanto gás foi gasto em análises |
+| Gás restante | `cilindro.litros_equivalentes - gas_consumido` | Vida útil restante do cilindro |
+| Curva de pressão | `pressao.valor` ao longo do tempo por cilindro | Decaimento real vs esperado |
+| Custo por leitura | `Σ(cilindro.custo) / Σ(leitura.quantidade)` | ROI operacional |
+| Elementos por amostra | `COUNT(amostra_elemento)` por amostra | Complexidade média das amostras |
+| Amostras por lote | `COUNT(amostra)` GROUP BY lote | Produtividade por lote |
+| Leituras por mês | `COUNT(leitura)` GROUP BY month | Sazonalidade do laboratório |
+| Top cilindros por leitura | `COUNT(leitura)` GROUP BY cilindro | Quais cilindros mais usados |
+
+### Proposta de Novo Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ LINHA 1 — KPI Cards (6 cards, 2 linhas no mobile)           │
+├──────────┬──────────┬──────────┬──────────┬─────────┬───────┤
+│Cilindros │ Gás      │ Leituras │ Amostras │ Custo/  │ Gás   │
+│ Ativos   │ Restante │ Totais   │ Totais   │ Leitura │Consum.│
+├──────────┴──────────┴──────────┴──────────┴─────────┴───────┤
+│ LINHA 2 — Gráficos Principais (2 colunas)                    │
+├─────────────────────────────────────┬───────────────────────┤
+│  Curva de Pressão por Cilindro      │  Leituras por Mês    │
+│  (line chart, multicolor)           │  (bar chart)          │
+├─────────────────────────────────────┴───────────────────────┤
+│ LINHA 3 — Análise (2 colunas)                               │
+├─────────────────────────────────────┬───────────────────────┤
+│  Consumo de Gás por Cilindro        │  Elementos por       │
+│  (doughnut, litros consumidos)      │  Amostra (bar)       │
+├─────────────────────────────────────┴───────────────────────┤
+│ LINHA 4 — Atividade Recente (3 cards)                       │
+├──────────────────┬──────────────────┬───────────────────────┤
+│ Últimas Leituras │ Últimas Pressões │ Últimas Amostras     │
+│ (5 recentes)     │ (5 recentes)     │ (5 recentes)         │
+└──────────────────┴──────────────────┴───────────────────────┘
+```
+
+### Mudanças Planejadas
+
+#### Backend (`app.py` dashboard route — ~130 linhas alteradas)
+
+| Mudança | Descrição |
+|---------|-----------|
+| Query única de leituras com JOIN | `leitura` + `cilindro.codigo` + `elemento.nome` + `elemento.consumo_lpm` em 1 chamada |
+| Query de pressão com cilindro | `pressao` + `cilindro.codigo` ordenado por `data` |
+| Query de amostras com contagem | `amostra` + `COUNT(amostra_elemento)` via subquery |
+| Cálculo de gás consumido | `Σ(leitura.tempo_chama_em_minutos × elemento.consumo_lpm / 60)` — litros |
+| Cálculo de gás restante | Para cada cilindro: `litros_equivalentes - gas_consumido_no_cilindro` |
+| Custo médio por leitura | Soma de todos os `cilindro.custo` / total de leituras |
+| Pressão trend data | Últimas N leituras de pressão por cilindro ativo |
+| Leituras por mês | `COUNT(leitura)` GROUP BY mês nos últimos 12 meses |
+| Agrupar elemento por amostra | `COUNT(ae.elemento_id)` por amostra, distribuição |
+
+#### Frontend (`dashboard.html` — reescrita total)
+
+| Seção | Descrição |
+|-------|-----------|
+| 6 KPI cards | Cilindros Ativos, Gás Restante (L), Leituras Totais, Amostras Totais, Custo/Leitura (R$), Gás Consumido (L) |
+| Curva de Pressão | Chart.js line chart com múltiplas séries (1 por cilindro ativo), eixo X = data |
+| Leituras por Mês | Chart.js bar chart, últimos 12 meses |
+| Consumo por Cilindro | Doughnut similar ao atual, mas usando litros consumidos reais |
+| Elementos por Amostra | Bar chart mostrando quantas amostras têm 1, 2, 3+ elementos |
+| Atividade Recente | 3 cards em vez de 5 (remove "Últimos Cilindros" e "Últimos Elementos" — redundantes) |
+
+#### Limpezas
+- [ ] Remover `ELEMENTO_CORES` e `ELEMENTO_CORES_LEITURAS` do context (aliases mortos)
+- [ ] Substituir consultas separadas por batch queries com `JOIN`
+- [ ] Renomear "Eficiência" para "Leituras por Par Cilindro×Elemento" (ou remover)
+
+### Riscos
+- `pressao` query pode ser cara se houver muitos registros — limitar a N recentes por cilindro
+- Cálculo de gás consumido depende de `tempo_chama` parseável (HH:MM:SS) e `consumo_lpm` consistente
+- Cilindros podem ter sido reciclados (status=esgotado) — filtrar ou mostrar separadamente
+- Custo por leitura é estimativa grosseira (custo total dos cilindros / total leituras) — pode não refletir reality se cilindros forem reutilizados
+
+---
 
 ## Fase 49: Footer de Sessão com Timer Regressivo 🔄
 

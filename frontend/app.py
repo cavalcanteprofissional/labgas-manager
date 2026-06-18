@@ -219,141 +219,193 @@ def index():
     return redirect(url_for("auth.login"))
 
 
+def _parse_tempo_chama(tempo_str):
+    if not tempo_str:
+        return 0
+    partes = tempo_str.split(":")
+    try:
+        if len(partes) == 3:
+            return int(partes[0]) * 60 + int(partes[1]) + int(partes[2]) / 60
+        if len(partes) == 2:
+            return int(partes[0]) * 60 + int(partes[1])
+    except (ValueError, IndexError):
+        pass
+    return 0
+
+
+def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes):
+    from collections import defaultdict
+    cilindro_dict = {c["id"]: c for c in cilindro}
+    elemento_dict = {e["id"]: e for e in elementos}
+
+    # KPI: Cilindros Ativos
+    cilindros_ativos = sum(1 for c in cilindro if c.get("status") == "ativo")
+
+    # Gás Consumido (L) por cilindro
+    gas_por_cilindro = defaultdict(float)
+    total_gas_consumido = 0.0
+    for a in leituras:
+        cil_id = a.get("cilindro_id")
+        elem_id = a.get("elemento_id")
+        if cil_id and elem_id:
+            minutos = _parse_tempo_chama(a.get("tempo_chama"))
+            elem = elemento_dict.get(elem_id, {})
+            consumo = float(elem.get("consumo_lpm", 0))
+            gas = minutos / 60 * consumo
+            gas_por_cilindro[cil_id] += gas
+            total_gas_consumido += gas
+
+    # KPI: Gás Restante
+    gas_restante = 0.0
+    for c in cilindro:
+        if c.get("status") == "ativo":
+            litros = float(c.get("litros_equivalentes", 0))
+            usado = gas_por_cilindro.get(c["id"], 0)
+            restante = litros - usado
+            if restante > 0:
+                gas_restante += restante
+
+    # KPI: Total Leituras
+    total_quantidade = sum(a.get("quantidade", 1) for a in leituras)
+
+    # KPI: Custo Médio por Leitura
+    custo_total = sum(float(c.get("custo", 0)) for c in cilindro if c.get("custo"))
+    custo_por_leitura = round(custo_total / total_quantidade, 2) if total_quantidade > 0 else 0
+
+    # Leituras por Cilindro (doughnut)
+    leituras_por_cilindro = defaultdict(int)
+    for a in leituras:
+        cid = a.get("cilindro_id")
+        if cid:
+            leituras_por_cilindro[cid] += a.get("quantidade", 1)
+
+    cilindro_leituras_labels = []
+    cilindro_leituras_values = []
+    for cid, qtd in sorted(leituras_por_cilindro.items(), key=lambda x: cilindro_dict.get(x[0], {}).get("codigo", "")):
+        cilindro_leituras_labels.append(cilindro_dict.get(cid, {}).get("codigo", str(cid)))
+        cilindro_leituras_values.append(qtd)
+
+    # Curva de Pressão (últimas 10 por cilindro)
+    pressao_series = defaultdict(list)
+    for p in sorted(pressoes, key=lambda x: x.get("data", "")):
+        cid = p.get("cilindro_id")
+        if cid and len(pressao_series[cid]) < 10:
+            pressao_series[cid].append({"data": str(p.get("data", "")), "pressao": float(p.get("pressao", 0))})
+
+    pressao_chart = {}
+    for cid, readings in pressao_series.items():
+        cod = cilindro_dict.get(cid, {}).get("codigo", str(cid))
+        pressao_chart[cod] = {"labels": [r["data"] for r in readings], "values": [r["pressao"] for r in readings]}
+    pressao_chart = {
+        cod: {"labels": v.get("labels", []), "values": v.get("values", [])}
+        for cod, v in pressao_chart.items()
+    }
+
+    # Leituras por Mês (últimos 12)
+    leituras_por_mes = defaultdict(int)
+    for a in leituras:
+        d = a.get("data")
+        if d:
+            leituras_por_mes[str(d)[:7]] += a.get("quantidade", 1)
+
+    meses = sorted(leituras_por_mes.keys(), reverse=True)[:12]
+    leituras_mes_labels = list(reversed(meses))
+    leituras_mes_values = [leituras_por_mes[m] for m in leituras_mes_labels]
+
+    # Elementos por Amostra (distribuição)
+    ae_count = defaultdict(int)
+    for ae in ae_data:
+        ae_count[ae.get("amostra_id")] += 1
+
+    elem_por_amostra_dist = defaultdict(int)
+    for count in ae_count.values():
+        key = "4+" if count >= 4 else str(count)
+        elem_por_amostra_dist[key] += 1
+
+    dist_labels = ["1", "2", "3", "4+"]
+    dist_values = [elem_por_amostra_dist.get(l, 0) for l in dist_labels]
+
+    # Elementos mais analisados (top 5)
+    elem_leituras = defaultdict(int)
+    for a in leituras:
+        eid = a.get("elemento_id")
+        if eid:
+            elem_leituras[eid] += a.get("quantidade", 1)
+
+    elementos_mais_analisados = []
+    for eid, qtd in sorted(elem_leituras.items(), key=lambda x: x[1], reverse=True)[:5]:
+        elementos_mais_analisados.append({
+            "nome": elemento_dict.get(eid, {}).get("nome", str(eid)),
+            "quantidade": qtd
+        })
+
+    pressao_chart_labels = list(next(iter(pressao_chart.values()), {}).get("labels", []))
+
+    return dict(
+        cilindros_ativos=cilindros_ativos,
+        gas_restante=round(gas_restante, 1),
+        total_quantidade=total_quantidade,
+        amostras_total=len(amostras_data),
+        custo_por_leitura=custo_por_leitura,
+        total_gas_consumido=round(total_gas_consumido, 1),
+        cilindro_leituras_labels=cilindro_leituras_labels,
+        cilindro_leituras_values=cilindro_leituras_values,
+        pressao_chart=pressao_chart,
+        pressao_chart_labels=pressao_chart_labels,
+        leituras_mes_labels=leituras_mes_labels,
+        leituras_mes_values=leituras_mes_values,
+        elementos_mais_analisados=elementos_mais_analisados,
+        dist_labels=dist_labels,
+        dist_values=dist_values,
+        cilindro_dict={k: v.get("codigo") for k, v in cilindro_dict.items()},
+        elemento_dict={k: v.get("nome") for k, v in elemento_dict.items()},
+    )
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
     from utils.supabase_utils import get_supabase_client
     from blueprints.helpers import get_user_id
-    
+
     user_id = get_user_id()
     supabase = get_supabase_client()
-    
-    cilindro_response = supabase.table("cilindro").select("*").eq("user_id", user_id).execute()
-    elementos_response = supabase.table("elemento").select("*").eq("user_id", user_id).order("nome").execute()
-    leituras_response = supabase.table("leitura").select("*").eq("user_id", user_id).execute()
+
+    cilindro = supabase.table("cilindro").select("*").eq("user_id", user_id).execute().data or []
+    elementos = supabase.table("elemento").select("*").eq("user_id", user_id).order("nome").execute().data or []
+    leituras = supabase.table("leitura").select("*").eq("user_id", user_id).order("data", desc=True).execute().data or []
+
     try:
-        pressoes_response = supabase.table("pressao").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        pressoes = pressoes_response.data or []
+        pressoes = supabase.table("pressao").select("*").eq("user_id", user_id).order("data").execute().data or []
     except Exception:
         pressoes = []
 
     try:
-        amostras_response = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).order("numero_amostra", desc=True).execute()
-        amostras_data = amostras_response.data or []
-        amostras_total = amostras_response.count or 0
+        amostras_resp = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).order("created_at", desc=True).execute()
+        amostras_data = amostras_resp.data or []
     except Exception:
         amostras_data = []
-        amostras_total = 0
 
-    cilindro = cilindro_response.data or []
-    elementos = elementos_response.data or []
-    leituras = leituras_response.data or []
+    try:
+        ae_data = supabase.table("amostra_elemento").select("*").execute().data or []
+    except Exception:
+        ae_data = []
 
-    ativos = len([c for c in cilindro if c.get("status") == "ativo"])
-
-    status_counts = {}
-    for c in cilindro:
-        status = c.get("status", "desconhecido")
-        status_counts[status] = status_counts.get(status, 0) + 1
-
-    status_labels = list(status_counts.keys())
-    status_values = list(status_counts.values())
-
-    cilindro_leituras = {}
-    for a in leituras:
-        cil_id = a.get("cilindro_id")
-        if cil_id:
-            cilindro_leituras[cil_id] = cilindro_leituras.get(cil_id, 0) + a.get("quantidade", 1)
-
-    cilindro_leituras_labels = []
-    cilindro_leituras_values = []
-    cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro}
-    for cil_id, count in sorted(cilindro_leituras.items(), key=lambda x: cilindro_dict.get(x[0], str(x[0]))):
-        cilindro_leituras_labels.append(cilindro_dict.get(cil_id, str(cil_id)))
-        cilindro_leituras_values.append(count)
-
-    elemento_leituras_count = {}
-    for a in leituras:
-        elem_id = a.get("elemento_id")
-        if elem_id:
-            elemento_leituras_count[elem_id] = elemento_leituras_count.get(elem_id, 0) + a.get("quantidade", 1)
-
-    elemento_dict = {e.get("id"): e.get("nome") for e in elementos}
-    elementos_mais_analisados = []
-    for elem_id, count in sorted(elemento_leituras_count.items(), key=lambda x: x[1], reverse=True)[:5]:
-        elementos_mais_analisados.append({
-            "nome": elemento_dict.get(elem_id, str(elem_id)),
-            "quantidade": count
-        })
-
-    tempo_chama_elementos = {}
-    for a in leituras:
-        elem_id = a.get("elemento_id")
-        tempo = a.get("tempo_chama", "00:00:00")
-        if elem_id and tempo:
-            try:
-                partes = tempo.split(":")
-                minutos = int(partes[0]) * 60 + int(partes[1]) + int(partes[2])/60
-                tempo_chama_elementos[elem_id] = tempo_chama_elementos.get(elem_id, 0) + minutos
-            except:
-                pass
-
-    elementos_labels = []
-    elementos_consumo_tempo = []
-    for e in elementos:
-        eid = e.get("id")
-        consumo = float(e.get("consumo_lpm", 0))
-        tempo = tempo_chama_elementos.get(eid, 0)
-        elementos_labels.append(e.get("nome"))
-        elementos_consumo_tempo.append(round(consumo * tempo, 2))
-
-    eficiencia = {}
-    for a in leituras:
-        cil_id = a.get("cilindro_id")
-        elem_id = a.get("elemento_id")
-        if cil_id and elem_id:
-            key = f"{cil_id}-{elem_id}"
-            eficiencia[key] = eficiencia.get(key, 0) + a.get("quantidade", 1)
-
-    eficiencia_labels = []
-    eficiencia_values = []
-    for key, count in sorted(eficiencia.items(), key=lambda x: x[1], reverse=True)[:10]:
-        cil_id, elem_id = key.split("-")
-        nome_cil = cilindro_dict.get(cil_id, str(cil_id))
-        nome_elem = elemento_dict.get(elem_id, str(elem_id))
-        eficiencia_labels.append(f"{nome_cil} × {nome_elem}")
-        eficiencia_values.append(count)
-
-    total_quantidade = sum(a.get("quantidade", 1) for a in leituras)
+    kpis = _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes)
+    leituras_recentes = leituras[:5]
+    pressoes_recentes = pressoes[-5:] if pressoes else []
+    amostras_recentes = amostras_data[:5]
 
     return render_template(
         "dashboard.html",
         cilindro=cilindro,
         elementos=elementos,
-        leituras=leituras,
-        pressoes=pressoes,
-        amostras=amostras_data,
-        ativos=ativos,
-        status_counts=status_counts,
-        status_labels=status_labels,
-        status_values=status_values,
-        cilindro_leituras_labels=cilindro_leituras_labels,
-        cilindro_leituras_values=cilindro_leituras_values,
-        elementos_mais_analisados=elementos_mais_analisados,
-        elementos_labels=elementos_labels,
-        elementos_consumo_tempo=elementos_consumo_tempo,
-        eficiencia_labels=eficiencia_labels,
-        eficiencia_values=eficiencia_values,
-        eficiencia_data=eficiencia,
-        cilindro_dict=cilindro_dict,
-        elemento_dict=elemento_dict,
-        elemento_cores=ELEMENTO_CORES,
-        elemento_cores_leituras=ELEMENTO_CORES_LEITURAS,
+        leituras=leituras_recentes,
+        pressoes=pressoes_recentes,
+        amostras=amostras_recentes,
         paleta_cilindro=PALETA_CILINDRO,
         paleta_elemento=PALETA_ELEMENTO,
-        paleta_leitura=PALETA_LEITURA,
-        total_quantidade=total_quantidade,
-        amostras_total=amostras_total,
+        **kpis,
     )
 
 
