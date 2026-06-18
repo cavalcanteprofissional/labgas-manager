@@ -189,7 +189,7 @@ def pressao_list():
                 cilindro_info = get_supabase_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute().data
                 cilindro_codigo = cilindro_info[0].get("codigo") if cilindro_info else str(cilindro_id)
                 
-                get_admin_client().table("pressao").delete().eq("id", pressao_id).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("pressao").delete().eq("id", pressao_id).execute()
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
                 registrar_historico("pressao", "excluido", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
@@ -231,7 +231,7 @@ def pressao_list():
                 cilindros = supabase.table("cilindro").select("id,codigo").in_("id", cil_ids).execute().data or []
                 cil_map = {c["id"]: c.get("codigo", str(c["id"])) for c in cilindros}
 
-                get_admin_client().table("pressao").delete().in_("id", [r["id"] for r in permitted]).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("pressao").delete().in_("id", [r["id"] for r in permitted]).execute()
 
                 for r in permitted:
                     cod = cil_map.get(r["cilindro_id"], str(r["cilindro_id"]))

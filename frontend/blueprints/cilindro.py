@@ -7,7 +7,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
 
 cilindro_bp = Blueprint('cilindro', __name__)
@@ -87,7 +87,6 @@ def list():
                     "user_id": user_id
                 }
                 
-                from blueprints.helpers import get_authenticated_client
                 if dev:
                     client = get_admin_client()
                 else:
@@ -177,7 +176,7 @@ def list():
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("cilindro.list"))
                 
-                if cilindro_info[0].get("user_id") != user_id:
+                if not dev and cilindro_info[0].get("user_id") != user_id:
                     flash("Você não tem permissão para excluir este cilindro.", "danger")
                     return redirect(url_for("cilindro.list"))
                 
@@ -188,7 +187,7 @@ def list():
                     flash("Não é possível excluir este cilindro pois existem leituras vinculadas a ele. Exclua primeiro as leituras.", "warning")
                     return redirect(url_for("cilindro.list"))
                 
-                get_admin_client().table("cilindro").delete().eq("id", cilindro_id).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().eq("id", cilindro_id).execute()
                 
                 registrar_historico("cilindro", "excluido", cilindro_codigo, user_id)
                 invalidate_user_caches(user_id)
@@ -227,7 +226,7 @@ def list():
                 skipped = []
                 not_owned = []
                 for c in cilindros:
-                    if c.get("user_id") != user_id:
+                    if not dev and c.get("user_id") != user_id:
                         not_owned.append(c.get("codigo", str(c["id"])))
                     elif c["id"] in tem_leitura:
                         skipped.append(c.get("codigo", str(c["id"])))
@@ -235,7 +234,7 @@ def list():
                         permitidos.append(c)
 
                 if permitidos:
-                    get_admin_client().table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
+                    (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
                     for c in permitidos:
                         registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id)
                     invalidate_user_caches(user_id)

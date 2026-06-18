@@ -7,6 +7,7 @@ import logging
 
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from blueprints.helpers import registrar_historico, is_user_active
+from utils.limiter import limiter
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ def generate_jwt_token(user_id, secret_key):
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
@@ -139,6 +141,7 @@ def login():
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))

@@ -3,13 +3,12 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, redirect, url_for, session, request, flash
 from flask_login import LoginManager, login_required, current_user
 from flask_wtf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
 from blueprints.helpers import get_authenticated_client
+from utils.limiter import limiter
 from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA
 from utils.erros_utils import formatar_erro_supabase
 
@@ -34,12 +33,9 @@ if is_production:
 
 csrf = CSRFProtect(app)
 
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=os.getenv("RATE_LIMIT", "500 per day;200 per hour").split(";"),
-    storage_uri=os.getenv("REDIS_URL", "memory://")
-)
+app.config["RATELIMIT_DEFAULT"] = os.getenv("RATE_LIMIT", "500 per day;200 per hour")
+app.config["RATELIMIT_STORAGE_URI"] = os.getenv("REDIS_URL", "memory://")
+limiter.init_app(app)
 
 cache = Cache(app, config={
     "CACHE_TYPE": os.getenv("CACHE_TYPE", "SimpleCache"),
@@ -58,7 +54,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("SUPABASE_URL e SUPABASE_KEY são obrigatórios")
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING if is_production else logging.INFO)
 logger = logging.getLogger(__name__)
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -122,10 +118,8 @@ def check_inactivity():
 def add_cors_headers(response):
     origin = request.headers.get("Origin")
     if origin:
-        allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
-        if "*" in allowed_origins or not allowed_origins:
-            response.headers["Access-Control-Allow-Origin"] = "*"
-        elif origin in allowed_origins:
+        allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else ["http://localhost:5000", "http://127.0.0.1:5000"]
+        if origin in allowed_origins:
             response.headers["Access-Control-Allow-Origin"] = origin
     
     if request.method == "OPTIONS":
@@ -136,6 +130,9 @@ def add_cors_headers(response):
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:;"
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     
     return response
 
@@ -512,4 +509,6 @@ app.register_blueprint(amostra_bp)
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    if is_production:
+        debug = False
     app.run(host="0.0.0.0", port=port, debug=debug)

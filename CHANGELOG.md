@@ -2,6 +2,50 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.18] - 2026-06-18
+
+### Segurança: Fase 46 Completa — 13 Vulnerabilidades Corrigidas 🔒
+
+#### CRÍTICO: DELETE agora usa `get_authenticated_client()` para não-dev
+- Todos os 5 blueprints (cilindro, elemento, leitura, pressao, amostra): `get_admin_client()` → `get_admin_client() if dev else get_authenticated_client()` nos DELETEs
+- Dev bypass adicionado nos ownership checks de cilindro, elemento e leitura (consistência com amostra/pressao)
+- **Impacto**: admin/usuario que usam DELETE via service_role → agora respeitam RLS. Dev mantém bypass via service_role.
+
+#### ALTO: HSTS / CSP / Security Headers
+- `app.py after_request`: adicionados `Strict-Transport-Security`, `Content-Security-Policy` e `Permissions-Policy`
+- CSP: `default-src 'self'` com exceções para jsdelivr.net e cdnjs.cloudflare.com
+
+#### ALTO: CORS Restrito
+- Removido fallback `Access-Control-Allow-Origin: *` quando `ALLOWED_ORIGINS` vazio
+- Defaults: `["http://localhost:5000", "http://127.0.0.1:5000"]`
+
+#### ALTO: Debug Mode Seguro
+- `app.py`: `if is_production: debug = False` antes de `app.run()` — impede RCE via Werkzeug debugger
+
+#### MÉDIO: Perfil RLS Policy Corrigida
+- `database/rls.sql`: `FOR UPDATE USING (true) WITH CHECK (true)` → `USING (auth.uid() = id) WITH CHECK (auth.uid() = id)`
+- Admin/Dev continuam usando `get_admin_client()` (service_role) para gerenciar outros usuários
+
+#### MÉDIO: Auth Rate Limit Específico
+- `auth.py`: `@limiter.limit("5 per minute", methods=["POST"])` nas rotas `/login` e `/register`
+
+#### MÉDIO: JWT Validation via Supabase
+- `admin.py validate_admin_token()`: agora valida token via `supabase.auth.get_user()` em vez de `jwt.decode()` com `app.secret_key`
+- Import `jwt` removido de `admin.py`
+
+#### BAIXO: Session Stale Corrigido
+- `admin.py set_role()` e `toggle_user()`: `session.pop("cached_user_info")` + `invalidate_user_caches(target_user_id)` ao alterar role/status
+
+#### BAIXO: Logging Seguro em Produção
+- `app.py`: `logging.basicConfig(level=logging.WARNING if is_production else logging.INFO)`
+
+#### BAIXO: Vercel Security Headers
+- `vercel.json`: bloco `headers` adicionado com X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security, Permissions-Policy
+
+#### Melhoria: Circular Import Resolvido
+- `utils/limiter.py` (novo): `Limiter` extraído de `app.py` para ser compartilhado com `auth.py` sem circular import
+- `app.py`: usa `limiter.init_app(app)` com configs `RATELIMIT_DEFAULT` e `RATELIMIT_STORAGE_URI`
+
 ## [2.6.17] - 2026-06-18
 
 ### Remover Senha Fraca do Seed 🔒

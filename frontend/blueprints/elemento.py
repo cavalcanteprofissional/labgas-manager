@@ -5,7 +5,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
 
 elemento_bp = Blueprint('elemento', __name__)
@@ -50,7 +50,6 @@ def list():
             }
             
             try:
-                from blueprints.helpers import get_authenticated_client
                 if dev:
                     client = get_admin_client()
                 else:
@@ -105,7 +104,7 @@ def list():
                 flash("Elemento não encontrado", "danger")
                 return redirect(url_for("elemento.list"))
             
-            if elemento_info[0].get("user_id") != user_id:
+            if not dev and elemento_info[0].get("user_id") != user_id:
                 flash("Você não tem permissão para excluir este elemento.", "danger")
                 return redirect(url_for("elemento.list"))
             
@@ -117,7 +116,7 @@ def list():
                 return redirect(url_for("elemento.list"))
             
             try:
-                get_admin_client().table("elemento").delete().eq("id", elemento_id).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("elemento").delete().eq("id", elemento_id).execute()
                 
                 registrar_historico("elemento", "excluido", elemento_nome, user_id)
                 invalidate_user_caches(user_id)
@@ -156,7 +155,7 @@ def list():
                 skipped = []
                 not_owned = []
                 for e in elementos:
-                    if e.get("user_id") != user_id:
+                    if not dev and e.get("user_id") != user_id:
                         not_owned.append(e.get("nome", str(e["id"])))
                     elif e["id"] in tem_leitura:
                         skipped.append(e.get("nome", str(e["id"])))
@@ -164,7 +163,7 @@ def list():
                         permitidos.append(e)
 
                 if permitidos:
-                    get_admin_client().table("elemento").delete().in_("id", [e["id"] for e in permitidos]).execute()
+                    (get_admin_client() if dev else get_authenticated_client()).table("elemento").delete().in_("id", [e["id"] for e in permitidos]).execute()
                     for e in permitidos:
                         registrar_historico("elemento", "excluido", e.get("nome", str(e["id"])), user_id)
                     invalidate_user_caches(user_id)

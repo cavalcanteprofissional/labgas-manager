@@ -167,7 +167,7 @@ def leitura_list():
                     flash("Registro de leitura não encontrado", "danger")
                     return redirect(url_for("leitura.leitura_list"))
                 
-                if leitura_info[0].get("user_id") != user_id:
+                if not dev and leitura_info[0].get("user_id") != user_id:
                     flash("Você não tem permissão para excluir esta leitura.", "danger")
                     return redirect(url_for("leitura.leitura_list"))
                 
@@ -176,7 +176,7 @@ def leitura_list():
                 elemento_nome = get_supabase_client().table("elemento").select("nome").eq("id", leitura_info[0]["elemento_id"]).execute().data
                 nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
 
-                get_admin_client().table("leitura").delete().eq("id", leitura_id).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("leitura").delete().eq("id", leitura_id).execute()
                 registrar_historico("leitura", "excluido", nome_leitura, user_id)
                 invalidate_user_caches(user_id)
                 flash("Leitura excluída com sucesso!", "success")
@@ -205,7 +205,7 @@ def leitura_list():
                 supabase = get_supabase_client()
                 leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,user_id").in_("id", ids).execute().data or []
 
-                permitted = [l for l in leituras if l.get("user_id") == user_id]
+                permitted = [l for l in leituras if dev or l.get("user_id") == user_id]
                 not_owned_count = len(ids) - len(permitted)
 
                 if not permitted:
@@ -220,7 +220,7 @@ def leitura_list():
                 elementos = supabase.table("elemento").select("id,nome").in_("id", elemento_ids).execute().data or []
                 elem_map = {e["id"]: e.get("nome", "N/A") for e in elementos}
 
-                get_admin_client().table("leitura").delete().in_("id", [l["id"] for l in permitted]).execute()
+                (get_admin_client() if dev else get_authenticated_client()).table("leitura").delete().in_("id", [l["id"] for l in permitted]).execute()
 
                 for l in permitted:
                     nome = f"{cil_map.get(l['cilindro_id'], 'N/A')} - {elem_map.get(l['elemento_id'], 'N/A')}"

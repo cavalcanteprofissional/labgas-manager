@@ -76,7 +76,7 @@ CREATE POLICY "Users can insert own perfil" ON perfil
 
 -- UPDATE: Apenas próprio usuário pode atualizar
 CREATE POLICY "Users can update own perfil" ON perfil
-    FOR UPDATE USING (true) WITH CHECK (true);
+    FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- =====================================================
 -- Tabela: pressao

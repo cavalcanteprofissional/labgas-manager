@@ -1,7 +1,6 @@
 # Admin blueprint - Administrative functions
 import json
 import io
-import jwt
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response
 from openpyxl import Workbook
@@ -13,21 +12,22 @@ admin_bp = Blueprint('admin', __name__)
 
 
 def validate_admin_token():
-    """Valida o token JWT para operações admin"""
+    """Valida o token JWT do Supabase Auth para operações admin"""
     user_id = get_user_id()
-    token = session.get("jwt_token")
+    token = session.get("supabase_token")
     
     if not token:
         flash("Sessão inválida. Faça login novamente.", "danger")
         return None, redirect(url_for("auth.login"))
     
     try:
-        from flask import current_app
-        decoded = jwt.decode(token, current_app.secret_key, algorithms=["HS256"])
-        if decoded.get("user_id") != user_id:
-            flash("Acesso não autorizado.", "danger")
-            return None, redirect(url_for("dashboard"))
-    except:
+        from utils.supabase_utils import get_supabase_client
+        supabase = get_supabase_client()
+        user_response = supabase.auth.get_user(token)
+        if not user_response or not user_response.user:
+            flash("Token inválido ou expirado.", "danger")
+            return None, redirect(url_for("auth.login"))
+    except Exception:
         flash("Token inválido.", "danger")
         return None, redirect(url_for("auth.login"))
     
@@ -116,7 +116,8 @@ def toggle_user():
     client = get_admin_client()
     client.table("perfil").update({"ativo": ativo}).eq("id", target_user_id).execute()
     
-    # Registrar no histórico
+    invalidate_user_caches(target_user_id)
+    
     acao = "ativado" if ativo else "desativado"
     registrar_historico("perfil", "atualizado", f"Usuário {acao}", get_user_id())
     
@@ -161,6 +162,10 @@ def set_role():
             flash(f"Atenção: você alterou a role de {target_user_id} de '{target_perfil.data[0].get('role', '?')}' para '{role}'.", "warning")
     
     client.table("perfil").update({"role": role}).eq("id", target_user_id).execute()
+    
+    if target_is_self:
+        session.pop("cached_user_info", None)
+    invalidate_user_caches(target_user_id)
     
     registrar_historico("perfil", "atualizado", f"Role alterada para {role}", get_user_id())
     
