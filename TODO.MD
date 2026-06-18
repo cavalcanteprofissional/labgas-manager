@@ -624,3 +624,28 @@ A senha `123456` estava hardcoded como default no `scripts/seed.py` e referencia
 - [x] `frontend/.env.example`: `# TEST_PASSWORD=123456` → `# TEST_PASSWORD=` (sem valor, sem sugestão de senha fraca)
 - [x] `scripts/seed.py`: default `"123456"` removido — se `TEST_PASSWORD` não estiver no `.env.local`, o script exibe erro e aborta
 - [x] `scripts/seed.py`: role do perfil alterada de `'admin'` para `'dev'` (consistência com Fase 47)
+
+---
+
+## Fase 49: Footer de Sessão com Timer Regressivo 🔄
+
+### Contexto
+Não há indicador visual de sessão para o usuário — ele só descobre que a sessão expirou quando tenta uma ação e é redirecionado ao login. Um footer com nome do usuário e tempo restante antes do timeout de inatividade (10 min) melhora a experiência e evita perda de trabalho.
+
+### O que foi implementado (v2.6.20)
+
+#### Backend
+- **`app.py` (`inject_user_info`)**: `session_remaining_seconds` computado a partir de `last_activity` e `INACTIVITY_TIMEOUT` — injetado em todos os templates
+
+#### Frontend
+- **`base.html`**: Footer fixo no final da página com:
+  - Nome do usuário + `bi-person-circle` (alinhado à esquerda)
+  - Timer regressivo `MM:SS` + `bi-clock-history` (alinhado à direita)
+  - CSS responsivo (flexível em mobile e desktop)
+  - JS countdown com `setInterval(1000)` — cor muda para 🟡 warning (<60s) e 🔴 danger (<30s)
+  - Some (`display: none`) quando expira (0:00)
+- **Layout**: `.page-content` e footer envolvidos em flex container `min-height: calc(100vh - 60px)` para footer sempre no final da viewport
+
+#### Testes
+- **`test_session_footer.py`**: 4 testes (footer visível, nome do usuário, timer regressivo, cores de warning/danger)
+- **`pytest.ini`**: marcador `footer` adicionado — `pytest -m footer` executa só os testes de footer, `pytest -m "not footer"` pula footer, default executa todos

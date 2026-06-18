@@ -171,6 +171,17 @@ def inject_user_info():
                 'habilitar_abas': ABAS_DEFAULT
             }
     
+    from datetime import timezone
+    last_activity = session.get('last_activity')
+    remaining = 0
+    if last_activity:
+        try:
+            last_dt = datetime.fromisoformat(last_activity)
+            elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+            remaining = max(0, int(INACTIVITY_TIMEOUT.total_seconds() - elapsed))
+        except (ValueError, TypeError):
+            pass
+
     cached = session.get('cached_user_info', {})
     
     return dict(
@@ -180,7 +191,8 @@ def inject_user_info():
         pode_acessar_aba=get_habilitar_abas,
         today=datetime.now().strftime("%Y-%m-%d"),
         ICON_TIPO=ICON_TIPO,
-        COR_TIPO=COR_TIPO
+        COR_TIPO=COR_TIPO,
+        session_remaining_seconds=remaining,
     )
 
 
