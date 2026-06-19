@@ -124,3 +124,15 @@ def get_habilitar_abas(user_id=None):
         return {aba: habilitar_abas.get(aba, True) for aba in ABAS_DISPONIVEIS}
     
     return ABAS_DEFAULT.copy()
+
+
+def get_all_users():
+    """Retorna lista de todos os usuários (id, nome, email) — apenas para dev"""
+    from utils.supabase_utils import get_admin_client
+    try:
+        client = get_admin_client()
+        resp = client.table("perfil").select("id,nome,email").execute()
+        return resp.data or []
+    except Exception as e:
+        logger.error(f"get_all_users: erro: {str(e)}")
+        return []

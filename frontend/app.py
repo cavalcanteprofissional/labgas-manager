@@ -114,6 +114,47 @@ def check_inactivity():
     session['last_activity'] = now.isoformat()
 
 
+@app.before_request
+def populate_user_cache():
+    if request.endpoint is None:
+        return
+    if request.endpoint in PUBLIC_ENDPOINTS:
+        return
+    user_id = session.get('user_id')
+    if user_id and 'cached_user_info' not in session:
+        from utils.supabase_utils import get_admin_client
+        from blueprints.helpers import ABAS_DEFAULT
+        client = get_admin_client()
+        try:
+            perfil_response = client.table("perfil").select("role,nome,habilitar_abas").eq("id", user_id).execute()
+            if perfil_response.data:
+                perfil = perfil_response.data[0]
+                user_role = perfil.get('role', 'usuario')
+                session['cached_user_info'] = {
+                    'user_role': user_role,
+                    'user_name': perfil.get('nome', ''),
+                    'is_admin': user_role in ('admin', 'dev'),
+                    'is_dev': user_role == 'dev',
+                    'habilitar_abas': perfil.get('habilitar_abas') or ABAS_DEFAULT
+                }
+            else:
+                session['cached_user_info'] = {
+                    'user_role': 'usuario',
+                    'user_name': '',
+                    'is_admin': False,
+                    'is_dev': False,
+                    'habilitar_abas': ABAS_DEFAULT
+                }
+        except Exception:
+            session['cached_user_info'] = {
+                'user_role': 'usuario',
+                'user_name': '',
+                'is_admin': False,
+                'is_dev': False,
+                'habilitar_abas': ABAS_DEFAULT
+            }
+
+
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get("Origin")
@@ -142,35 +183,7 @@ def inject_user_info():
     from blueprints.helpers import get_habilitar_abas
     from datetime import datetime, timezone
     from utils.constants import ICON_TIPO, COR_TIPO
-    
-    user_id = session.get('user_id')
-    
-    if user_id and 'cached_user_info' not in session:
-        from utils.supabase_utils import get_admin_client
-        client = get_admin_client()
-        
-        perfil_response = client.table("perfil").select("role,nome,habilitar_abas").eq("id", user_id).execute()
-        
-        if perfil_response.data:
-            perfil = perfil_response.data[0]
-            from blueprints.helpers import ABAS_DEFAULT
-            user_role = perfil.get('role', 'usuario')
-            session['cached_user_info'] = {
-                'user_role': user_role,
-                'user_name': perfil.get('nome', ''),
-                'is_admin': user_role in ('admin', 'dev'),
-                'is_dev': user_role == 'dev',
-                'habilitar_abas': perfil.get('habilitar_abas') or ABAS_DEFAULT
-            }
-        else:
-            from blueprints.helpers import ABAS_DEFAULT
-            session['cached_user_info'] = {
-                'user_role': 'usuario',
-                'user_name': '',
-                'is_admin': False,
-                'habilitar_abas': ABAS_DEFAULT
-            }
-    
+
     last_activity = session.get('last_activity')
     remaining = 0
     if last_activity:
@@ -184,11 +197,12 @@ def inject_user_info():
             pass
 
     cached = session.get('cached_user_info', {})
-    
+
     return dict(
-        is_admin=cached.get('is_admin', False), 
-        user_role=cached.get('user_role', 'usuario'), 
-        user_name=cached.get('user_name', ''), 
+        is_admin=cached.get('is_admin', False),
+        is_dev=cached.get('is_dev', False),
+        user_role=cached.get('user_role', 'usuario'),
+        user_name=cached.get('user_name', ''),
         pode_acessar_aba=get_habilitar_abas,
         today=datetime.now().strftime("%Y-%m-%d"),
         ICON_TIPO=ICON_TIPO,
@@ -233,20 +247,47 @@ def _parse_tempo_chama(tempo_str):
     return 0
 
 
+MESES_PT = {
+    1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr",
+    5: "Mai", 6: "Jun", 7: "Jul", 8: "Ago",
+    9: "Set", 10: "Out", 11: "Nov", 12: "Dez",
+}
+
+
+def _formatar_mes_ano(data_str):
+    """'2024-03-15' ou '2024-03' → 'Mar 2024'"""
+    if not data_str or not isinstance(data_str, str):
+        return data_str or ""
+    partes = data_str.split("-")
+    try:
+        mes = int(partes[1])
+        ano = partes[0]
+        return f"{MESES_PT[mes]} {ano}"
+    except (IndexError, ValueError, KeyError):
+        return data_str
+
+
 def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes):
     from collections import defaultdict
     cilindro_dict = {c["id"]: c for c in cilindro}
     elemento_dict = {e["id"]: e for e in elementos}
 
-    # KPI: Cilindros Ativos
     cilindros_ativos = sum(1 for c in cilindro if c.get("status") == "ativo")
 
-    # Gás Consumido (L) por cilindro
+    # Single-pass sobre leituras: gas, total, cilindro, mes, top elementos
     gas_por_cilindro = defaultdict(float)
     total_gas_consumido = 0.0
+    total_quantidade = 0
+    leituras_por_cilindro = defaultdict(int)
+    leituras_por_mes = defaultdict(int)
+    elem_leituras = defaultdict(int)
+
     for a in leituras:
+        qtd = a.get("quantidade", 1)
+        total_quantidade += qtd
         cil_id = a.get("cilindro_id")
         elem_id = a.get("elemento_id")
+
         if cil_id and elem_id:
             minutos = _parse_tempo_chama(a.get("tempo_chama"))
             elem = elemento_dict.get(elem_id, {})
@@ -255,7 +296,17 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
             gas_por_cilindro[cil_id] += gas
             total_gas_consumido += gas
 
-    # KPI: Gás Restante
+        if cil_id:
+            leituras_por_cilindro[cil_id] += qtd
+
+        d = a.get("data")
+        if d:
+            leituras_por_mes[str(d)[:7]] += qtd
+
+        if elem_id:
+            elem_leituras[elem_id] += qtd
+
+    # Gás Restante
     gas_restante = 0.0
     for c in cilindro:
         if c.get("status") == "ativo":
@@ -265,20 +316,11 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
             if restante > 0:
                 gas_restante += restante
 
-    # KPI: Total Leituras
-    total_quantidade = sum(a.get("quantidade", 1) for a in leituras)
-
-    # KPI: Custo Médio por Leitura
+    # Custo Médio por Leitura
     custo_total = sum(float(c.get("custo", 0)) for c in cilindro if c.get("custo"))
     custo_por_leitura = round(custo_total / total_quantidade, 2) if total_quantidade > 0 else 0
 
     # Leituras por Cilindro (doughnut)
-    leituras_por_cilindro = defaultdict(int)
-    for a in leituras:
-        cid = a.get("cilindro_id")
-        if cid:
-            leituras_por_cilindro[cid] += a.get("quantidade", 1)
-
     cilindro_leituras_labels = []
     cilindro_leituras_values = []
     for cid, qtd in sorted(leituras_por_cilindro.items(), key=lambda x: cilindro_dict.get(x[0], {}).get("codigo", "")):
@@ -302,15 +344,9 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     }
 
     # Leituras por Mês (últimos 12)
-    leituras_por_mes = defaultdict(int)
-    for a in leituras:
-        d = a.get("data")
-        if d:
-            leituras_por_mes[str(d)[:7]] += a.get("quantidade", 1)
-
     meses = sorted(leituras_por_mes.keys(), reverse=True)[:12]
-    leituras_mes_labels = list(reversed(meses))
-    leituras_mes_values = [leituras_por_mes[m] for m in leituras_mes_labels]
+    leituras_mes_labels = [_formatar_mes_ano(m) for m in reversed(meses)]
+    leituras_mes_values = [leituras_por_mes[m] for m in meses]
 
     # Elementos por Amostra (distribuição)
     ae_count = defaultdict(int)
@@ -326,12 +362,6 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     dist_values = [elem_por_amostra_dist.get(l, 0) for l in dist_labels]
 
     # Elementos mais analisados (top 5)
-    elem_leituras = defaultdict(int)
-    for a in leituras:
-        eid = a.get("elemento_id")
-        if eid:
-            elem_leituras[eid] += a.get("quantidade", 1)
-
     elementos_mais_analisados = []
     for eid, qtd in sorted(elem_leituras.items(), key=lambda x: x[1], reverse=True)[:5]:
         elementos_mais_analisados.append({
@@ -339,7 +369,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
             "quantidade": qtd
         })
 
-    pressao_chart_labels = list(next(iter(pressao_chart.values()), {}).get("labels", []))
+    pressao_chart_labels = [formatar_data(l) for l in next(iter(pressao_chart.values()), {}).get("labels", [])]
 
     return dict(
         cilindros_ativos=cilindros_ativos,
@@ -365,31 +395,55 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    from utils.supabase_utils import get_supabase_client
-    from blueprints.helpers import get_user_id
+    from utils.supabase_utils import get_supabase_client, get_admin_client
+    from blueprints.helpers import get_user_id, is_dev, get_all_users
 
-    user_id = get_user_id()
-    supabase = get_supabase_client()
+    current_user_id = get_user_id()
+    selected_user_id = request.args.get("selected_user_id", "").strip()
+    filter_user_id = current_user_id
 
-    cilindro = supabase.table("cilindro").select("*").eq("user_id", user_id).execute().data or []
-    elementos = supabase.table("elemento").select("*").eq("user_id", user_id).order("nome").execute().data or []
-    leituras = supabase.table("leitura").select("*").eq("user_id", user_id).order("data", desc=True).execute().data or []
+    if is_dev() and selected_user_id and selected_user_id != "all":
+        filter_user_id = selected_user_id
 
+    if is_dev() and (not selected_user_id or selected_user_id == "all"):
+        supabase = get_admin_client()
+        cilindro = supabase.table("cilindro").select("id,codigo,status,litros_equivalentes,custo").execute().data or []
+        elementos = supabase.table("elemento").select("id,nome,consumo_lpm").order("nome").execute().data or []
+        leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,data,quantidade,tempo_chama").order("data", desc=True).execute().data or []
+        try:
+            pressoes = supabase.table("pressao").select("id,cilindro_id,data,pressao").order("data").execute().data or []
+        except Exception:
+            pressoes = []
+        try:
+            amostras_resp = supabase.table("amostra").select("id,numero_amostra,lote,created_at", count="exact").order("created_at", desc=True).execute()
+            amostras_data = amostras_resp.data or []
+        except Exception:
+            amostras_data = []
+    else:
+        supabase = get_supabase_client()
+        cilindro = supabase.table("cilindro").select("id,codigo,status,litros_equivalentes,custo").eq("user_id", filter_user_id).execute().data or []
+        elementos = supabase.table("elemento").select("id,nome,consumo_lpm").eq("user_id", filter_user_id).order("nome").execute().data or []
+        leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,data,quantidade,tempo_chama").eq("user_id", filter_user_id).order("data", desc=True).execute().data or []
+        try:
+            pressoes = supabase.table("pressao").select("id,cilindro_id,data,pressao").eq("user_id", filter_user_id).order("data").execute().data or []
+        except Exception:
+            pressoes = []
+        try:
+            amostras_resp = supabase.table("amostra").select("id,numero_amostra,lote,created_at", count="exact").eq("user_id", filter_user_id).order("created_at", desc=True).execute()
+            amostras_data = amostras_resp.data or []
+        except Exception:
+            amostras_data = []
+
+    user_amostra_ids = {a["id"] for a in amostras_data if a.get("id")}
     try:
-        pressoes = supabase.table("pressao").select("*").eq("user_id", user_id).order("data").execute().data or []
-    except Exception:
-        pressoes = []
-
-    try:
-        amostras_resp = supabase.table("amostra").select("*", count="exact").eq("user_id", user_id).order("created_at", desc=True).execute()
-        amostras_data = amostras_resp.data or []
-    except Exception:
-        amostras_data = []
-
-    try:
-        ae_data = supabase.table("amostra_elemento").select("*").execute().data or []
+        if user_amostra_ids:
+            ae_data = supabase.table("amostra_elemento").select("id,amostra_id").in_("amostra_id", list(user_amostra_ids)).execute().data or []
+        else:
+            ae_data = []
     except Exception:
         ae_data = []
+
+    lista_usuarios = get_all_users() if is_dev() else []
 
     kpis = _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes)
     leituras_recentes = leituras[:5]
@@ -405,6 +459,8 @@ def dashboard():
         amostras=amostras_recentes,
         paleta_cilindro=PALETA_CILINDRO,
         paleta_elemento=PALETA_ELEMENTO,
+        lista_usuarios=lista_usuarios,
+        selected_user_id=selected_user_id or "all",
         **kpis,
     )
 

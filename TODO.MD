@@ -811,3 +811,54 @@ Não há indicador visual de sessão para o usuário — ele só descobre que a 
 #### Testes
 - **`test_session_footer.py`**: 4 testes (footer visível, nome do usuário, timer regressivo, cores de warning/danger)
 - **`pytest.ini`**: marcador `footer` adicionado — `pytest -m footer` executa só os testes de footer, `pytest -m "not footer"` pula footer, default executa todos
+---
+---
+
+## v2.6.24 — Datas nos gráficos no formato "Mês Ano" 📅 + Filtro multi-usuário dev 👤
+
+### Feature 1: Datas nos gráficos
+
+**Problema:** Gráficos exibem `"2024-03-15"` e `"2024-03"` no eixo X.
+
+**Solução:** Converter para `"Mar 2026"`, `"Fev 2026"` via dict `MESES_PT` + função `_formatar_mes_ano()` no backend.
+
+| Arquivo | Mudança |
+|---------|---------|
+| `app.py` (novo) | `MESES_PT` dict + `_formatar_mes_ano(data_str)` |
+| `app.py:_compute_kpis` | Aplicar `_formatar_mes_ano()` em `pressao_chart_labels` e `leituras_mes_labels` |
+
+### Feature 2: Filtro multi-usuário exclusivo do dev
+
+**Problema:** `dev` não consegue ver dados de outros usuários no dashboard, e export é "tudo ou nada".
+
+**Solução:** Dropdown "Filtrar por usuário" (visível só para `dev`) com opções: "Todos os usuários" + cada usuário individualmente. Ao selecionar, dashboard recarrega com dados daquele usuário (usando `get_admin_client()` + filtro `user_id`). Export segue o mesmo filtro.
+
+#### Arquivos alterados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `app.py` (dashboard route) | Se `is_dev()` e `?selected_user_id=...` presente: usar `get_admin_client()` + `.eq("user_id", selected_user_id)` |
+| `app.py` (dashboard route) | Carregar `lista_usuarios` de todos os perfis (só para dev) |
+| `admin.py` (export_data) | Se `is_dev()` e `?selected_user_id=...` presente: adicionar `.eq("user_id", selected_user_id)` nas queries |
+| `helpers.py` | Nova função `get_all_users()` |
+| `dashboard.html` | Dropdown visível `{% if is_dev %}`, recarrega com `?selected_user_id=X` |
+| `dashboard.html` | Export links dinâmicos com `&selected_user_id=X` |
+
+- [x] `app.py`: adicionar `MESES_PT` e `_formatar_mes_ano()`
+- [x] `app.py:_compute_kpis`: aplicar `_formatar_mes_ano()` nas labels dos gráficos
+- [x] `helpers.py`: adicionar `get_all_users()`
+- [x] `app.py` dashboard: lógica de filtro `selected_user_id` para dev
+- [x] `admin.py`: filtro `selected_user_id` para dev no export
+- [x] `dashboard.html`: dropdown de usuários + export dinâmico
+- [x] Testes: 24 passed, 11 skipped, 0 failed
+
+### Correções pós-implantação (v2.6.24)
+
+#### 1. Labels da Curva de Pressão — dia+mes+ano
+- `app.py:362`: `pressao_chart_labels` usava `_formatar_mes_ano()` → `formatar_data()` — exibe `"15/03/2024"` em vez de `"Mar 2024"`, evitando rótulos duplicados no eixo X do gráfico de linha
+
+#### 2. Bug leituras_mes_values
+- `app.py:333`: `leituras_mes_values` usava `leituras_mes_labels` (labels formatados como `"Mar 2024"`) para lookup em `leituras_por_mes` (chaves originais `"2024-03"`) → retornava 0 para tudo. Corrigido para usar `meses` (chaves originais)
+
+#### 3. is_dev ausente do template
+- `app.py:189`: adicionado `is_dev=cached.get('is_dev', False)` ao context processor — dropdown de filtro de usuário agora aparece para devs

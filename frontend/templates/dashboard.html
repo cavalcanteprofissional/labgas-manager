@@ -11,15 +11,31 @@
             <i class="bi bi-download"></i> Exportar Dados
         </button>
         <ul class="dropdown-menu">
-            <li><h6 class="dropdown-header">Exportar Todo o Banco de Dados</h6></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='csv') }}"><i class="bi bi-filetype-csv"></i> CSV</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='excel') }}"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='md') }}"><i class="bi bi-markdown"></i> Markdown</a></li>
+            <li><h6 class="dropdown-header">Exportar Dados{% if is_dev and selected_user_id and selected_user_id != 'all' %} (Filtrado){% endif %}</h6></li>
+            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='json', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='csv', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='csv') }}"><i class="bi bi-filetype-csv"></i> CSV</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='excel', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='excel') }}"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='md', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='md') }}"><i class="bi bi-markdown"></i> Markdown</a></li>
         </ul>
     </div>
     {% endif %}
 </h2>
+
+{% if is_dev and lista_usuarios %}
+<div class="row mb-3">
+    <div class="col-12 col-md-6 col-lg-4">
+        <form method="GET" action="{{ url_for('dashboard') }}" class="d-flex align-items-center">
+            <label for="userFilter" class="form-label me-2 mb-0 text-nowrap"><i class="bi bi-funnel"></i> Usuário:</label>
+            <select name="selected_user_id" id="userFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="all" {% if selected_user_id == 'all' %}selected{% endif %}>Todos os usuários</option>
+                {% for u in lista_usuarios %}
+                <option value="{{ u.id }}" {% if selected_user_id == u.id %}selected{% endif %}>{{ u.nome or u.email }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <!-- LINHA 1: 6 KPI Cards -->
 <div class="row g-3 mb-4">

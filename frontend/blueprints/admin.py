@@ -375,15 +375,25 @@ def export_data():
         flash("Formato inválido.", "danger")
         return redirect(url_for("dashboard"))
     
+    selected_user_id = request.args.get("selected_user_id", "").strip()
+    dev_filter = is_dev() and selected_user_id and selected_user_id != "all"
+
     client = get_admin_client()
-    
-    cilindro_data = client.table("cilindro").select("*").execute().data or []
-    elementos_data = client.table("elemento").select("*").execute().data or []
-    leituras_data = client.table("leitura").select("*").execute().data or []
-    pressoes_data = client.table("pressao").select("*").execute().data or []
+    base_query = client.table
+
+    def _maybe_filter(query, table):
+        q = query(table).select("*")
+        if dev_filter:
+            q = q.eq("user_id", selected_user_id)
+        return q.execute().data or []
+
+    cilindro_data = _maybe_filter(base_query, "cilindro")
+    elementos_data = _maybe_filter(base_query, "elemento")
+    leituras_data = _maybe_filter(base_query, "leitura")
+    pressoes_data = _maybe_filter(base_query, "pressao")
 
     try:
-        amostras_data = client.table("amostra").select("*").execute().data or []
+        amostras_data = _maybe_filter(base_query, "amostra")
     except Exception:
         amostras_data = []
 
@@ -392,7 +402,10 @@ def export_data():
     except Exception:
         ae_data = []
     
-    usuarios_data = client.table("perfil").select("id,email,nome").execute().data or []
+    if dev_filter:
+        usuarios_data = client.table("perfil").select("id,email,nome").eq("id", selected_user_id).execute().data or []
+    else:
+        usuarios_data = client.table("perfil").select("id,email,nome").execute().data or []
     usuarios_dict = {u.get("id"): u for u in usuarios_data}
 
     for c in cilindro_data:

@@ -2,6 +2,20 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.24] - 2026-06-18
+
+### Datas nos gráficos no formato "Mês Ano" 📅
+
+- **`app.py`**: novo dict `MESES_PT` + função `_formatar_mes_ano()` — converte `"2024-03-15"` para `"Mar 2024"` com meses em português
+- **`app.py:_compute_kpis`**: `pressao_chart_labels` e `leituras_mes_labels` agora passam por `_formatar_mes_ano()` — gráficos exibem "Mar 2024", "Fev 2026" no eixo X
+
+### Filtro multi-usuário exclusivo do dev 👤
+
+- **`app.py` (dashboard route)**: se `is_dev()` e `?selected_user_id=X`, usa `get_admin_client()` com `.eq("user_id", X)`; se "all" ou vazio, mostra dados consolidados de todos os usuários
+- **`admin.py` (export_data)**: se `is_dev()` e `?selected_user_id=X`, filtra todas as queries de tabela por esse usuário
+- **`helpers.py`**: nova função `get_all_users()` — retorna lista de `{id, nome, email}` de todos os perfis
+- **`dashboard.html`**: dropdown "Filtrar por usuário" visível apenas para `dev` com opções "Todos os usuários" + cada usuário individualmente; export links incluem `selected_user_id` dinamicamente
+
 ## [2.6.23] - 2026-06-18
 
 ### Bugfix: TypeError Object of type builtin_function_or_method no Dashboard 🐛
