@@ -247,18 +247,13 @@ def pressao_list():
 
             return redirect(url_for("pressao.pressao_list"))
     
-    response = get_supabase_client().table("pressao").select("*").order("created_at", desc=True).execute()
+    offset = (page - 1) * per_page
+    response = get_supabase_client().table("pressao").select("*", count="exact").order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
     pressoes = response.data or []
+    total = response.count or 0
     
     for p in pressoes:
         p["cilindro_codigo"] = cilindro_dict_lookup.get(p.get("cilindro_id"), "")
-    
-    total = len(pressoes)
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_data = pressoes[start:end]
-    
-    pressoes = paginated_data
     
     pages = (total + per_page - 1) // per_page if total > 0 else 1
     end_page = min(page * per_page, total) if total > 0 else 0

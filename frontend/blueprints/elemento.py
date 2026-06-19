@@ -181,15 +181,10 @@ def list():
 
             return redirect(url_for("elemento.list"))
     
-    response = get_supabase_client().table("elemento").select("*").order("nome", desc=False).execute()
+    offset = (page - 1) * per_page
+    response = get_supabase_client().table("elemento").select("*", count="exact").order("nome", desc=False).range(offset, offset + per_page - 1).execute()
     elementos = response.data or []
-    
-    total = len(elementos)
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_data = elementos[start:end]
-    
-    elementos = paginated_data
+    total = response.count or 0
     
     pages = (total + per_page - 1) // per_page
     end = min(page * per_page, total)

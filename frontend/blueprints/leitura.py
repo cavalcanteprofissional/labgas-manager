@@ -235,29 +235,18 @@ def leitura_list():
 
             return redirect(url_for("leitura.leitura_list"))
     
-    response = get_supabase_client().table("leitura").select("*").order("data", desc=True).execute()
+    offset = (page - 1) * per_page
+    response = get_supabase_client().table("leitura").select("*", count="exact").order("data", desc=True).range(offset, offset + per_page - 1).execute()
     leituras = response.data or []
-    
-    total = len(leituras)
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_data = leituras[start:end]
-    
-    leituras = paginated_data
+    total = response.count or 0
     
     pages = (total + per_page - 1) // per_page
-    end = min(page * per_page, total)
+    end_page = min(page * per_page, total)
     max_pages = min(pages, 10)
     
     for leitura in leituras:
-        for c in cilindro:
-            if c.get("id") == leitura.get("cilindro_id"):
-                leitura["cilindro_nome"] = c.get("codigo")
-                break
-        for e in elementos:
-            if e.get("id") == leitura.get("elemento_id"):
-                leitura["elemento_nome"] = e.get("nome")
-                break
+        leitura["cilindro_nome"] = cilindro_dict.get(leitura.get("cilindro_id"), "")
+        leitura["elemento_nome"] = elemento_dict.get(leitura.get("elemento_id"), "")
     
     return render_template(
         "leitura.html", 
@@ -268,6 +257,6 @@ def leitura_list():
         per_page=per_page,
         total=total,
         pages=pages,
-        end=end,
+        end=end_page,
         max_pages=max_pages
     )

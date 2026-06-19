@@ -26,7 +26,7 @@
     <div class="col-12 col-md-6 col-lg-4">
         <form method="GET" action="{{ url_for('dashboard') }}" class="d-flex align-items-center">
             <label for="userFilter" class="form-label me-2 mb-0 text-nowrap"><i class="bi bi-funnel"></i> Usuário:</label>
-            <select name="selected_user_id" id="userFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="selected_user_id" id="userFilter" class="form-select form-select-sm" onchange="showLoadingDelayed();this.form.submit()">
                 <option value="all" {% if selected_user_id == 'all' %}selected{% endif %}>Todos os usuários</option>
                 {% for u in lista_usuarios %}
                 <option value="{{ u.id }}" {% if selected_user_id == u.id %}selected{% endif %}>{{ u.nome or u.email }}</option>

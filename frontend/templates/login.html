@@ -16,21 +16,29 @@
         border: none;
         border-radius: 16px;
     }
-    .login-card .card-body {
-        padding: 2rem;
-    }
-    @media (max-width: 576px) {
         .login-card .card-body {
-            padding: 1.5rem;
+            padding: 2rem;
         }
-    }
-</style>
+        .login-logo .logo-fill {
+            animation-duration: 3s;
+        }
+        @media (max-width: 576px) {
+            .login-card .card-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
 
 <div class="login-container">
     <div class="card login-card shadow-lg">
         <div class="card-body">
             <div class="text-center mb-4">
-                <h2><i class="bi bi-moisture text-primary"></i> LabGas</h2>
+                <h2 class="login-logo">
+                    <svg class="labgas-logo me-2" viewBox="0 0 1080 1080" width="36" height="36" aria-label="LabGas">
+                        <path class="logo-fill" d="M825.57,671.1l80.36-.13-8.26,96.04,77.83,1.13-.16,69.19-137.37.22-1.07,137.94-732.89-.06.04-871.1,871.45-.07.2,207.23-71.84.77-136.25,303.27-63.63,151.42,81.39.71,40.2-96.57ZM683.59,684.81l15.73-57.23c27.07-98.46-75.61-109.97-100.18-167-6.99-16.23,3.84-37.18,6.79-53.04,4.7-25.24,21.49-40.09,48.98-37.03,5.06.56,15.18,4.08,18.63,7.4,3.45,3.32,5.07,14.71,3.74,19.43l-18.31,65.12,81.92-.05c12.4-47.89,49.53-133.15-24.07-151.94-69.35-17.7-162.89-3.08-187.11,79.29-16.15,54.93-34.9,106.72,18.82,149.31,18.73,14.85,74.37,52.64,69.61,79.15-4.09,22.81-9.36,43.47-15.14,63.93-5.45,19.26-22.61,26.25-42.2,27-10.13.39-29.78-7.55-26.58-20.69l17.59-72.17-81.25.71c-11.59,47.83-48.69,133.34,24.71,151.8,72.76,18.3,164.59,2.21,188.29-84ZM249.19,377.58l17.11-66.9-55.43-.82-17.68,67.71h56ZM407.19,377.93l75.34-.79,16.35-67.12-156.21.44-116.38,457.85,79.88-.05,101.01-390.33Z"/>
+                    </svg>
+                    LabGas
+                </h2>
                 <p class="text-muted mb-0">Faça login para continuar</p>
             </div>
             

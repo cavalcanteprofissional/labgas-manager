@@ -127,12 +127,17 @@ def get_habilitar_abas(user_id=None):
 
 
 def get_all_users():
-    """Retorna lista de todos os usuários (id, nome, email) — apenas para dev"""
+    """Retorna lista de todos os usuários (id, nome, email) — cache via SimpleCache"""
+    from utils.cache_utils import get_cached_or_fetch
     from utils.supabase_utils import get_admin_client
-    try:
-        client = get_admin_client()
-        resp = client.table("perfil").select("id,nome,email").execute()
-        return resp.data or []
-    except Exception as e:
-        logger.error(f"get_all_users: erro: {str(e)}")
-        return []
+
+    def _fetch():
+        try:
+            client = get_admin_client()
+            resp = client.table("perfil").select("id,nome,email").execute()
+            return resp.data or []
+        except Exception as e:
+            logger.error(f"get_all_users: erro: {str(e)}")
+            return []
+
+    return get_cached_or_fetch("get_all_users", _fetch, timeout=300)

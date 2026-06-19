@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.24** (Branch: master)
+**Versão: 2.6.25** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -256,6 +256,7 @@ sequenceDiagram
 | supabase_utils.py | Cliente Supabase (autenticado e admin) | `frontend/utils/supabase_utils.py` |
 | validators.py | Funções de validação (safe_int, safe_float) | `frontend/utils/validators.py` |
 | constants.py | Constantes do sistema (status, cores, elementos) | `frontend/utils/constants.py` |
+| cache_utils.py | Cache via Flask-Caching (get/set/invalidate) | `frontend/utils/cache_utils.py` |
 
 #### Banco de Dados (Supabase)
 
@@ -523,7 +524,8 @@ labgas-manager/
 │   │   ├── __init__.py
 │   │   ├── supabase_utils.py  # Cliente Supabase
 │   │   ├── validators.py      # Validações
-│   │   └── constants.py       # Constantes
+│   │   ├── constants.py       # Constantes
+│   │   └── cache_utils.py     # Cache Flask-Caching
 │   │
 │   ├── templates/          # Templates Jinja2
 │   │   ├── base.html        # Template base
@@ -669,7 +671,8 @@ Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.e
 - Dashboard com cards de estatísticas
 - Paginação em todas as listas (10/25/50/100 itens por página)
 - Filtros em listas de cilindro, elemento e amostra
-- Sistema de cache (5 minutos)
+- Sistema de cache (5 minutos, KPIs 30s)
+- Loading overlay com animação SVG e delay de 300ms (sem flash em navegações rápidas)
 - Toast notifications
 - Design responsivo com Bootstrap 5
 

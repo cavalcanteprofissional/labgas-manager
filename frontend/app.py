@@ -443,9 +443,12 @@ def dashboard():
     except Exception:
         ae_data = []
 
+    from utils.cache_utils import get_cached_or_fetch, dashboard_cache_key
+
     lista_usuarios = get_all_users() if is_dev() else []
 
-    kpis = _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes)
+    kpi_cache_key = dashboard_cache_key("all") if is_dev() and (not selected_user_id or selected_user_id == "all") else dashboard_cache_key(filter_user_id)
+    kpis = get_cached_or_fetch(kpi_cache_key, lambda: _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes), timeout=30)
     leituras_recentes = leituras[:5]
     pressoes_recentes = pressoes[-5:] if pressoes else []
     amostras_recentes = amostras_data[:5]

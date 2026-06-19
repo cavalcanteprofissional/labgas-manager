@@ -5,7 +5,10 @@ import json
 
 
 def _get_cache():
-    return current_app.extensions.get("cache")
+    cache = current_app.extensions.get("cache")
+    if cache:
+        return next(iter(cache.values()))
+    return None
 
 
 def make_cache_key(prefix):

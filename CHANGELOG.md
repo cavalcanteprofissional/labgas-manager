@@ -2,6 +2,24 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.6.25] - 2026-06-18
+
+### Loading Overlay com Delay + Animação SVG ⏳
+
+- **`base.html`**: novo overlay com SVG inline do LabGas usando `clip-path: inset()` fill-up keyframe; overlay só aparece após 300ms (`setTimeout`) — navegações rápidas não disparam flash
+- **`login.html`**: SVB animado 36×36 no lugar de `<i class="bi bi-moisture">` com duração 3s (mais lento que o overlay)
+- **`dashboard.html`**: `onchange="showLoadingDelayed();this.form.submit()"` no dropdown de filtro — loading só se a requisição demorar
+
+### Cache de KPIs e Usuários ⚡
+
+- **`app.py`**: KPIs do dashboard cacheados via `get_cached_or_fetch()` com TTL de 30s — evita recomputação em navegações rápidas (abas → dashboard)
+- **`helpers.py`**: `get_all_users()` agora cacheado via `get_cached_or_fetch()` com TTL de 300s — evita query repetida a cada request
+- **`cache_utils.py`**: correção do `_get_cache()` — Flask-Caching armazena `{Cache: backend}` em `app.extensions["cache"]`, não o backend diretamente; extraído com `next(iter(cache.values()))`
+
+### LIMIT nas List Routes 📄
+
+- **`cilindro.py`**, **`elemento.py`**, **`leitura.py`**, **`pressao.py`**, **`amostra.py`**: todas as rotas de listagem agora usam `.range(offset, offset + per_page - 1)` + `count="exact"` — elimina paginação via slice Python, reduz tráfego de dados
+
 ## [2.6.24] - 2026-06-18
 
 ### Datas nos gráficos no formato "Mês Ano" 📅
