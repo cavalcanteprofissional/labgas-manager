@@ -74,7 +74,7 @@ INSERT_ORDER = [
 
 
 def _resolver_ipv4(url):
-    """Remove parametros invalidos e resolve hostname para IPv4."""
+    """Remove parametros invalidos e retorna (url_limpa, hostaddr)."""
     from urllib.parse import urlparse, urlunparse, parse_qs
     import socket
     parsed = urlparse(url)
@@ -83,21 +83,25 @@ def _resolver_ipv4(url):
     cleaned = "&".join(f"{k}={v[0]}" for k, v in params.items()) if params else ""
     url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, cleaned, parsed.fragment))
     if not url.startswith("postgresql://"):
-        return url
+        return url, None
     try:
         ips = [addr[4][0] for addr in socket.getaddrinfo(parsed.hostname, parsed.port, socket.AF_INET)]
         if ips:
-            url = url.replace(parsed.hostname, ips[0])
+            return url, ips[0]
     except Exception:
         pass
-    return url
+    return url, None
 
 
 def conectar():
     if not DB_URL:
         sys.exit("ERRO: DATABASE_URL nao definida no .env.local")
-    ipv4_url = _resolver_ipv4(DB_URL)
-    return psycopg2.connect(ipv4_url, sslmode="require")
+    url, hostaddr = _resolver_ipv4(DB_URL)
+    if hostaddr:
+        conn_str = f"{url}&hostaddr={hostaddr}" if "?" in url else f"{url}?hostaddr={hostaddr}"
+    else:
+        conn_str = url
+    return psycopg2.connect(conn_str, sslmode="require")
 
 
 def listar_backups():

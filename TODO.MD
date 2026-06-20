@@ -1037,9 +1037,11 @@ GitHub Actions runner não conseguia conectar ao Supabase via IPv6:
 #### 3. is_dev ausente do template
 - `app.py:189`: adicionado `is_dev=cached.get('is_dev', False)` ao context processor — dropdown de filtro de usuário agora aparece para devs
 
-## Fase 55: Fix pgbouncer param + registro final 🔧
+## Fase 55: Fix pgbouncer param + hostaddr IPv4 🔧
 
 ### Correções no CI do GitHub Actions
-- [x] `scripts/backup_db.py`: `_resolver_ipv4()` agora remove parâmetro `pgbouncer` da URL antes de conectar (psycopg2 não suporta)
-- [x] `scripts/restore_db.py`: mesma correção no `_resolver_ipv4()`
+- [x] `scripts/backup_db.py`: `_resolver_ipv4()` agora retorna tupla `(url, hostaddr)` e `conectar()` usa parâmetro `hostaddr` do psycopg2 para forçar IPv4
+- [x] `scripts/restore_db.py`: mesma correção
+- [x] `scripts/backup_db.py`: `_resolver_ipv4()` também remove parâmetro `pgbouncer` da URL (psycopg2 não suporta)
+- [x] `scripts/restore_db.py`: mesma correção
 - [ ] Testar workflow manualmente via Actions → Run workflow
