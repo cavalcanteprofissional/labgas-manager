@@ -952,8 +952,8 @@ python scripts/restore_db.py --latest          # restaura backup mais recente
 - [x] Backup local testado: 760 registros, 9 tabelas
 - [x] Upload R2 testado: s3://labgas-backups/labgas_backup_2026-06-20_17-02-17.json.gz
 - [x] Backups locais antigos limpos (mantido apenas o último)
-- [ ] GitHub Secrets configurados (8 secrets — manual via Settings → Secrets → Actions):
-  - `DATABASE_URL`: `postgresql://backup_user.ypnysprinkdwcfkiftvf:LabGasBackup123!@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require` (pooler, sempre IPv4)
+- [ ] GitHub Secrets configurados (8 secrets — Settings → Secrets → Actions):
+  - `DATABASE_URL` — pooler: `postgresql://backup_user.PROJECT_REF:SENHA@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require`
   - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BACKUP_DB_PASSWORD`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
 - [ ] Workflow `daily-backup.yml` testado manualmente via Actions → Run workflow
 

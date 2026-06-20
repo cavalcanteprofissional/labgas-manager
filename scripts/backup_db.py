@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 from datetime import datetime, date, time, timedelta, UTC
 from decimal import Decimal
 from pathlib import Path
@@ -41,7 +42,8 @@ def _obter_db_url():
         match = re.search(r"https?://([^.]+)\.supabase\.co", supabase_url)
         if match:
             ref = match.group(1)
-            return f"postgresql://backup_user.{ref}:{password}@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
+            encoded = urllib.parse.quote(password, safe="")
+            return f"postgresql://backup_user.{ref}:{encoded}@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     return None
 
 

@@ -181,7 +181,7 @@ class TestObterDbUrl:
         monkeypatch.setenv("SUPABASE_URL", "https://abc123.supabase.co")
         monkeypatch.setenv("BACKUP_DB_PASSWORD", "Senha!Forte#123")
         result = backup_module._obter_db_url()
-        assert "backup_user.abc123:Senha!Forte" in result
+        assert "backup_user.abc123:Senha%21Forte%23123" in result
         assert "aws-1-us-east-2.pooler.supabase.com" in result
         assert "sslmode=require" in result
 
