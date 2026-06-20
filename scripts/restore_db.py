@@ -74,14 +74,20 @@ INSERT_ORDER = [
 
 
 def _resolver_ipv4(url):
-    """Resolve hostname para IPv4, contornando problemas de IPv6 no runner."""
-    from urllib.parse import urlparse
+    """Remove parametros invalidos e resolve hostname para IPv4."""
+    from urllib.parse import urlparse, urlunparse, parse_qs
     import socket
     parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    params.pop("pgbouncer", None)
+    cleaned = "&".join(f"{k}={v[0]}" for k, v in params.items()) if params else ""
+    url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, cleaned, parsed.fragment))
+    if not url.startswith("postgresql://"):
+        return url
     try:
         ips = [addr[4][0] for addr in socket.getaddrinfo(parsed.hostname, parsed.port, socket.AF_INET)]
         if ips:
-            return url.replace(parsed.hostname, ips[0])
+            url = url.replace(parsed.hostname, ips[0])
     except Exception:
         pass
     return url
