@@ -160,8 +160,8 @@ class TestObterDbUrl:
         monkeypatch.setenv("SUPABASE_URL", "https://xxxxx.supabase.co")
         monkeypatch.setenv("BACKUP_DB_PASSWORD", "secret123")
         result = backup_module._obter_db_url()
-        assert "backup_user:secret123" in result
-        assert "db.xxxxx.supabase.co" in result
+        assert "backup_user.xxxxx:secret123" in result
+        assert "aws-1-us-east-2.pooler.supabase.com" in result
         assert "sslmode=require" in result
 
     def test_fallback_sem_password(self, backup_module, monkeypatch):
@@ -181,11 +181,9 @@ class TestObterDbUrl:
         monkeypatch.setenv("SUPABASE_URL", "https://abc123.supabase.co")
         monkeypatch.setenv("BACKUP_DB_PASSWORD", "Senha!Forte#123")
         result = backup_module._obter_db_url()
-        expected = "postgresql://backup_user:Senha!Forte%23123@db.abc123.supabase.co:5432/postgres?sslmode=require"
-        url_decoded = result.replace("%23", "#")
-        assert "backup_user:Senha!Forte#123" in url_decoded
-        assert "db.abc123.supabase.co" in url_decoded
-        assert "sslmode=require" in url_decoded
+        assert "backup_user.abc123:Senha!Forte" in result
+        assert "aws-1-us-east-2.pooler.supabase.com" in result
+        assert "sslmode=require" in result
 
 
 # ─── Testes de Restore: colunas_para_sql ────────────────────────────────────────

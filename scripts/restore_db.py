@@ -37,7 +37,7 @@ def _obter_db_url():
         match = re.search(r"https?://([^.]+)\.supabase\.co", supabase_url)
         if match:
             ref = match.group(1)
-            return f"postgresql://backup_user:{password}@db.{ref}.supabase.co:5432/postgres?sslmode=require"
+            return f"postgresql://backup_user.{ref}:{password}@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     return None
 
 

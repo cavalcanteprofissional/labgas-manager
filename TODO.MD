@@ -952,7 +952,9 @@ python scripts/restore_db.py --latest          # restaura backup mais recente
 - [x] Backup local testado: 760 registros, 9 tabelas
 - [x] Upload R2 testado: s3://labgas-backups/labgas_backup_2026-06-20_17-02-17.json.gz
 - [x] Backups locais antigos limpos (mantido apenas o último)
-- [ ] GitHub Secrets configurados no repositório (8 secrets — manual via Settings → Secrets → Actions)
+- [ ] GitHub Secrets configurados (8 secrets — manual via Settings → Secrets → Actions):
+  - `DATABASE_URL`: `postgresql://backup_user.ypnysprinkdwcfkiftvf:LabGasBackup123!@aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require` (pooler, sempre IPv4)
+  - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `BACKUP_DB_PASSWORD`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
 - [ ] Workflow `daily-backup.yml` testado manualmente via Actions → Run workflow
 
 ## Fase 53: Atualizar Docs + Testes de Backup 📄🧪
@@ -984,6 +986,18 @@ GitHub Actions runner não conseguia conectar ao Supabase via IPv6:
 - [x] `scripts/restore_db.py`: mesma função `_resolver_ipv4()` adicionada
 - [x] `.github/workflows/daily-backup.yml`: adicionado `supabase` às deps do pip install (faltava)
 - [x] `.github/workflows/daily-backup.yml`: adicionado `permissions: issues: write` para criar Issue automática
+
+### ✅ Corrigido: Pooler correto é `aws-1-us-east-2`
+
+1. **Conexão direta** (`db.ypnysprinkdwcfkiftvf.supabase.co:5432`) é **IPv6 apenas** — sem registro A.
+2. O pooler correto é `aws-1-us-east-2.pooler.supabase.com:5432` (não `aws-0-sa-east-1`).
+3. `backup_user.ypnysprinkdwcfkiftvf` conecta com sucesso pelo pooler (IPv4).
+4. `_obter_db_url()` atualizada para usar pooler em ambos os scripts.
+5. Backup local com pooler testado: 760 registros ✅
+
+- [x] `_obter_db_url()` usa `backup_user.{ref}@aws-1-us-east-2.pooler.supabase.com:5432`
+- [x] `_resolver_ipv4()` mantido como safety net (pooler já resolve IPv4 nativamente)
+- [x] `DATABASE_URL` do GitHub Secret deve usar pooler URL
 - [ ] Testar workflow manualmente via Actions → Run workflow
 
 ---
@@ -1044,4 +1058,9 @@ GitHub Actions runner não conseguia conectar ao Supabase via IPv6:
 - [x] `scripts/restore_db.py`: mesma correção
 - [x] `scripts/backup_db.py`: `_resolver_ipv4()` também remove parâmetro `pgbouncer` da URL (psycopg2 não suporta)
 - [x] `scripts/restore_db.py`: mesma correção
-- [ ] Testar workflow manualmente via Actions → Run workflow
+- [x] `_obter_db_url()`: revertida para URL de conexão direta (pooler não funciona — ver Fase 54)
+
+### ✅ Resolvido via pooler
+- `_obter_db_url()` agora usa pooler `aws-1-us-east-2.pooler.supabase.com:5432` — sempre IPv4
+- `backup_user` conecta com sucesso pelo pooler (testado localmente)
+- `_resolver_ipv4()` mantido como safety net (redundante com pooler, mas inofensivo)
