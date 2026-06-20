@@ -8,6 +8,22 @@ Dashboard para gestão de cilindro de gás e elementos analisados em laboratóri
 
 ---
 
+## Sumário
+
+- [Sistema de Cores](#sistema-de-cores-v30--rainbow-por-dependência)
+- [Recursos Principais](#recursos-principais)
+- [Tecnologias](#tecnologias)
+- [Arquitetura do Sistema](#arquitetura-do-sistema)
+- [Arquitetura do Banco de Dados](#arquitetura-do-banco-de-dados)
+- [Estrutura de Diretórios](#estrutura-de-diretórios)
+- [Como Rodar Local](#como-rodar-local)
+- [Regras de Negócio](#regras-de-negócio)
+- [Funcionalidades Implementadas](#funcionalidades-implementadas)
+- [Deploy Vercel](#deploy-vercel-frontend--backend)
+- [Backup e Restore](#backup-e-restore-)
+
+---
+
 ## Sistema de Cores v3.0 — Rainbow por Dependência
 
 O esquema de cores segue um **arco-íris ordenado por dependência entre entidades**: entidades raiz iniciam o espectro, dependentes usam matizes adjacentes.
