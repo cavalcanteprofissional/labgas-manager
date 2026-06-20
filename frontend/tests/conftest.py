@@ -9,6 +9,7 @@ import pytest
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env.local"))
 
@@ -65,6 +66,8 @@ def pytest_addoption(parser):
                      help="Run modal tests (edit/delete/bulk)")
     parser.addoption("--run-export", action="store_true", default=False,
                      help="Run export download tests")
+    parser.addoption("--run-backup", action="store_true", default=False,
+                     help="Run backup/restore integration tests")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -78,6 +81,11 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "export" in item.keywords:
                 item.add_marker(skip_export)
+    if not config.getoption("--run-backup"):
+        skip_backup = pytest.mark.skip(reason="use --run-backup to run backup tests")
+        for item in items:
+            if "backup" in item.keywords:
+                item.add_marker(skip_backup)
 
 
 def is_port_open(port, host="127.0.0.1"):

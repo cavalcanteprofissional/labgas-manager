@@ -814,6 +814,167 @@ Não há indicador visual de sessão para o usuário — ele só descobre que a 
 ---
 ---
 
+## Fase 52: Migração pip + requirements.txt → Poetry 📦 (v2.7.0)
+
+### Contexto
+Projeto gerencia dependências com `pip` + `requirements.txt` separados (frontend/ + backend/).
+Migrar para Poetry unifica as dependências, resolve conflitos e facilita o gerenciamento.
+
+### Mudanças
+
+| Arquivo | Ação |
+|---------|------|
+| `pyproject.toml` | **Novo** — declaração centralizada de dependências + grupos |
+| `frontend/requirements.txt` | Substituído por redirecionamento ao pyproject |
+| `backend/requirements.txt` | Substituído por redirecionamento ao pyproject |
+| `Dockerfile` | Install poetry → `poetry install --no-dev` |
+| `.gitignore` | Adicionar `.venv/`, remover `poetry.lock` do ignore |
+| `README.MD` | Comandos de instalação/execução atualizados |
+
+### Grupos de dependências
+
+| Grupo | Inclui | Uso |
+|-------|--------|-----|
+| main | flask, supabase, boto3, psycopg2... | Runtime (app + scripts) |
+| backend | flask-restx | API REST futura |
+| dev | pytest, pytest-playwright | Testes |
+
+### Execução
+
+```bash
+poetry install              # instala main + dev
+poetry install --no-dev     # apenas runtime (produção)
+poetry run python scripts/backup_db.py
+python scripts/backup_db.py  # com poetry shell ativo
+```
+
+- [x] TODO.MD registrado
+- [x] pyproject.toml criado
+- [x] .gitignore atualizado (poetry.lock versionado, .venv ignorado)
+- [x] frontend/requirements.txt → redirecionamento
+- [x] backend/requirements.txt → redirecionamento
+- [x] Dockerfile atualizado
+- [x] README.MD atualizado
+- [x] poetry lock + install --sync executado
+- [x] scripts verificados
+
+---
+
+## Fase 51: Backup Automático via Cloudflare R2 + GitHub Actions 💾
+
+### Contexto
+Zero backup existente — dados só no Supabase free tier (sem backup automático incluso).
+Backup lógico via conexão PostgreSQL direta com `pg_dump` caseiro, armazenado no Cloudflare R2 (10GB grátis), automatizado via GitHub Actions (cron diário).
+
+### Arquitetura
+
+```
+Supabase PG ──(conexão direta psycopg2)──→ scripts/backup_db.py
+                         │
+                    .json.gz (comprimido)
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+     Cloudflare R2 (S3)      GitHub Actions (cron)
+     (10GB grátis)           (público, minutos ∞)
+```
+
+### Componentes Criados
+
+| Arquivo | Propósito |
+|---------|-----------|
+| `scripts/backup_db.py` | Script de backup: conecta ao PostgreSQL, exporta schemas `public` + `auth.users`, compacta em `.json.gz`, envia ao Cloudflare R2 |
+| `scripts/restore_db.py` | Script de restore: lista/selciona backup, dry-run preview, restaura com UPSERT via PostgreSQL direto |
+| `.github/workflows/daily-backup.yml` | GitHub Action: cron diário (06:00 UTC) + disparo manual |
+| `database/backup_user.sql` | Criação do usuário PostgreSQL readonly dedicado ao backup |
+
+### Tabelas cobertas
+
+| Schema | Tabelas |
+|--------|---------|
+| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_log |
+| `auth` | users (UUIDs preservados, senhas hasheadas intactas) |
+
+### Segurança
+
+- Usuário PostgreSQL **readonly** (`GRANT SELECT`) — não pode escrever nem executar DDL
+- Conexão com `sslmode=require`
+- `DATABASE_URL` armazenada como GitHub Secret (nunca versionada)
+- Script de restore exige confirmação explícita (`"RESTAURAR"`) + modo `--dry-run`
+
+### Setup necessário
+
+1. Criar bucket `labgas-backups` no Cloudflare R2 + gerar Access Key
+2. Executar `database/backup_user.sql` no Supabase SQL Editor (cria usuário readonly)
+3. Adicionar 5 secrets no GitHub: `DATABASE_URL`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
+4. Adicionar as mesmas variáveis ao `frontend/.env.local` para uso local
+
+### Uso manual
+
+```bash
+python scripts/backup_db.py                    # backup + upload R2
+python scripts/backup_db.py --no-upload        # só local
+python scripts/restore_db.py --list            # lista backups no R2
+python scripts/restore_db.py --latest --dry-run  # preview do restore
+python scripts/restore_db.py --latest          # restaura backup mais recente
+```
+
+- [x] scripts/backup_db.py
+- [x] scripts/restore_db.py
+- [x] .github/workflows/daily-backup.yml
+- [x] database/backup_user.sql → substituído por scripts/setup_backup_user.py
+- [x] frontend/.env.example atualizado
+- [x] frontend/requirements.txt atualizado
+- [x] .gitignore atualizado (backups/)
+- [x] README.MD atualizado
+
+#### Melhoria: Senha dinâmica do backup_user via .env.local
+- [x] `frontend/.env.example` — adicionado `BACKUP_DB_PASSWORD` (comentado)
+- [x] `scripts/setup_backup_user.py` — lê `BACKUP_DB_PASSWORD` do `.env.local` e cria/atualiza a role `backup_user` no PostgreSQL
+- [x] `scripts/backup_db.py` — fallback: se `DATABASE_URL` não existir, monta a URL a partir de `SUPABASE_URL` + `BACKUP_DB_PASSWORD`
+- [x] `scripts/restore_db.py` — mesmo fallback
+- [x] `database/backup_user.sql` — removido (substituído pelo script)
+- [x] `.github/workflows/daily-backup.yml` — adicionado `SUPABASE_URL` + `BACKUP_DB_PASSWORD` aos envs do step de backup
+- [x] `README.MD` — setup atualizado para usar `setup_backup_user.py`
+
+#### Fase 51.1: DATABASE_URL removida do .env.local (construção dinâmica)
+- [x] `frontend/.env.local`: removida `DATABASE_URL` (estava mal formatada — senha concatenada após `sslmode=require`)
+- [x] Scripts já têm fallback que montam a URL automaticamente via `SUPABASE_URL` + `BACKUP_DB_PASSWORD`
+- [x] `TODO.MD` registrado
+
+#### Fase 51.2: Setup de infraestrutura R2 + backup_user 🔧
+- [x] Bucket `labgas-backups` criado no Cloudflare R2
+- [x] R2 Access Key ID + Secret Access Key gerados e adicionados ao `.env.local`
+- [x] `frontend/.env.local`: adicionadas R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+- [x] `frontend/.env.local`: adicionada DATABASE_URL_POSTGRES (superuser, apenas para setup)
+- [x] `scripts/setup_backup_user.py`: alterado para ler DATABASE_URL_POSTGRES (com fallback DATABASE_URL)
+- [x] `scripts/setup_backup_user.py` executado — backup_user criado + permissões SELECT concedidas
+- [x] Backup local testado: 760 registros, 9 tabelas
+- [x] Upload R2 testado: s3://labgas-backups/labgas_backup_2026-06-20_17-02-17.json.gz
+- [x] Backups locais antigos limpos (mantido apenas o último)
+- [ ] GitHub Secrets configurados no repositório (8 secrets — manual via Settings → Secrets → Actions)
+- [ ] Workflow `daily-backup.yml` testado manualmente via Actions → Run workflow
+
+## Fase 53: Atualizar Docs + Testes de Backup 📄🧪
+
+### Documentação
+- [x] `CHANGELOG.md`: nova v2.7.0 com entries de Poetry migration + Cloudflare R2 Backup + DATABASE_URL dinâmica
+- [x] `README.MD`: versão atualizada para 2.7.0, tech stack com Poetry, backup section refletindo DATABASE_URL dinâmica
+- [x] `scripts/__init__.py`: criado (estava faltando)
+
+### Testes de Backup
+- [x] `frontend/tests/test_backup.py`: 32 testes (27 unitários + 5 integração)
+  - 15 testes de serialização (datetime, date, time, timedelta, Decimal, UUID, bytes, dict, list)
+  - 5 testes de construção de URL (fallback SUPABASE_URL + BACKUP_DB_PASSWORD)
+  - 3 testes de geração SQL de colunas (colunas_para_sql)
+  - 4 testes de ordem de operações (FK dependencies no DELETE/INSERT)
+  - 5 testes de integração (subprocess backup_db.py + restore_db.py, flag `--run-backup`)
+- [x] `frontend/tests/conftest.py`: adicionado `--run-backup` flag + skip automático via `pytest_collection_modifyitems`
+- [x] `frontend/pytest.ini`: marker `backup` registrado
+- [x] 27/27 unitários passando ✅
+
+---
+
 ## v2.6.24 — Datas nos gráficos no formato "Mês Ano" 📅 + Filtro multi-usuário dev 👤
 
 ### Feature 1: Datas nos gráficos

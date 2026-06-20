@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "labgas-manager"
+version = "2.7.0"
+description = "Dashboard para gestao de cilindros de gas e elementos analisados em laboratorio de quimica"
+authors = ["Lucas Cavalcante dos Santos", "Thiago Bricio Pinheiro Sandre"]
+license = "MIT"
+readme = "README.MD"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "3.0.0"
+flask-login = "0.6.3"
+flask-cors = "4.0.0"
+flask-wtf = "1.2.1"
+flask-limiter = ">=3.6.0"
+flask-caching = ">=2.1.0"
+supabase = ">=2.0.0"
+python-dotenv = "1.0.0"
+gunicorn = "21.2.0"
+python-jose = {extras = ["cryptography"], version = "3.3.0"}
+openpyxl = "3.1.2"
+psycopg2-binary = ">=2.9.9"
+boto3 = ">=1.34.0"
+
+[tool.poetry.group.backend.dependencies]
+flask-restx = "1.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0"
+pytest-playwright = ">=0.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

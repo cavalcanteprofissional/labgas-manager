@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.6.25** (Branch: master)
+**Versão: 2.7.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -115,8 +115,9 @@ O dashboard é o coração do sistema — uma visão geral do laboratório com *
 - **Frontend**: Flask 3.0 + Jinja2 + Bootstrap 5 + Bootstrap Icons
 - **Banco de Dados**: Supabase (PostgreSQL)
 - **Autenticação**: Supabase Auth (via Flask-Login)
-- **Gerenciamento de Dependências**: pip + venv
+- **Gerenciamento de Dependências**: Poetry (via pipx)
 - **Deploy**: Vercel
+- **Backup Automático**: Cloudflare R2 (S3-compatible, 10GB grátis) + GitHub Actions (cron diário)
 
 ---
 
@@ -490,18 +491,28 @@ flowchart TB
 ```
 labgas-manager/
 ├── .gitignore
+├── pyproject.toml             # Gerenciamento de dependências (Poetry)
 ├── AGENTS.md                  # Documentação técnica
 ├── README.MD                  # Este arquivo
 ├── LICENSE                    # Licença MIT
 ├── TODO.MD                    # Tarefas e histórico do projeto
 │
+├── .github/
+│   └── workflows/
+│       └── daily-backup.yml   # Backup automático (cron 06:00 UTC)
+│
 ├── scripts/                   # Scripts auxiliares
-│   └── seed.py              # Seed do usuário de teste (lê .env.local)
+│   ├── seed.py                # Seed do usuário de teste (lê .env.local)
+│   ├── backup_db.py           # Backup lógico do banco (PostgreSQL → R2)
+│   ├── restore_db.py          # Restore de backup (R2 → PostgreSQL)
+│   ├── setup_backup_user.py   # Cria role backup_user (lê .env.local)
+│   └── __init__.py
 │
 ├── database/                  # Banco de dados
 │   ├── schema.sql            # CREATE TABLE + índices
 │   ├── rls.sql              # Políticas RLS
 │   ├── seed.sql             # Dados iniciais (perfil admin)
+│   ├── backup_user.sql      # OBSOLETO — use scripts/setup_backup_user.py
 │   └── DIAGRAM.MD           # Diagramas (ER, Fluxo)
 │
 ├── frontend/                  # Aplicação Flask (Web)
@@ -569,23 +580,17 @@ labgas-manager/
 
 ### Pré-requisitos
 
-- Python 3.10+
-- pip
+- Python 3.11+
+- [Poetry](https://python-poetry.org/docs/#installation) (recomendado via pipx)
 
 ### Instalação
 
 ```bash
-# 1. Clonar o repositório e entrar na pasta frontend
-cd frontend
+# 1. Instalar Poetry (se ainda não tiver)
+pipx install poetry
 
-# 2. Criar ambiente virtual
-python -m venv venv
-
-# 3. Ativar ambiente virtual (Windows)
-venv\Scripts\activate
-
-# 4. Instalar dependências
-pip install -r requirements.txt
+# 2. Instalar dependências (raiz do projeto)
+poetry install
 ```
 
 ### Configuração
@@ -614,11 +619,12 @@ TEST_PASSWORD=123456
 
 > **Arquitetura de Configuração**: O projeto usa `.env.local` em vez de `.env` para manter as secrets separadas do repositório. O arquivo `.env.example` contém os placeholders. O `.gitignore` já está configurado para ignorar arquivos `.env.local`.
 > - `TEST_EMAIL` / `TEST_PASSWORD`: usados por `scripts/seed.py` e pelos testes (`conftest.py`)
+> - Todos os comandos usam `poetry run python` para executar scripts com as dependências corretas.
 
 ### Executar
 
 ```bash
-python app.py
+poetry run python frontend/app.py
 ```
 
 O frontend estará disponível em: `http://localhost:5000`
@@ -626,7 +632,7 @@ O frontend estará disponível em: `http://localhost:5000`
 ### Seed (criar/resetar usuário de teste)
 
 ```bash
-python scripts/seed.py
+poetry run python scripts/seed.py
 ```
 
 Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.env.local`) com role `admin` e todas as abas habilitadas.
@@ -762,6 +768,124 @@ labgas-manager/
 │   └── routes/          # Rotas da API
 └── runtime.txt          # Python 3.11
 ```
+
+---
+
+## Backup e Restore 💾
+
+### Arquitetura
+
+```
+Supabase PG ──(psycopg2)──→ scripts/backup_db.py ──(.json.gz)──→ Cloudflare R2 (10GB grátis)
+                                  ↑
+                          GitHub Actions (cron 06:00 UTC)
+```
+
+### Setup Inicial
+
+#### 1. Definir senha do backup_user e conectar superuser
+
+Edite `frontend/.env.local` e adicione:
+```env
+BACKUP_DB_PASSWORD=sua-senha-forte-aqui
+DATABASE_URL_POSTGRES=postgresql://postgres:suasenha@db.xxxxx.supabase.co:5432/postgres?sslmode=require
+```
+
+A `DATABASE_URL_POSTGRES` precisa ser de um **usuário superuser** (ex: `postgres`) — ela será usada apenas uma vez para criar a role `backup_user`. Após o setup, pode ser removida.
+
+#### 2. Executar o script de setup
+
+```bash
+poetry run python scripts/setup_backup_user.py
+```
+
+Isso:
+- Cria (ou atualiza) a role `backup_user` com a senha do `BACKUP_DB_PASSWORD`
+- Concede permissões `SELECT` nos schemas `public` e `auth`
+- Exibe a `DATABASE_URL` readonly pronta para copiar
+
+**Saída esperada:**
+```
+backup_user configurado com sucesso!
+
+Adicione AO .env.local e aos GitHub Secrets a linha abaixo:
+DATABASE_URL=postgresql://backup_user:sua-senha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+> **Nota:** A `DATABASE_URL` **não precisa** ser adicionada ao `.env.local` — os scripts `backup_db.py` e `restore_db.py` constroem a URL automaticamente a partir de `SUPABASE_URL` + `BACKUP_DB_PASSWORD`. A `DATABASE_URL` só é necessária nos **GitHub Secrets** para o workflow CI.
+
+#### 3. Criar bucket no Cloudflare R2
+
+- Acesse o [Cloudflare Dashboard → R2](https://dash.cloudflare.com/?to=r2)
+- Crie um bucket (ex: `labgas-backups`)
+- Vá em **Manage R2 API Tokens** e crie um token com permissão de **read+write** no bucket
+- Anote: `Access Key ID`, `Secret Access Key`, `Endpoint`
+
+#### 4. Configurar GitHub Secrets
+
+No repositório: **Settings → Secrets and variables → Actions → New repository secret**
+
+| Nome do Secret | Obrigatório | Descrição |
+|---|---|---|
+| `DATABASE_URL` | Opcional (fallback) | `postgresql://backup_user:senha@.../postgres?sslmode=require` |
+| `SUPABASE_URL` | Sim | `https://seu-projeto.supabase.co` |
+| `BACKUP_DB_PASSWORD` | Sim | Senha do `backup_user` |
+| `R2_ENDPOINT` | Sim | `https://<accountid>.r2.cloudflarestorage.com` |
+| `R2_ACCESS_KEY_ID` | Sim | Access Key do R2 |
+| `R2_SECRET_ACCESS_KEY` | Sim | Secret Key do R2 |
+| `R2_BUCKET_NAME` | Sim | `labgas-backups` (ou o nome escolhido) |
+
+> A `DATABASE_URL` é opcional nos Secrets porque o workflow usa `SUPABASE_URL` + `BACKUP_DB_PASSWORD` como fallback para montar a URL automaticamente (igual aos scripts locais). No entanto, fornecer a `DATABASE_URL` explícita é recomendado para evitar qualquer ambiguidade.
+
+#### 5. Ambiente local (opcional)
+
+Adicione as variáveis acima ao `frontend/.env.local` para executar backups manuais.
+
+### Uso Manual
+
+```bash
+# Backup local + upload R2
+poetry run python scripts/backup_db.py
+
+# Backup apenas local (sem upload)
+poetry run python scripts/backup_db.py --no-upload
+
+# Listar backups disponíveis no R2
+poetry run python scripts/restore_db.py --list
+
+# Preview do restore (modo seguro)
+poetry run python scripts/restore_db.py --latest --dry-run
+
+# Restaurar backup mais recente
+poetry run python scripts/restore_db.py --latest
+
+# Restaurar arquivo específico
+poetry run python scripts/restore_db.py --file backups/labgas_backup_2026-06-20_06-00-00.json.gz
+```
+
+### Backup Automático
+
+O GitHub Action `.github/workflows/daily-backup.yml` executa automaticamente:
+- **Cron:** Todos os dias às 06:00 UTC
+- **Manual:** via aba "Actions" → "Daily Database Backup" → "Run workflow"
+- **Falha:** Cria uma Issue automática no repositório
+
+### O que é incluído no backup
+
+| Schema | Tabela | Registros |
+|--------|--------|-----------|
+| `auth` | users | UUIDs e senhas hasheadas (bcrypt) preservados |
+| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_log | Todos os dados |
+
+### Segurança
+
+- O usuário `backup_user` tem **apenas permissão de leitura** (`GRANT SELECT`)
+- Conexão obrigatória com `sslmode=require`
+- `DATABASE_URL` nunca é versionada (apenas GitHub Secret)
+- `BACKUP_DB_PASSWORD` armazenada no `.env.local` e GitHub Secrets (nunca em SQL versionado)
+- Script de restore exige confirmação explícita digitando `"RESTAURAR"`
+- Modo `--dry-run` permite preview sem alterar dados
+- `DATABASE_URL` é construída dinamicamente a partir de `SUPABASE_URL` + `BACKUP_DB_PASSWORD` (fallback automático)
 
 ---
 

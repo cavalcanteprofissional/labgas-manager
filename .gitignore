@@ -26,7 +26,8 @@ env/
 ENV/
 
 # Poetry
-poetry.lock
+# poetry.lock é versionado para builds reproduzíveis
+.venv/
 
 # Environment variables
 .env.local
@@ -54,6 +55,9 @@ database.md
 artigo_completo.md
 lattex.md
 referencias.bib
+
+# Backup local
+backups/
 
 # Arquivos locais (não versionar)
 ANALISE_SEGURANCA.MD

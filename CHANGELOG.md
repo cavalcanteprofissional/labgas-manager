@@ -2,6 +2,48 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.7.0] — 2026-06-20
+
+### Migração pip + requirements.txt → Poetry 📦
+
+- **`pyproject.toml`**: declaração centralizada de dependências + grupos (main, backend, dev)
+- **`frontend/requirements.txt`**: substituído por redirecionamento ao pyproject
+- **`backend/requirements.txt`**: substituído por redirecionamento ao pyproject
+- **`Dockerfile`**: install poetry → `poetry install --no-dev`
+- **`.gitignore`**: `.venv/` adicionado, `poetry.lock` versionado
+- **`README.MD`**: comandos atualizados para Poetry (`poetry install`, `poetry run python`)
+- **AGENTS.md**: removido (obsoleto)
+
+### Backup Automático via Cloudflare R2 + GitHub Actions 💾
+
+#### Scripts de Backup/Restore
+
+- **`scripts/backup_db.py`**: script de backup lógico — exporta tabelas `public` via PostgreSQL (backup_user) e `auth.users` via Supabase Admin API, compacta em `.json.gz`, envia ao Cloudflare R2 (S3-compatible)
+- **`scripts/restore_db.py`**: script de restore — lista backups no R2, faz dry-run preview, restaura com UPSERT via PostgreSQL direto + Supabase Admin API para auth.users
+- **`scripts/setup_backup_user.py`**: script que cria/atualiza a role `backup_user` no PostgreSQL com permissão SELECT nos schemas `public` e `auth`
+- **`database/backup_user.sql`**: removido (substituído pelo `setup_backup_user.py`)
+- **`.github/workflows/daily-backup.yml`**: GitHub Action — cron diário 06:00 UTC + disparo manual; falha cria Issue automática
+
+#### Infraestrutura R2
+
+- Bucket `labgas-backups` criado no Cloudflare R2
+- R2 Access Key + Secret Key gerados e configurados no `.env.local`
+- Backup local testado: 760 registros, 9 tabelas (perfil, elemento, cilindro, amostra, amostra_elemento, leitura, pressao, historico_log, auth.users)
+- Upload R2 testado: `s3://labgas-backups/labgas_backup_2026-06-20_17-02-17.json.gz`
+
+#### DATABASE_URL Dinâmica
+
+- **`frontend/.env.local`**: `DATABASE_URL` removida — agora construída automaticamente pelos scripts via `SUPABASE_URL` + `BACKUP_DB_PASSWORD`
+- **`scripts/setup_backup_user.py`**: alterado para ler `DATABASE_URL_POSTGRES` (superuser) com fallback à `DATABASE_URL`
+- **`dotenv`: `DATABASE_URL_POSTGRES`** adicionada ao `.env.local` (apenas para setup do backup_user)
+- A `DATABASE_URL` para GitHub Actions continua sendo configurada como Secret separadamente
+
+### Segurança no Setup de Backup 🔐
+
+- `BACKUP_DB_PASSWORD` dinâmica via `.env.local` (sem hardcode, mesmo padrão da `TEST_PASSWORD` da Fase 48)
+- `backup_user` com permissão **apenas SELECT** (readonly)
+- Conexão PostgreSQL obrigatória com `sslmode=require`
+
 ## [2.6.25] - 2026-06-18
 
 ### Loading Overlay com Delay + Animação SVG ⏳

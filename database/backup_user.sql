@@ -1,0 +1,16 @@
+-- =====================================================
+-- backup_user.sql — OBSOLETO
+-- =====================================================
+-- Este arquivo foi substituído pelo script Python:
+--     scripts/setup_backup_user.py
+--
+-- Em vez de editar a senha manualmente aqui e executar no
+-- SQL Editor, use o comando abaixo (lê BACKUP_DB_PASSWORD
+-- do frontend/.env.local):
+--
+--     python scripts/setup_backup_user.py
+--
+-- O script cria/atualiza a role backup_user com a senha
+-- definida em BACKUP_DB_PASSWORD, concede todas as permissões
+-- SELECT necessárias e exibe a DATABASE_URL readonly pronta.
+-- =====================================================
