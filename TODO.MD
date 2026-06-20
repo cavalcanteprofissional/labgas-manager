@@ -973,6 +973,19 @@ python scripts/restore_db.py --latest          # restaura backup mais recente
 - [x] `frontend/pytest.ini`: marker `backup` registrado
 - [x] 27/27 unitários passando ✅
 
+## Fase 54: IPv6 fix nos scripts de backup 🔧
+
+### Problema
+GitHub Actions runner não conseguia conectar ao Supabase via IPv6:
+`psycopg2.OperationalError: connection to server at "db.ypnysprinkdwcfkiftvf.supabase.co" (2600:...), port 5432 failed: Network is unreachable`
+
+### Correção
+- [x] `scripts/backup_db.py`: adicionada função `_resolver_ipv4()` — resolve hostname para IPv4 antes de conectar
+- [x] `scripts/restore_db.py`: mesma função `_resolver_ipv4()` adicionada
+- [x] `.github/workflows/daily-backup.yml`: adicionado `supabase` às deps do pip install (faltava)
+- [x] `.github/workflows/daily-backup.yml`: adicionado `permissions: issues: write` para criar Issue automática
+- [ ] Testar workflow manualmente via Actions → Run workflow
+
 ---
 
 ## v2.6.24 — Datas nos gráficos no formato "Mês Ano" 📅 + Filtro multi-usuário dev 👤

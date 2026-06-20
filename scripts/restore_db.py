@@ -73,10 +73,25 @@ INSERT_ORDER = [
 ]
 
 
+def _resolver_ipv4(url):
+    """Resolve hostname para IPv4, contornando problemas de IPv6 no runner."""
+    from urllib.parse import urlparse
+    import socket
+    parsed = urlparse(url)
+    try:
+        ips = [addr[4][0] for addr in socket.getaddrinfo(parsed.hostname, parsed.port, socket.AF_INET)]
+        if ips:
+            return url.replace(parsed.hostname, ips[0])
+    except Exception:
+        pass
+    return url
+
+
 def conectar():
     if not DB_URL:
         sys.exit("ERRO: DATABASE_URL nao definida no .env.local")
-    return psycopg2.connect(DB_URL, sslmode="require")
+    ipv4_url = _resolver_ipv4(DB_URL)
+    return psycopg2.connect(ipv4_url, sslmode="require")
 
 
 def listar_backups():

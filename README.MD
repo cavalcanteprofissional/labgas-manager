@@ -881,6 +881,7 @@ O GitHub Action `.github/workflows/daily-backup.yml` executa automaticamente:
 
 - O usuário `backup_user` tem **apenas permissão de leitura** (`GRANT SELECT`)
 - Conexão obrigatória com `sslmode=require`
+- Resolução automática para IPv4 — contorna problemas de IPv6 em runners CI (GitHub Actions)
 - `DATABASE_URL` nunca é versionada (apenas GitHub Secret)
 - `BACKUP_DB_PASSWORD` armazenada no `.env.local` e GitHub Secrets (nunca em SQL versionado)
 - Script de restore exige confirmação explícita digitando `"RESTAURAR"`
