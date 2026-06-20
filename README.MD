@@ -865,10 +865,31 @@ poetry run python scripts/restore_db.py --file backups/labgas_backup_2026-06-20_
 
 ### Backup Automático
 
-O GitHub Action `.github/workflows/daily-backup.yml` executa automaticamente:
-- **Cron:** Todos os dias às 06:00 UTC
-- **Manual:** via aba "Actions" → "Daily Database Backup" → "Run workflow"
-- **Falha:** Cria uma Issue automática no repositório
+O GitHub Action `.github/workflows/daily-backup.yml` gerencia todo o ciclo de backup.
+
+```mermaid
+flowchart LR
+    A["🕐 Cron 06:00 UTC"] --> B["🐙 GitHub Actions<br/>ubuntu-latest"]
+    B --> C["🔗 Conecta ao Pooler<br/>aws-1-us-east-2<br/>IPv4 sempre"]
+    C --> D["📦 Exporta 9 tabelas<br/>backup_user (SELECT only)<br/>+ auth.users via API"]
+    D --> E["🗜️ Compacta .json.gz<br/>~0.01 MB por backup"]
+    E --> F["☁️ Upload Cloudflare R2<br/>s3://labgas-backups/"]
+    F --> G["🧹 Lifecycle Policy<br/>deleta após 30 dias"]
+    B --> H["❌ Falha?"]
+    H -- Sim --> I["📝 Cria Issue automática<br/>no repositório"]
+    H -- Não --> J["✅ Backup concluído"]
+```
+
+**Passo a passo:**
+
+1. **Trigger** — O workflow é executado automaticamente todos os dias às 06:00 UTC (cron), ou manualmente via aba **Actions → Daily Database Backup → Run workflow**
+2. **Runner** — Um ambiente `ubuntu-latest` é provisionado, instala Python e as dependências (`boto3`, `psycopg2-binary`, `python-dotenv`, `supabase`)
+3. **Conexão** — O script `scripts/backup_db.py` lê a `DATABASE_URL` do GitHub Secret ou constrói a URL dinamicamente via `SUPABASE_URL` + `BACKUP_DB_PASSWORD`. A conexão usa o **Supavisor pooler** (`aws-1-us-east-2.pooler.supabase.com`, porta 5432), que sempre resolve para **IPv4** — contornando a limitação de IPv6 do runner
+4. **Exportação** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`) e exporta todas as 9 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_log` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`)
+5. **Compressão** — Os dados são serializados em JSON e compactados com `gzip`, gerando um arquivo de ~0.01 MB
+6. **Upload** — O `.json.gz` é enviado ao **Cloudflare R2** via API S3-compatible (`boto3`), armazenado no bucket `labgas-backups`
+7. **Limpeza automática** — Uma **Lifecycle Policy** no R2 deleta automaticamente backups com mais de **30 dias**, sem necessidade de script ou manutenção
+8. **Notificação de falha** — Se qualquer passo falhar (conexão, exportação, upload), o workflow cria automaticamente uma **Issue** no repositório GitHub com o título `Falha no backup do banco de dados - YYYY-MM-DD` e o link para os logs da execução
 
 ### O que é incluído no backup
 
