@@ -791,11 +791,19 @@ labgas-manager/
 
 ### Arquitetura
 
+```mermaid
+flowchart LR
+    A["🛢️ Supabase PG<br/>backup_user (SELECT)"] --> B["psycopg2<br/>pooler IPv4"]
+    B --> C["📜 scripts/backup_db.py"]
+    C --> D["🗜️ .json.gz"]
+    D --> E["☁️ Cloudflare R2<br/>s3://labgas-backups"]
+    F["🐙 GitHub Actions<br/>cron 06:00 UTC"] --> C
+    E --> G["🧹 Lifecycle Policy<br/>30 dias"]
+    C --> H["❌ Falha?"]
+    H -- Sim --> I["📝 Issue automática"]
 ```
-Supabase PG ──(psycopg2)──→ scripts/backup_db.py ──(.json.gz)──→ Cloudflare R2 (10GB grátis)
-                                  ↑
-                          GitHub Actions (cron 06:00 UTC)
-```
+
+**Conexão via pooler Supavisor** (`aws-1-us-east-2.pooler.supabase.com:5432`) — sempre IPv4, contorna limitação de IPv6 no CI. O `backup_user` tem permissão **apenas SELECT** (readonly).
 
 ### Setup Inicial
 
