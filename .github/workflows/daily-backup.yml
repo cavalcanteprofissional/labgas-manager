@@ -22,7 +22,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install boto3 psycopg2-binary python-dotenv
+        run: pip install boto3 psycopg2-binary python-dotenv supabase
 
       - name: Run backup
         env:
