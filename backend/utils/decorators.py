@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, jsonify
 import jwt
@@ -34,8 +35,11 @@ def token_required(f):
 
 
 def generate_token(user_id: str, email: str) -> str:
+    now = datetime.utcnow()
     payload = {
         'user_id': user_id,
-        'email': email
+        'email': email,
+        'iat': now,
+        'exp': now + timedelta(hours=24)
     }
     return jwt.encode(payload, SECRET_KEY, algorithm='HS256')

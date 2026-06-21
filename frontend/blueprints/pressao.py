@@ -154,7 +154,7 @@ def pressao_list():
                 }
                 
                 if not dev:
-                    get_supabase_client().table("pressao").update(data_update).eq("id", pressao_id).eq("user_id", user_id).execute()
+                    get_authenticated_client().table("pressao").update(data_update).eq("id", pressao_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("pressao").update(data_update).eq("id", pressao_id).execute()
                 

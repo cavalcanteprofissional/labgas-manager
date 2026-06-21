@@ -1064,3 +1064,264 @@ GitHub Actions runner não conseguia conectar ao Supabase via IPv6:
 - `_obter_db_url()` agora usa pooler `aws-1-us-east-2.pooler.supabase.com:5432` — sempre IPv4
 - `backup_user` conecta com sucesso pelo pooler (testado localmente)
 - `_resolver_ipv4()` mantido como safety net (redundante com pooler, mas inofensivo)
+
+---
+
+## Fase 56: Análise Profunda de Vulnerabilidades 🔒 (Relatório v2 — Nenhuma Implementação)
+
+### Contexto
+Análise de segurança abrangente realizada em 20/06/2026 via auditoria direta do código-fonte. 
+Nenhuma implementação deve ser feita — apenas registro para planejamento futuro.
+
+---
+
+### 🔴 CRÍTICOS (5)
+
+#### C1. `SUPABASE_SERVICE_KEY` no Histórico do Git (via antigo `frontend/.env`)
+**Localização:** Histórico do git — commits que tinham `frontend/.env` antes da renomeação para `.env.local`
+**Problema:** Até o commit `f94c384` (29/04/2026), o arquivo `frontend/.env` era versionado e continha:
+```
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwbnlzcHJpbmtkd2Nma2lmdHZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI4MDkzMiwiZXhwIjoyMDg3ODU2OTMyfQ.SkmPHPTWzl_aAuZ22m8T9HY6lpOw5VKrkGz87ub64iI
+```
+Este JWT com role `service_role` **continua ativo** (expira em ~2036) e dá bypass total de RLS.
+Também continha `SECRET_KEY=labgas-secret-key-change-in-production` (placeHolder, baixo risco).
+**Situação atual:** `frontend/.env.local` **NÃO** está rastreado pelo git (corretamente no `.gitignore`). 
+              `backend/.env` está rastreado mas só contém `SUPABASE_KEY` (publishable key, pública por design).
+**Ação:** Rotacionar o `SUPABASE_SERVICE_KEY` no painel Supabase e remover o arquivo antigo do histórico com `git filter-repo`.
+
+---
+
+#### C2. SQL Injection via `%` String Formatting em `setup_backup_user.py`
+**Localização:** `scripts/setup_backup_user.py:46-56`
+```python
+cur.execute("""...""" % (BACKUP_PASSWORD, BACKUP_PASSWORD))
+```
+**Problema:** `BACKUP_PASSWORD` é interpolada com `%` formatting em vez de placeholders do psycopg2. Uma aspa simples na senha quebra a query. Com acesso ao `.env.local`, um atacante injeta SQL arbitrário no PostgreSQL como superuser.
+**Recomendação:** Usar `cur.execute(sql, (password, password))`.
+
+---
+
+#### C3. `app.secret_key` Derivado de `SUPABASE_SECRET_KEY`
+**Localização:** `frontend/app.py:23`
+```python
+app.secret_key = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY")
+```
+**Problemas:** (1) Rotação da chave Supabase invalida todas as sessões Flask; (2) Se `SUPABASE_SECRET_KEY` for comprometida, atacantes forjam sessões Flask; (3) Ordem de fallback incentiva reuso de chaves.
+**Recomendação:** Usar `FLASK_SECRET_KEY` independente.
+
+---
+
+#### C4. Backend API Gera JWT sem Expiração
+**Localização:** `backend/utils/decorators.py:36-41`
+```python
+def generate_token(user_id, email):
+    payload = {'user_id': user_id, 'email': email}
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+```
+**Problema:** O token JWT não possui claim `exp` (expiration). Tokens nunca expiram. Aliado ao `SECRET_KEY` ser um placeholder (`dev-secret-key-change-in-production` na config, `dev_secret_key_change_in_production` no `.env`), qualquer um que conheça essas strings pode forjar tokens e acessar toda a API backend.
+**Recomendação:** Adicionar `exp`, `iat` ao payload. Usar chave secreta forte e independente.
+
+---
+
+#### C5. Non-dev UPDATE Operations Usam `get_supabase_client()` (Anon Key, sem JWT)
+**Localização:** 
+- `frontend/blueprints/cilindro.py:156`
+- `frontend/blueprints/elemento.py:87`
+- `frontend/blueprints/leitura.py:147`
+- `frontend/blueprints/pressao.py:157`
+**Problema:** As operações de UPDATE para usuários não-dev usam `get_supabase_client()` (apenas anon key, sem JWT de usuário). O RLS do PostgreSQL avalia `auth.uid() = user_id` como `NULL = uuid` (falso), bloqueando a operação. INSERT e DELETE usam `get_authenticated_client()` (com JWT) corretamente — apenas UPDATE está inconsistente.
+**Impacto:** Usuários não-dev recebem erro de permissão ao tentar atualizar seus próprios registros.
+**Recomendação:** Substituir `get_supabase_client()` por `get_authenticated_client()` nos 4 UPDATEs.
+
+---
+
+### 🟠 ALTOS (6)
+
+#### H1. CSV Injection (Formula Injection) em Exportação Admin
+**Localização:** `frontend/blueprints/admin.py:488-543`
+**Problema:** Exportação CSV escreve valores sem sanitizar caracteres de fórmula (`=`, `+`, `-`, `@`). Um cilindro com código `=CMD|' /C calc'!A0` executaria comando ao abrir no Excel.
+**Recomendação:** Prefixar valores suspeitos com `'` (aspas simples) no CSV.
+
+---
+
+#### H2. Dockerfile Executa como Root
+**Localização:** `Dockerfile` (sem instrução `USER`)
+**Problema:** Container roda como root. Se uma vulnerabilidade no Flask permitir RCE, atacante tem controle total do container.
+**Recomendação:** Adicionar `RUN addgroup --system app && adduser --system --ingroup app app` e `USER app`.
+
+---
+
+#### H3. Política de Senha Fraca — Mínimo 6 Caracteres
+**Localização:** `frontend/blueprints/auth.py:171`
+```python
+if len(password) < 6:
+```
+**Problema:** Mínimo de 6 caracteres é insuficiente. Sem validação de complexidade (maiúsculas, números, símbolos).
+**Recomendação:** Aumentar para 8+ caracteres com requisitos de complexidade. Configurar política no Supabase Auth.
+
+---
+
+#### H4. Registro sem Verificação de Email
+**Localização:** `frontend/blueprints/auth.py:186-214`
+**Problema:** Contas são criadas e imediatamente utilizáveis sem confirmação de email.
+**Recomendação:** Exigir confirmação de email no Supabase Auth (Settings → Authentication).
+
+---
+
+#### H5. Bloqueio de Login por Sessão — Burlável
+**Localização:** `frontend/blueprints/auth.py:50-56, 130-134`
+**Problema:** Bloqueio de login armazenado na sessão Flask (cookie). Atacante limpa cookies e contorna o bloqueio.
+**Recomendação:** Bloquear por email (não por sessão). Usar Redis para bloqueio server-side.
+
+---
+
+#### H6. Backend API Aceita `role` do Cliente no Registro
+**Localização:** `backend/routes/auth.py:54`
+```python
+"role": data.get('role', 'viewer')
+```
+**Problema:** O endpoint `/api/auth/register` permite que o cliente especifique a própria role via `user_metadata`. Embora a autorização do frontend use a tabela `perfil` (não `user_metadata`), outros consumidores da API podem confiar neste campo, e ele fica registrado em `auth.users.raw_user_meta_data`.
+**Recomendação:** Remover o campo `role` do registro ou fixá-lo como `'viewer'`.
+
+---
+
+### 🟡 MÉDIOS (5)
+
+#### M1. Ausência de Auditoria de Login no Banco
+**Localização:** `frontend/blueprints/auth.py:126-138`
+**Problema:** Tentativas de login falhas registradas apenas na sessão (cookie), não persistem.
+**Recomendação:** Criar tabela `historico_login` (email, ip, user_agent, sucesso, timestamp).
+
+---
+
+#### M2. Sem 2FA/MFA
+**Localização:** Arquitetura geral
+**Problema:** Supabase Auth suporta MFA (TOTP), mas não está configurado.
+**Recomendação:** Habilitar MFA ao menos para roles `admin` e `dev`.
+
+---
+
+#### M3. `setup_backup_user.py` Conecta como Superuser
+**Localização:** `scripts/setup_backup_user.py:42`
+**Problema:** Conecta como `postgres` (superuser). `DATABASE_URL_POSTGRES` no `.env.local`.
+**Recomendação:** Remover `DATABASE_URL_POSTGRES` do `.env.local` após setup. Rotacionar senha.
+
+---
+
+#### M4. Error Messages Verbosos em API
+**Localização:** `frontend/app.py:558, 590, 611`
+**Problema:** `formatar_erro_supabase(str(e), ...)` pode vazar detalhes internos em erros inesperados.
+**Recomendação:** Logar erro completo no servidor, retornar `{"error": "Erro interno"}` em produção.
+
+---
+
+#### M5. `backend/config.py` Carrega `.env.local` (Arquivo Errado)
+**Localização:** `backend/config.py:4`
+```python
+load_dotenv('.env.local')
+```
+**Problema:** O backend tenta carregar `.env.local`, mas seu arquivo de ambiente se chama `.env`. O `load_dotenv` falha silenciosamente, e todas as configs usam fallbacks placeholder (`"dev-secret-key-change-in-production"`, `SUPABASE_JWT_SECRET=""`). Isso significa que a API backend roda com `SECRET_KEY` placeholder e sem `SUPABASE_JWT_SECRET` — qualquer um pode forjar JWTs.
+**Recomendação:** Corrigir para `load_dotenv('.env')` ou usar `load_dotenv(dotenv_path=BASE_DIR / 'backend' / '.env')`.
+
+---
+
+### 🟢 BAIXOS (4)
+
+#### L1. Falta de `pre-commit` Hook para Bloquear Credenciais
+**Problema:** Nada impede commit de `.env*` ou strings com padrões de secret.
+**Recomendação:** Adicionar `detect-secrets` ou `git-secrets` como pre-commit hook.
+
+---
+
+#### L2. Sem Auditoria de Vulnerabilidades nas Dependências
+**Problema:** `flask`, `supabase`, `python-jose`, `psycopg2-binary` sem verificação de CVEs.
+**Recomendação:** Configurar Dependabot ou `poetry audit`.
+
+---
+
+#### L3. `SESSION_COOKIE_SAMESITE='Lax'`
+**Localização:** `frontend/app.py:32`
+**Recomendação:** Mudar para `'Strict'` se não houver integração com subdomínios.
+
+---
+
+#### L4. Erro Genérico sem Log no Perfil
+**Localização:** `frontend/app.py:511`
+**Recomendação:** Adicionar `logger.error(...)` antes do flash genérico.
+
+---
+
+### 📊 Resumo Consolidado
+
+| ID | Severidade | Tipo | Arquivo |
+|----|-----------|------|---------|
+| **C1** | 🔴 CRÍTICO | Service Key no histórico git | Histórico do git (`frontend/.env` removido) |
+| **C2** | 🔴 CRÍTICO | SQL Injection | `scripts/setup_backup_user.py:56` |
+| **C3** | 🔴 CRÍTICO | Acoplamento de chaves | `frontend/app.py:23` |
+| **C4** | 🔴 CRÍTICO | JWT sem expiração | `backend/utils/decorators.py:36` |
+| **C5** | 🔴 CRÍTICO | RLS bypass em UPDATEs (non-dev) | `cilindro.py:156`, `elemento.py:87`, `leitura.py:147`, `pressao.py:157` |
+| **H1** | 🟠 ALTO | CSV Injection | `frontend/blueprints/admin.py:488-543` |
+| **H2** | 🟠 ALTO | Container root | `Dockerfile` |
+| **H3** | 🟠 ALTO | Senha fraca | `frontend/blueprints/auth.py:171` |
+| **H4** | 🟠 ALTO | Sem verificação de email | `frontend/blueprints/auth.py:186` |
+| **H5** | 🟠 ALTO | Rate-limit burlável | `frontend/blueprints/auth.py:50-56` |
+| **H6** | 🟠 ALTO | Role do cliente no registro | `backend/routes/auth.py:54` |
+| **M1** | 🟡 MÉDIO | Sem auditoria de login | `frontend/blueprints/auth.py:126-138` |
+| **M2** | 🟡 MÉDIO | Sem 2FA/MFA | Arquitetura geral |
+| **M3** | 🟡 MÉDIO | Superuser no setup | `scripts/setup_backup_user.py:42` |
+| **M4** | 🟡 MÉDIO | Error messages verbosos | `frontend/app.py:558,590,611` |
+| **M5** | 🟡 MÉDIO | Backend carrega .env errado | `backend/config.py:4` |
+| **L1** | 🟢 BAIXO | Sem pre-commit hook | Repositório |
+| **L2** | 🟢 BAIXO | Sem auditoria de deps | `poetry.lock` |
+| **L3** | 🟢 BAIXO | Samesite=Lax | `frontend/app.py:32` |
+| **L4** | 🟢 BAIXO | Erro genérico sem log | `frontend/app.py:511` |
+
+### Nota sobre Itens Já Corrigidos (Fase 46)
+A análise anterior (Fase 46, v2.6.17-18) já documentou e corrigiu 20 itens, incluindo IDOR em DELETE, HSTS/CSP, CORS, debug mode, JWT validation, rate limiting, RLS policies e logging. Os 20 itens acima são **adicionais** descobertos nesta auditoria e **não foram implementados**.
+
+### Recomendação Principal
+Rotacionar imediatamente o `SUPABASE_SERVICE_KEY` (JWT exposto no git history) e as credenciais do banco PostgreSQL. Em seguida, remover o arquivo `frontend/.env` do histórico do git com `git filter-repo`.
+
+---
+
+## Fase 57: Correção de Vulnerabilidades 🔒 (Implementação)
+
+### Contexto
+Implementação das correções para as 16 vulnerabilidades documentadas na Fase 56. Nenhum commit da C1 (git filter-repo pendente).
+
+### Alterações Realizadas
+
+#### 🔴 Críticos (C2–C5)
+- **C2**: SQL Injection em `scripts/setup_backup_user.py` — substituído `%` formatting por placeholders `%s` do psycopg2
+- **C3**: `app.secret_key` separado de `SUPABASE_SECRET_KEY` — prioridade: `FLASK_SECRET_KEY` > `SECRET_KEY` > `SUPABASE_SECRET_KEY`
+- **C4**: JWT sem expiração em `backend/utils/decorators.py` — adicionados claims `iat` e `exp` (24h)
+- **C5**: UPDATEs sem autenticação — `get_supabase_client()` → `get_authenticated_client()` nos 4 blueprints
+
+#### 🔴 Altos (H1–H6)
+- **H1**: CSV injection sanitized em `frontend/blueprints/admin.py` com função `sanitize_csv()` (prefixa `'` em valores que começam com `=`, `+`, `-`, `@`)
+- **H2**: Dockerfile agora roda como usuário não-root (`app`)
+- **H3**: Senha mínima 8 caracteres com exigência de maiúscula, minúscula e número
+- **H4**: Login bloqueado se email não confirmado (`email_confirmed_at`)
+- **H5**: Rate-limit server-side por email via dicionário `LOGIN_ATTEMPTS` in-memory
+- **H6**: Backend `backend/routes/auth.py` não aceita mais `role` do cliente no registro
+
+#### 🟡 Médios (M1, M4, M5)
+- **M1**: Migration `database/migrations/20260620_add_login_history.sql` com tabela `historico_login` + RLS
+- **M4**: Mensagens de erro genéricas no backend (removido vazamento de `str(e)`)
+- **M5**: `load_dotenv` agora resolve caminho absoluto para `frontend/.env.local`
+
+#### 🟢 Baixos (L1–L4)
+- **L1**: `.pre-commit-config.yaml` criado com hooks de segurança e lint
+- **L2**: `.github/dependabot.yml` criado (pip weekly, actions monthly)
+- **L3**: `SESSION_COOKIE_SAMESITE` alterado de `Lax` para `Strict`
+- **L4**: `logger.error()` adicionado no except genérico do perfil
+
+### Problema de Processo e Solução
+
+**Problema:** Ao tentar executar testes, o Flask foi iniciado em background via `python app.py &` dentro de uma tool call do shell. Quando a chamada terminava, o processo filho era morto pelo SO (cada tool call abre um novo shell independente).
+
+**Solução:** Executar o Flask e os testes na mesma tool call, ou iniciar o Flask separadamente com `nohup` e verificar a porta antes de rodar os testes. O `conftest.py` já gerencia isso automaticamente (tenta subir o Flask via `subprocess.Popen`), mas a app crashou porque `FLASK_SECRET_KEY` não estava definida — corrigido mantendo `SUPABASE_SECRET_KEY` como fallback.
+
+### Status dos Testes
+- 35 testes passaram, 13 skipped (modais pré-existentes), 0 falhas
+- Testes lentos (~3min) devido a Playwright com Chromium; `test_create_leitura` e `test_pressao_list_page_loads` exigem timeout ≥ 300s

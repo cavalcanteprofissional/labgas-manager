@@ -1,4 +1,6 @@
 # Auth blueprint - Login, register, logout
+import re
+import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, current_user
 from datetime import datetime, timedelta, timezone
@@ -11,6 +13,8 @@ from utils.limiter import limiter
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
+
+LOGIN_ATTEMPTS: dict[str, list[float]] = {}
 
 
 class User:
@@ -66,6 +70,14 @@ def login():
             flash("Email e senha são obrigatórios", "danger")
             return redirect(url_for("auth.login"))
 
+        now = time.time()
+        attempts = LOGIN_ATTEMPTS.get(email, [])
+        attempts = [t for t in attempts if now - t < 60]
+        if len(attempts) >= 5:
+            flash("Muitas tentativas para este email. Tente novamente em 1 minuto.", "danger")
+            return redirect(url_for("auth.login"))
+        LOGIN_ATTEMPTS[email] = attempts
+
         supabase = get_supabase_client()
 
         try:
@@ -75,6 +87,10 @@ def login():
             })
 
             if response.user:
+                if not response.user.email_confirmed_at:
+                    flash("Confirme seu email antes de fazer login. Verifique sua caixa de entrada.", "danger")
+                    return redirect(url_for("auth.login"))
+
                 from flask import current_app
                 secret_key = current_app.secret_key
                 
@@ -132,6 +148,8 @@ def login():
                 if login_attempts >= 5:
                     session["login_blocked_until"] = (datetime.utcnow() + timedelta(minutes=1)).isoformat()
                     session.pop("login_attempts", None)
+                if email:
+                    LOGIN_ATTEMPTS.setdefault(email, []).append(time.time())
             elif "rate limit" in error_str.lower():
                 flash("Muitas tentativas de login. Tente novamente em 1 minuto.", "danger")
             else:
@@ -168,8 +186,11 @@ def register():
             flash("Senhas não conferem.", "danger")
             return redirect(url_for("auth.register"))
 
-        if len(password) < 6:
-            flash("A senha deve ter pelo menos 6 caracteres", "danger")
+        if len(password) < 8:
+            flash("A senha deve ter pelo menos 8 caracteres", "danger")
+            return redirect(url_for("auth.register"))
+        if not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'\d', password):
+            flash("A senha deve conter letras maiúsculas, minúsculas e números", "danger")
             return redirect(url_for("auth.register"))
 
         supabase = get_supabase_client()

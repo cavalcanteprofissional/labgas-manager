@@ -153,7 +153,7 @@ def list():
                 }
                 
                 if not dev:
-                    get_supabase_client().table("cilindro").update(data).eq("id", cilindro_id).eq("user_id", user_id).execute()
+                    get_authenticated_client().table("cilindro").update(data).eq("id", cilindro_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
                 

@@ -36,7 +36,7 @@ def login():
         }), 200
         
     except Exception as e:
-        return jsonify({'message': f'Erro no login: {str(e)}'}), 401
+        return jsonify({'message': 'Erro no login. Verifique suas credenciais.'}), 401
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -50,8 +50,7 @@ def register():
     
     try:
         user_data = {
-            "name": data.get('name', ''),
-            "role": data.get('role', 'viewer')
+            "name": data.get('name', '')
         }
         
         response = supabase.auth.sign_up({
@@ -70,8 +69,8 @@ def register():
         else:
             return jsonify({'message': 'Erro ao criar conta'}), 400
             
-    except Exception as e:
-        return jsonify({'message': f'Erro no registro: {str(e)}'}), 400
+    except Exception:
+        return jsonify({'message': 'Erro no registro. Tente novamente.'}), 400
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -82,8 +81,8 @@ def logout():
     try:
         supabase.auth.sign_out()
         return jsonify({'message': 'Logout realizado com sucesso'}), 200
-    except Exception as e:
-        return jsonify({'message': f'Erro no logout: {str(e)}'}), 400
+    except Exception:
+        return jsonify({'message': 'Erro no logout. Tente novamente.'}), 400
 
 
 @auth_bp.route('/me', methods=['GET'])
@@ -107,5 +106,5 @@ def reset_password():
     try:
         supabase.auth.reset_password_for_email(data['email'])
         return jsonify({'message': 'Email de recuperação enviado'}), 200
-    except Exception as e:
-        return jsonify({'message': f'Erro: {str(e)}'}), 400
+    except Exception:
+        return jsonify({'message': 'Erro ao enviar email de recuperação. Tente novamente.'}), 400

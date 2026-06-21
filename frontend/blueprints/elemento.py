@@ -84,7 +84,7 @@ def list():
             }
             
             if not dev:
-                get_supabase_client().table("elemento").update(data).eq("id", elemento_id).eq("user_id", user_id).execute()
+                get_authenticated_client().table("elemento").update(data).eq("id", elemento_id).eq("user_id", user_id).execute()
             else:
                 get_admin_client().table("elemento").update(data).eq("id", elemento_id).execute()
             

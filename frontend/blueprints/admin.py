@@ -485,6 +485,12 @@ def export_data():
         return response
     
     elif formato == "csv":
+        def sanitize_csv(val):
+            s = str(val)
+            if s and s[0] in ('=', '+', '-', '@'):
+                return "'" + s
+            return s
+
         output = io.StringIO()
         output.write(f"# Exportado por: {user_name} em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
         output.write(f"# KPIs: Cilindros Ativos={kpis['cilindros_ativos']}, Gas Restante={kpis['gas_restante_litros']}L, "
@@ -498,7 +504,7 @@ def export_data():
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
             for row in cilindro_data:
-                values = [str(row.get(h, "")) for h in headers]
+                values = [sanitize_csv(row.get(h, "")) for h in headers]
                 output.write(",".join(values) + "\n")
         
         output.write("\n# ELEMENTOS\n")
@@ -506,7 +512,7 @@ def export_data():
             headers = ["id", "nome", "consumo_lpm", "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
             for row in elementos_data:
-                values = [str(row.get(h, "")) for h in headers]
+                values = [sanitize_csv(row.get(h, "")) for h in headers]
                 output.write(",".join(values) + "\n")
         
         output.write("\n# LEITURAS\n")

@@ -144,7 +144,7 @@ def leitura_list():
 
             try:
                 if not dev:
-                    get_supabase_client().table("leitura").update(data_update).eq("id", leitura_id).eq("user_id", user_id).execute()
+                    get_authenticated_client().table("leitura").update(data_update).eq("id", leitura_id).eq("user_id", user_id).execute()
                 else:
                     get_admin_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
 

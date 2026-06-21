@@ -43,17 +43,20 @@ def main():
     conn.set_session(autocommit=True)
     try:
         with conn.cursor() as cur:
-            cur.execute("""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'backup_user') THEN
-                        CREATE ROLE backup_user WITH LOGIN PASSWORD '%s' NOBYPASSRLS;
-                    ELSE
-                        ALTER ROLE backup_user WITH PASSWORD '%s';
-                    END IF;
-                END
-                $$;
-            """ % (BACKUP_PASSWORD, BACKUP_PASSWORD))
+            cur.execute(
+                "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'backup_user'"
+            )
+            exists = cur.fetchone()
+            if exists:
+                cur.execute(
+                    "ALTER ROLE backup_user WITH PASSWORD %s",
+                    (BACKUP_PASSWORD,)
+                )
+            else:
+                cur.execute(
+                    "CREATE ROLE backup_user WITH LOGIN PASSWORD %s NOBYPASSRLS",
+                    (BACKUP_PASSWORD,)
+                )
             cur.execute("GRANT CONNECT ON DATABASE postgres TO backup_user")
             cur.execute("GRANT USAGE ON SCHEMA public TO backup_user")
             cur.execute("GRANT SELECT ON ALL TABLES IN SCHEMA public TO backup_user")

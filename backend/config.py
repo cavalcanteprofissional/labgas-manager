@@ -1,7 +1,12 @@
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-load_dotenv('.env.local')
+dotenv_path = Path(__file__).resolve().parent.parent / "frontend" / ".env.local"
+if dotenv_path.exists():
+    load_dotenv(dotenv_path)
+else:
+    load_dotenv(Path(__file__).resolve().parent / ".env.local")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")

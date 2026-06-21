@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "labgas-manager"
-version = "2.7.0"
+version = "2.7.1"
 description = "Dashboard para gestao de cilindros de gas e elementos analisados em laboratorio de quimica"
 authors = ["Lucas Cavalcante dos Santos", "Thiago Bricio Pinheiro Sandre"]
 license = "MIT"
