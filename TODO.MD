@@ -1325,3 +1325,98 @@ Implementação das correções para as 16 vulnerabilidades documentadas na Fase
 ### Status dos Testes
 - 35 testes passaram, 13 skipped (modais pré-existentes), 0 falhas
 - Testes lentos (~3min) devido a Playwright com Chromium; `test_create_leitura` e `test_pressao_list_page_loads` exigem timeout ≥ 300s
+
+---
+
+## Fase 58: Backup Inteligente com Hash SHA256 + GitHub Artifacts 💾✨
+
+### Contexto
+O backup atual roda todo dia às 06:00 UTC independentemente de haver mudanças nos dados — gera dump, comprime e sobe para o R2 mesmo que nada tenha mudado. Com o tempo, backups idênticos se acumulam no R2 (até o lifecycle de 30 dias limpar). Esta fase adiciona:
+
+1. **Hash SHA256** do dump para comparar com o último backup — se os dados não mudaram, o dump não é gerado nem enviado
+2. **GitHub Actions Artifacts** como camada secundária de armazenamento (além do R2)
+3. **Notificação de falha aprimorada** com contexto dinâmico (branch, commit, workflow URL)
+4. **Logs de erro persistidos como artifact** em caso de falha
+
+### Arquitetura Atualizada
+
+```
+Supabase PG ──(psycopg2)──→ scripts/backup_db.py ──(.json.gz)──→ R2 (primário)
+                                     │
+                                     ├── SHA256 do dump
+                                     ├── compara com hash do R2
+                                     │   ├── iguais → skip (sem upload)
+                                     │   └── diferentes → upload dump + hash
+                                     │
+                                     └── GitHub Artifact (secundário)
+                                         (apenas quando há mudança)
+```
+
+### Mudanças
+
+#### A. `scripts/backup_db.py` — Hash SHA256 + skip inteligente
+
+| Item | Descrição |
+|------|-----------|
+| `compute_sha256(path)` | Nova função — lê arquivo em chunks de 64KB, retorna hex digest |
+| `download_hash_from_r2(client, bucket)` | Nova função — baixa `last_backup_hash.txt` do R2, retorna conteúdo ou `None` |
+| `upload_hash_to_r2(client, bucket, hash_value)` | Nova função — sobe `last_backup_hash.txt` |
+| `--check-hash` | Novo argumento — ativa fluxo com comparação de hash |
+| `--result-file` | Novo argumento — path do JSON de resultado (default: `.backup_result.json`) |
+
+**Fluxo com `--check-hash`:**
+1. Conecta ao banco, exporta tabelas (idêntico ao atual)
+2. Gera dump em **arquivo temporário** (`tempfile.NamedTemporaryFile`)
+3. Computa SHA256 do dump temporário
+4. Tenta baixar `last_backup_hash.txt` do R2
+   - Se R2 indisponível → loga aviso, prossegue com backup (segurança > economia)
+5. **Hash igual** → apaga temp, escreve `.backup_result.json`:
+   ```json
+   {"status": "skipped", "reason": "no changes", "hash": "abc123..."}
+   ```
+6. **Hash diferente** (ou primeira execução) → move para `backups/labgas_backup_<timestamp>.json.gz`, upload R2 + hash, escreve:
+   ```json
+   {"status": "uploaded", "filename": "backups/...", "timestamp": "2026-06-21_06-00-00", "hash": "abc123...", "size_mb": 1.23}
+   ```
+
+**Sem `--check-hash`:** Comportamento original inalterado (backward compatible).
+
+#### B. `.github/workflows/daily-backup.yml` — Refatorado
+
+| Mudança | Detalhe |
+|---------|---------|
+| `--check-hash` | Adicionado ao comando do step de backup |
+| Parse do resultado | Step `Parse backup result` lê `.backup_result.json` com `jq`, extrai `status`, `filename`, `timestamp` |
+| Artifact condicional | `actions/upload-artifact@v4` roda **apenas** quando `status == 'uploaded'`, retenção 30 dias |
+| Logs de erro | `actions/upload-artifact@v4` em caso de `failure()` — salva `.backup_result.json` por 7 dias |
+| Issue aprimorada | Título + corpo com tabela dinâmica: data, workflow URL, branch, commit, ações recomendadas |
+
+### Arquivos alterados
+
+| Arquivo | Tipo |
+|---------|------|
+| `scripts/backup_db.py` | +~70 linhas (3 funções hash + fluxo `--check-hash`) |
+| `.github/workflows/daily-backup.yml` | Reescrever (~75 linhas) |
+
+### Nenhuma alteração em
+
+- `scripts/restore_db.py` (100% compatível)
+- Schema do banco (sem migrations)
+- Secrets do GitHub (mesmas 8 variáveis)
+- Bucket R2 e prefixo (`labgas_backup_*`)
+- Lifecycle do R2 (30 dias, 7 dias multipart abort)
+- Formato do dump (JSON gzip)
+
+### Checklist
+
+- [ ] `scripts/backup_db.py`: adicionar `compute_sha256()`
+- [ ] `scripts/backup_db.py`: adicionar `download_hash_from_r2()`
+- [ ] `scripts/backup_db.py`: adicionar `upload_hash_to_r2()`
+- [ ] `scripts/backup_db.py`: adicionar `--check-hash` + `--result-file`
+- [ ] `scripts/backup_db.py`: fluxo `--check-hash` com temp file, comparação, skip/upload
+- [ ] `.github/workflows/daily-backup.yml`: step backup com `--check-hash`
+- [ ] `.github/workflows/daily-backup.yml`: step parse result JSON
+- [ ] `.github/workflows/daily-backup.yml`: artifact upload condicional (30 dias)
+- [ ] `.github/workflows/daily-backup.yml`: error log artifact (7 dias)
+- [ ] `.github/workflows/daily-backup.yml`: issue aprimorada com contexto dinâmico
+- [ ] Testar workflow manualmente via Actions → Run workflow
