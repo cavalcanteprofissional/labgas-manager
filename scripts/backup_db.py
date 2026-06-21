@@ -12,10 +12,12 @@ Uso:
 
 import argparse
 import gzip
+import hashlib
 import json
 import os
 import re
 import sys
+import tempfile
 import urllib.parse
 from datetime import datetime, date, time, timedelta, UTC
 from decimal import Decimal
@@ -178,42 +180,68 @@ def exportar_auth_users():
     return users
 
 
-def upload_r2(local_path, remote_key):
+def _init_r2_client():
     if not all([R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY]):
-        print("AVISO: R2 nao configurado — backup salvo apenas localmente.")
-        return False
-    client = boto3.client(
+        return None
+    return boto3.client(
         "s3",
         endpoint_url=R2_ENDPOINT,
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
     )
+
+
+def upload_r2(local_path, remote_key):
+    client = _init_r2_client()
+    if not client:
+        print("AVISO: R2 nao configurado — backup salvo apenas localmente.")
+        return False
     client.upload_file(str(local_path), R2_BUCKET, remote_key)
     print(f"  -> Upload R2: s3://{R2_BUCKET}/{remote_key}")
     return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Backup do LabGas Manager")
-    parser.add_argument("--no-upload", action="store_true", help="Apenas backup local")
-    parser.add_argument("--output-dir", default="backups", help="Diretorio local de saida")
-    args = parser.parse_args()
+def compute_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
 
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"labgas_backup_{timestamp}.json.gz"
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    local_path = output_dir / filename
 
-    print("Conectando ao banco...")
+def download_hash_from_r2(bucket):
+    client = _init_r2_client()
+    if not client:
+        return None
+    try:
+        resp = client.get_object(Bucket=bucket, Key="last_backup_hash.txt")
+        return resp["Body"].read().decode("utf-8").strip()
+    except Exception:
+        return None
+
+
+def upload_hash_to_r2(bucket, hash_value):
+    client = _init_r2_client()
+    if not client:
+        return False
+    try:
+        client.put_object(Bucket=bucket, Key="last_backup_hash.txt", Body=hash_value.encode("utf-8"))
+        return True
+    except Exception:
+        return False
+
+
+def _run_backup():
+    """Exporta todas as tabelas e retorna (dados_brutos, total_registros)."""
     conn = conectar()
-
     backup = {
         "version": "1.0",
         "created_at": datetime.now(UTC).isoformat(),
         "tables": {},
     }
-
     total = 0
     for tabela in PUBLIC_TABLES:
         print(f"  public.{tabela}...", end=" ")
@@ -221,9 +249,7 @@ def main():
         backup["tables"][f"public.{tabela}"] = rows
         print(f"{len(rows)} registros")
         total += len(rows)
-
     conn.close()
-
     print(f"  auth.users...", end=" ")
     try:
         users = exportar_auth_users()
@@ -233,6 +259,34 @@ def main():
     except Exception as e:
         print(f"erro: {e}")
         backup["tables"]["auth.users"] = []
+    return backup, total
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Backup do LabGas Manager")
+    parser.add_argument("--no-upload", action="store_true", help="Apenas backup local")
+    parser.add_argument("--output-dir", default="backups", help="Diretorio local de saida")
+    parser.add_argument("--check-hash", action="store_true", help="Pular backup se hash nao mudou")
+    parser.add_argument("--result-file", default=".backup_result.json", help="Path do JSON de resultado")
+    args = parser.parse_args()
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.check_hash:
+        _run_backup_with_hash_check(args, output_dir)
+    else:
+        _run_backup_simple(args, output_dir)
+
+
+def _run_backup_simple(args, output_dir):
+    """Fluxo original (sem --check-hash)."""
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"labgas_backup_{timestamp}.json.gz"
+    local_path = output_dir / filename
+
+    print("Conectando ao banco...")
+    backup, total = _run_backup()
 
     print(f"\nComprimindo -> {local_path}")
     with gzip.open(local_path, "wt", encoding="utf-8") as f:
@@ -246,6 +300,66 @@ def main():
         upload_r2(local_path, remote_key)
 
     print("\nBackup concluido com sucesso!")
+
+
+def _run_backup_with_hash_check(args, output_dir):
+    """Fluxo com --check-hash: compara SHA256, pula se inalterado."""
+    result = {"status": "error", "reason": "unknown"}
+
+    try:
+        print("Conectando ao banco...")
+        backup, total = _run_backup()
+
+        with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+            with gzip.open(tmp_path, "wt", encoding="utf-8") as f:
+                json.dump(backup, f, ensure_ascii=False, default=str)
+
+        current_hash = compute_sha256(tmp_path)
+        size_mb = tmp_path.stat().st_size / 1024 / 1024
+        print(f"  SHA256: {current_hash}")
+        print(f"  Tamanho: {size_mb:.2f} MB ({total} registros)")
+
+        previous_hash = download_hash_from_r2(R2_BUCKET)
+
+        if previous_hash == current_hash:
+            print("\nNenhuma alteracao detectada — backup pulado.")
+            tmp_path.unlink()
+            result = {"status": "skipped", "reason": "no changes", "hash": current_hash}
+            _write_result(args.result_file, result)
+            return
+
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"labgas_backup_{timestamp}.json.gz"
+        local_path = output_dir / filename
+        tmp_path.rename(local_path)
+        print(f"\nSalvo -> {local_path}")
+
+        if not args.no_upload:
+            remote_key = f"labgas_backup_{timestamp}.json.gz"
+            upload_r2(local_path, remote_key)
+            upload_hash_to_r2(R2_BUCKET, current_hash)
+            print("  Hash atualizado no R2.")
+
+        result = {
+            "status": "uploaded",
+            "filename": str(local_path),
+            "timestamp": timestamp,
+            "hash": current_hash,
+            "size_mb": round(size_mb, 2),
+        }
+        _write_result(args.result_file, result)
+        print("\nBackup concluido com sucesso!")
+    except Exception as e:
+        result = {"status": "error", "reason": str(e)}
+        _write_result(args.result_file, result)
+        print(f"\nERRO: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _write_result(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
 
 
 if __name__ == "__main__":
