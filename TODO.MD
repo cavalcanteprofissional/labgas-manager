@@ -1445,5 +1445,12 @@ mysqldump ──(.sql.gz)──→ R2 (bucket, lifecycle 30 dias)
   - Notificação de falha com contexto dinâmico
   - Temporários removidos
   - Sem dados sensíveis em logs
-- [ ] Secrets configurados no GitHub: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+- [x] Secrets configurados no GitHub: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
 - [ ] Testar workflow manualmente via Actions → Run workflow
+
+### Bugfix: awscli via apt não disponível no runner 🐛
+
+- [x] Step `Install mysql-client + aws-cli` quebrado: `apt-get install awscli` retorna
+  `E: Package 'awscli' has no installation candidate` (Ubuntu 24.04 removeu o pacote)
+- [x] Corrigido: `awscli` via `aws-actions/setup-aws-cli@v2` (action oficial)
+- [x] `mysql-client` continua via `apt-get`

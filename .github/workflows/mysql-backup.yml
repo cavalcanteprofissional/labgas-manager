@@ -14,10 +14,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install mysql-client + aws-cli
+      - name: Install mysql client
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq mysql-client awscli
+          sudo apt-get install -y -qq mysql-client
+
+      - name: Set up AWS CLI v2
+        uses: aws-actions/setup-aws-cli@v2
+        with:
+          version: '2'
 
       - name: Run backup
         id: backup
