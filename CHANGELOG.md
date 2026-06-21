@@ -2,6 +2,41 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.8.0] — 2026-06-21
+
+### Backup Inteligente com Hash SHA256 (Fase 58) 💾
+
+- **`scripts/backup_db.py`**: novas funções `compute_sha256()`, `download_hash_from_r2()`, `upload_hash_to_r2()` — lógica de hash SHA256 em chunks de 64KB
+- **`scripts/backup_db.py`**: novos argumentos `--check-hash` + `--result-file` — fluxo skip inteligente: exporta para temp, compara hash com R2, pula se inalterado
+- **`scripts/backup_db.py`**: refatorado `_run_backup_with_hash_check()` e `_run_backup_simple()` — backward compatible, sem `--check-hash` mantém comportamento original
+- **`scripts/backup_db.py`**: `_init_r2_client()` extraído como helper compartilhado (DRY)
+
+### Backup MySQL Workflow (Fase 59) 🗄️
+
+- **`.github/workflows/mysql-backup.yml`**: novo workflow independente para backup MySQL
+  - `mysqldump --single-transaction --routines --triggers` com credenciais via secrets
+  - `sha256sum` + `last_backup_hash.txt` no R2 — skip automático se dados não mudaram
+  - Upload R2 com `aws s3 cp` — bucket como storage único (sem artifact GitHub)
+  - Notificação de falha com artifact de log + issue detalhada
+  - Temporários removidos com `trap`, sem dados sensíveis em logs
+
+### Issues de Falha Aprimoradas 📋
+
+- **`daily-backup.yml`**: issue com tabela detalhada (data, gatilho agendado/manual, branch, commit 7 chars, run_id, status), artifact link clicável, `backup_error.log` capturado via `2>`, artifact de erro unificado com `backup_error.log` + `.backup_result.json`, label `bug`
+- **`mysql-backup.yml`**: stderr capturado em `backup_error.log` com `2>>`, step `Upload error logs`, step `Get error log excerpt` (primeiros 2000 bytes inline na issue), issue com todas as melhorias
+- Ambas as issues incluem seção "Log de Erro" com link para artifact (7 dias) + 4 ações recomendadas numeradas
+
+### Bugfixes 🐛
+
+- **`mysql-backup.yml`**: `awscli` removido dos repositórios apt do Ubuntu 24.04 nos runners — substituído por `aws-actions/setup-aws-cli@v2` (action oficial mantida pela AWS)
+- **`daily-backup.yml`**: step "Run backup" ganhou `id: backup` e `2>backup_error.log` — stderr do Python agora capturado para diagnóstico
+
+### TODO.MD
+
+- Fases 50, 51, 54 marcadas como concluídas
+- Fase 58 (Backup Inteligente Hash) registrada e implementada
+- Fase 59 (Backup MySQL Workflow) registrada e implementada
+
 ## [2.7.0] — 2026-06-20
 
 ### Migração pip + requirements.txt → Poetry 📦

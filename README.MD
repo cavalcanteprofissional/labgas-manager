@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.7.1** (Branch: master)
+**Versão: 2.8.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -515,7 +515,8 @@ labgas-manager/
 │
 ├── .github/
 │   └── workflows/
-│       └── daily-backup.yml   # Backup automático (cron 06:00 UTC)
+│       ├── daily-backup.yml   # Backup PostgreSQL (cron 06:00 UTC)
+│       └── mysql-backup.yml   # Backup MySQL (cron 06:00 UTC)
 │
 ├── scripts/                   # Scripts auxiliares
 │   ├── seed.py                # Seed do usuário de teste (lê .env.local)
@@ -804,6 +805,10 @@ flowchart LR
 ```
 
 **Conexão via pooler Supavisor** (`aws-1-us-east-2.pooler.supabase.com:5432`) — sempre IPv4, contorna limitação de IPv6 no CI. O `backup_user` tem permissão **apenas SELECT** (readonly).
+
+### Backup MySQL 🗄️
+
+O repositório também inclui `.github/workflows/mysql-backup.yml` — workflow independente para backup de bancos MySQL, seguindo o mesmo padrão de hash SHA256 + skip inteligente + Cloudflare R2. Consulte o workflow para detalhes de configuração (9 secrets necessários).
 
 ### Setup Inicial
 
