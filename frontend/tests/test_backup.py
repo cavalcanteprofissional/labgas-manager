@@ -265,6 +265,46 @@ class TestOrdemOperacoes:
 # ─── Testes de Integração (subprocess, --run-backup) ────────────────────────────
 
 
+class TestRestoreDryRun:
+    @pytest.mark.backup
+    def test_restore_dry_run_sem_args(self):
+        """--dry-run sem --file ou --latest exibe ajuda."""
+        result = subprocess.run(
+            [sys.executable, str(RESTORE_SCRIPT)],
+            cwd=BASE_DIR,
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode != 0
+        assert "usage" in result.stdout.lower() or "usage" in result.stderr.lower()
+
+    @pytest.mark.backup
+    def test_restore_dry_run_funciona(self):
+        """Executa backup, depois restore --dry-run com o arquivo gerado."""
+        backup_dir = BASE_DIR / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        backup_result = subprocess.run(
+            [sys.executable, str(BACKUP_SCRIPT), "--no-upload", "--output-dir", str(backup_dir), "--no-pre-flight"],
+            cwd=BASE_DIR,
+            capture_output=True, text=True, timeout=60,
+        )
+        assert backup_result.returncode == 0, f"backup falhou:\n{backup_result.stderr}"
+
+        backups = sorted(backup_dir.glob("*.json.gz"))
+        assert backups, "Nenhum backup gerado"
+        backup_file = backups[-1]
+
+        restore_result = subprocess.run(
+            [sys.executable, str(RESTORE_SCRIPT), "--file", str(backup_file), "--dry-run"],
+            cwd=BASE_DIR,
+            capture_output=True, text=True, timeout=30,
+        )
+        assert restore_result.returncode == 0, f"restore dry-run falhou:\n{restore_result.stderr}"
+        assert "Dry-run" in restore_result.stdout
+
+        backup_file.unlink()
+
+
 class TestBackupIntegracao:
     @pytest.mark.backup
     def test_backup_script_executa(self):
@@ -289,7 +329,7 @@ class TestBackupIntegracao:
         with gzip.open(backup_path, "rt", encoding="utf-8") as f:
             dados = json.load(f)
 
-        assert "version" in dados
+        assert "schema_version" in dados
         assert "created_at" in dados
         assert "tables" in dados
         assert "public.perfil" in dados["tables"]
@@ -345,7 +385,7 @@ class TestBackupIntegracao:
         with gzip.open(backup_path, "rt", encoding="utf-8") as f:
             dados = json.load(f)
 
-        assert dados["version"] == "1.0"
+        assert dados["schema_version"] == "1.1"
         assert "created_at" in dados
         assert len(dados["tables"]) >= 8
 
@@ -366,14 +406,3 @@ class TestBackupIntegracao:
         )
         assert result.returncode == 0, f"restore --list falhou:\n{result.stderr}"
         assert "labgas_backup" in result.stdout or "Nenhum" in result.stdout
-
-    @pytest.mark.backup
-    def test_restore_dry_run_sem_args(self):
-        """Verifica que --dry-run sem --file ou --latest exibe ajuda."""
-        result = subprocess.run(
-            [sys.executable, str(RESTORE_SCRIPT)],
-            cwd=BASE_DIR,
-            capture_output=True, text=True, timeout=30,
-        )
-        assert result.returncode != 0
-        assert "usage" in result.stdout.lower() or "usage" in result.stderr.lower()

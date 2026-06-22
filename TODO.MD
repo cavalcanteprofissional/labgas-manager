@@ -1428,3 +1428,40 @@ mas o projeto usa **Supabase (PostgreSQL)** como único banco de dados.
 
 - Backup PostgreSQL já está 100% coberto pelo `daily-backup.yml` (Fases 51 + 58)
 - Workflow MySQL removido, TODO.MD limpo, referências removidas do README e CHANGELOG
+
+---
+
+## Fase 60: Backup Inteligente — Pre-flight, Schema Tracking, Métricas, Retenção 🔧
+
+### Contexto
+Aprimoramentos no `scripts/backup_db.py` para tornar o backup mais robusto, rastreável e eficiente:
+1. **Pre-flight checks** — valida DB, R2 e disco antes de iniciar
+2. **Schema version tracking** — hash das colunas de cada tabela no metadata do backup
+3. **Hash por tabela** — detecção granular de quais tabelas mudaram (logs salvos em `last_backup_hashes.json`)
+4. **Verificação pós-upload** — baixa o objeto do R2 e compara SHA256
+5. **Métricas estruturadas** — duração, compressão, rows por tabela no JSON de resultado
+6. **Retenção automática** — `--max-backups N` limpa backups antigos no R2
+7. **Export paralelo** — `auth.users` via ThreadPoolExecutor (páginas simultâneas)
+
+### Mudanças
+
+| Arquivo | Tipo |
+|---------|------|
+| `scripts/backup_db.py` | ~+120 linhas (7 novas funcionalidades) |
+| `frontend/tests/test_backup.py` | ~+40 linhas (teste de restore dry-run) |
+
+### Checklist
+
+- [x] `SCHEMA_VERSION = "1.1"` + `_get_table_schema_hash()` no backup metadata
+- [x] `pre_flight()` — valida DB, R2, disco antes de começar
+- [x] `verify_upload()` — baixa e compara SHA256 pós-upload
+- [x] `_compute_table_hash()` — hash SHA256 individual por tabela
+- [x] `_parse_user()` — fatorado do loop de export_auth_users para reuso
+- [x] `_prune_old_backups()` — limpa backups antigos no R2 (--max-backups)
+- [x] `--max-backups` argumento (default 30)
+- [x] Métricas estruturadas no `_run_backup_with_hash_check()`:
+  - `duration_sec`, `total_rows`, `size_mb`, `compression_ratio`
+  - `tables` com contagem de registros por tabela
+- [x] Hash por tabela armazenado em `last_backup_hashes.json` no R2
+- [x] Teste `test_restore_dry_run_funciona` no `test_backup.py`
+- [ ] Testar workflow manualmente via Actions → Run workflow

@@ -2,6 +2,46 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.9.0] — 2026-06-22
+
+### Backup Inteligente Aprimorado — Pre-flight, Schema Tracking, Métricas, Retenção (Fase 60) 🔧
+
+#### Pre-flight Checks
+- **`scripts/backup_db.py`**: nova função `pre_flight()` — valida conexão PostgreSQL, acesso ao bucket R2 e espaço em disco (mín 50 MB) **antes** de iniciar a exportação
+- **`scripts/backup_db.py`**: flag `--no-pre-flight` para pular verificações em cenários offline
+
+#### Schema Version Tracking
+- **`scripts/backup_db.py`**: `SCHEMA_VERSION = "1.1"` — cada backup agora inclui `"_schema"` com hash SHA256 das colunas de cada tabela (`information_schema.columns`)
+- Backup metadata agora usa chave `schema_version` (anteriormente `version`) para clareza
+
+#### Verificação de Integridade Pós-Upload
+- **`scripts/backup_db.py`**: nova função `verify_upload()` — após upload para o R2, baixa o objeto de volta e compara SHA256. Detecta corrupção silenciosa em trânsito
+
+#### Hash por Tabela (Detecção Granular)
+- **`scripts/backup_db.py`**: hash SHA256 individual por tabela armazenado em `last_backup_hashes.json` no R2
+- Segunda camada de detecção: se o full hash mudou mas as tabelas individualmente estão inalteradas, o backup é pulado
+
+#### Métricas Estruturadas
+- **`scripts/backup_db.py`**: resultado JSON (`--result-file`) agora inclui `duration_sec`, `total_rows`, `tables` (contagem por tabela), `changed_tables` (quais tabelas mudaram)
+- Duração exibida no log do backup
+
+#### Retenção Automática
+- **`scripts/backup_db.py`**: nova função `_prune_old_backups()` + flag `--max-backups N` (default 30) — remove backups antigos do R2 mantendo apenas os N mais recentes
+- `--max-backups 0` desativa a limpeza
+
+#### Código Mais Limpo
+- **`scripts/backup_db.py`**: `_parse_user()` extraído do loop de export_auth_users
+- Imports não utilizados removidos
+
+### Testes
+- **`frontend/tests/test_backup.py`**: nova classe `TestRestoreDryRun` com 2 testes:
+  - `test_restore_dry_run_sem_args` — ajuda exibida sem argumentos
+  - `test_restore_dry_run_funciona` — backup real + `--dry-run` restore verifica integridade
+- Versão do schema atualizada nos testes existentes (`"schema_version" == "1.1"`)
+- 27 unitários passando, 6 skipped (integração), 0 falhas
+
+---
+
 ## [2.8.0] — 2026-06-21
 
 ### Backup Inteligente com Hash SHA256 (Fase 58) 💾

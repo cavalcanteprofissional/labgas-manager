@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.8.0** (Branch: master)
+**Versão: 2.9.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -868,11 +868,17 @@ Adicione as variáveis acima ao `frontend/.env.local` para executar backups manu
 ### Uso Manual
 
 ```bash
-# Backup local + upload R2
+# Backup local + upload R2 (com pre-flight checks)
 poetry run python scripts/backup_db.py
 
-# Backup apenas local (sem upload)
-poetry run python scripts/backup_db.py --no-upload
+# Backup com hash check: pula se dados não mudaram
+poetry run python scripts/backup_db.py --check-hash
+
+# Backup com retenção: mantém apenas os 15 backups mais recentes no R2
+poetry run python scripts/backup_db.py --check-hash --max-backups 15
+
+# Backup apenas local (sem upload, sem pre-flight)
+poetry run python scripts/backup_db.py --no-upload --no-pre-flight
 
 # Listar backups disponíveis no R2
 poetry run python scripts/restore_db.py --list
@@ -912,7 +918,12 @@ flowchart LR
 4. **Exportação** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`) e exporta todas as 9 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_log` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`)
 5. **Compressão** — Os dados são serializados em JSON e compactados com `gzip`, gerando um arquivo de ~0.01 MB
 6. **Upload** — O `.json.gz` é enviado ao **Cloudflare R2** via API S3-compatible (`boto3`), armazenado no bucket `labgas-backups`
-7. **Limpeza automática** — Uma **Lifecycle Policy** no R2 deleta automaticamente backups com mais de **30 dias**, sem necessidade de script ou manutenção
+7. **Detecção inteligente de mudanças** — O script computa um hash SHA256 do dump completo. Se o hash coincidir com o último backup no R2, o upload é pulado (`--check-hash`). Além disso, hashes individuais por tabela são armazenados em `last_backup_hashes.json` para detecção granular — mesmo que o hash total mude, se as tabelas estiverem individualmente inalteradas, o backup é pulado
+8. **Verificação de integridade** — Após o upload, o script baixa o arquivo do R2 e compara o SHA256 local vs remoto, garantindo que não houve corrupção em trânsito
+9. **Retenção programática** — O script aceita `--max-backups N` (default 30) para limpar backups antigos no R2. Complementa a Lifecycle Policy com controle mais granular
+10. **Pre-flight checks** — Antes de iniciar, valida conexão PostgreSQL, acesso ao bucket R2 e espaço em disco suficiente, falhando rápido em vez de no meio do backup
+11. **Métricas estruturadas** — O JSON de resultado inclui `duration_sec`, `total_rows`, `tables` (contagem por tabela) e `changed_tables` para monitoramento
+12. **Limpeza automática** — Uma **Lifecycle Policy** no R2 deleta automaticamente backups com mais de **30 dias**, sem necessidade de script ou manutenção
 8. **Notificação de falha** — Se qualquer passo falhar (conexão, exportação, upload), o workflow cria automaticamente uma **Issue** no repositório GitHub com o título `Falha no backup do banco de dados - YYYY-MM-DD` e o link para os logs da execução
 
 ### O que é incluído no backup
