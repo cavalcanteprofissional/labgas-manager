@@ -1465,3 +1465,28 @@ Aprimoramentos no `scripts/backup_db.py` para tornar o backup mais robusto, rast
 - [x] Hash por tabela armazenado em `last_backup_hashes.json` no R2
 - [x] Teste `test_restore_dry_run_funciona` no `test_backup.py`
 - [ ] Testar workflow manualmente via Actions → Run workflow
+
+---
+
+## Bugfix: JS SyntaxError na Issue de Falha (daily-backup.yml) 🐛
+
+### Problema
+Quando o script Python falha com erro contendo aspas simples (ex: `type object 'datetime.time' has no attribute 'monotonic'`), a linha 82 do workflow:
+```javascript
+const reason = '${{ steps.parse_result.outputs.reason }}';
+```
+quebra com `SyntaxError: Unexpected identifier 'datetime'`, pois as aspas simples do Python fecham a string JS prematuramente. Isso impede a criação da Issue de notificação.
+
+### Solução
+Substituir a interpolação direta no JS por `fs.readFileSync()`:
+
+1. **Novo step** `Save failure reason` — salva `.reason` do `.backup_result.json` em `backup_reason.txt`
+2. **JS** — lê o arquivo com `fs.readFileSync('backup_reason.txt', 'utf8').trim()` — 100% imune a caracteres especiais
+
+### Arquivo alterado
+- `.github/workflows/daily-backup.yml` — +7 linhas (step novo), -1 linha (interpolação removida)
+
+### Checklist
+- [x] Step `Save failure reason` adicionado (if: failure())
+- [x] `const reason` lê de arquivo em vez de interpolação ${{ }}
+- [ ] Testar workflow manualmente via Actions → Run workflow
