@@ -1452,5 +1452,6 @@ mysqldump ──(.sql.gz)──→ R2 (bucket, lifecycle 30 dias)
 
 - [x] Step `Install mysql-client + aws-cli` quebrado: `apt-get install awscli` retorna
   `E: Package 'awscli' has no installation candidate` (Ubuntu 24.04 removeu o pacote)
-- [x] Corrigido: `awscli` via `aws-actions/setup-aws-cli@v2` (action oficial)
+- [x] Tentativa 1: `aws-actions/setup-aws-cli@v2` — action não encontrada no GitHub Marketplace
+- [x] Tentativa 2 (correção final): instalação direta via curl + unzip do binário oficial da AWS
 - [x] `mysql-client` continua via `apt-get`
