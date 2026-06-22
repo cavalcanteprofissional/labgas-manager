@@ -20,7 +20,7 @@ import re
 import shutil
 import sys
 import tempfile
-import time
+import time as time_mod
 import urllib.parse
 from datetime import datetime, date, time, timedelta, UTC
 from decimal import Decimal
@@ -429,7 +429,7 @@ def _run_backup_simple(args, output_dir):
     if not args.no_pre_flight:
         pre_flight(output_dir)
 
-    start = time.monotonic()
+    start = time_mod.monotonic()
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"labgas_backup_{timestamp}.json.gz"
     local_path = output_dir / filename
@@ -442,7 +442,7 @@ def _run_backup_simple(args, output_dir):
         json.dump(backup, f, ensure_ascii=False, default=str)
 
     size_mb = local_path.stat().st_size / 1024 / 1024
-    duration = time.monotonic() - start
+    duration = time_mod.monotonic() - start
     print(f"  Tamanho: {size_mb:.2f} MB ({total} registros)")
     print(f"  Duracao: {duration:.1f}s")
 
@@ -461,7 +461,7 @@ def _run_backup_with_hash_check(args, output_dir):
         pre_flight(output_dir)
 
     try:
-        start = time.monotonic()
+        start = time_mod.monotonic()
         print("Conectando ao banco...")
         backup, total, table_hashes, table_row_counts = _run_backup()
 
@@ -472,7 +472,7 @@ def _run_backup_with_hash_check(args, output_dir):
 
         current_hash = compute_sha256(tmp_path)
         size_mb = tmp_path.stat().st_size / 1024 / 1024
-        duration = time.monotonic() - start
+        duration = time_mod.monotonic() - start
         print(f"  SHA256: {current_hash}")
         print(f"  Tamanho: {size_mb:.2f} MB ({total} registros)")
         print(f"  Duracao: {duration:.1f}s")

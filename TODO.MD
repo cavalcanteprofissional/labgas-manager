@@ -1493,7 +1493,38 @@ Substituir a interpolação direta no JS por `fs.readFileSync()`:
 
 ---
 
-## Bugfix: `.backup_result.json` não gerado quando `conectar()` falha 🐛
+## Bugfix: Shadowing — `import time` sobrescrito por `from datetime import time` 🐛
+
+### Problema
+Em `scripts/backup_db.py`, a ordem dos imports causava shadowing:
+```python
+import time                          # módulo time (correto)
+from datetime import datetime, date, time, timedelta, UTC  # time = datetime.time (SOBRESCREVE)
+```
+A segunda linha sobrescrevia o `time` módulo com a classe `datetime.time`.
+Quando `time.monotonic()` era chamado, o Python resolvia `time` como a
+classe `datetime.time`, que não tem método `monotonic()`:
+```
+type object 'datetime.time' has no attribute 'monotonic'
+```
+Isso acontecia nas 4 chamadas a `time.monotonic()` em `_run_backup_simple()`
+e `_run_backup_with_hash_check()`.
+
+### Solução
+Renomear o módulo importado para `time_mod`:
+```python
+import time as time_mod
+from datetime import datetime, date, time, timedelta, UTC
+# time.monotonic() → time_mod.monotonic()
+```
+
+### Arquivo alterado
+- `scripts/backup_db.py` — import renomeado + 4 referências atualizadas
+
+### Checklist
+- [x] `import time as time_mod`
+- [x] 4 ocorrências de `time.monotonic()` → `time_mod.monotonic()`
+- [ ] Testar workflow manualmente via Actions → Run workflow
 
 ### Problema
 `conectar()` em `scripts/backup_db.py` usa `sys.exit()` quando `DB_URL` é None:
