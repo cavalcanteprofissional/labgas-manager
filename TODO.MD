@@ -1493,6 +1493,30 @@ Substituir a interpolação direta no JS por `fs.readFileSync()`:
 
 ---
 
+## Bugfix: `dict(tuple_de_4)` em `_get_table_schema_hash` — RealDictCursor faltando 🐛
+
+### Problema
+`_get_table_schema_hash()` usava `conn.cursor()` (cursor padrão), que retorna
+tuplas. `dict(tupla_de_4)` espera 2 elementos, mas recebe 4 colunas:
+```
+dictionary update sequence element #1 has length 4; 2 is required
+```
+O erro aparecia na primeira tabela (`public.perfil`) porque `_get_table_schema_hash`
+é chamada antes de `exportar_tabela()` no loop.
+
+### Solução
+Adicionar `cursor_factory=psycopg2.extras.RealDictCursor`, que retorna dicionários
+compatíveis com `dict()`. Mesmo padrão usado em `exportar_tabela()`.
+
+### Arquivo alterado
+- `scripts/backup_db.py` — 1 linha: `conn.cursor()` → `conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)`
+
+### Checklist
+- [x] `RealDictCursor` adicionado em `_get_table_schema_hash()`
+- [ ] Testar workflow manualmente via Actions → Run workflow
+
+---
+
 ## Bugfix: Shadowing — `import time` sobrescrito por `from datetime import time` 🐛
 
 ### Problema

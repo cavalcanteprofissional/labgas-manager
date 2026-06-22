@@ -108,7 +108,7 @@ def conectar():
 
 def _get_table_schema_hash(conn, schema, tabela):
     """Retorna SHA256 das definições de coluna (nome, tipo, nullable, default)."""
-    with conn.cursor() as cur:
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT column_name, data_type, is_nullable, column_default
             FROM information_schema.columns
