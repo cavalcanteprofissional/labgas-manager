@@ -1456,3 +1456,12 @@ mysqldump ──(.sql.gz)──→ R2 (bucket, lifecycle 30 dias)
 - [x] Tentativa 2: install via curl + unzip do binário AWS — funcional mas redundante
 - [x] Tentativa 3 (correção final): AWS CLI v2 já vem pré-instalado no `ubuntu-latest` — step inteiro removido
 - [x] `mysql-client` continua via `apt-get`
+
+### Bugfix: mysqldump falha por secrets ausentes + socket local 🐛
+
+- [x] `DB_PASS` vazio → `-p""` vira `-p` → mysqldump pede senha → trava
+- [x] `DB_HOST` vazio → mysqldump tenta socket (`/var/run/mysqld/mysqld.sock`) → erro 2002
+- [x] Adicionada validação de secrets no início do step (fail fast, indica qual secret falta)
+- [x] `-p"$DB_PASS"` substituído por `export MYSQL_PWD="$DB_PASS"` (sem prompt)
+- [x] `--protocol=TCP` adicionado ao mysqldump (impede fallback para socket)
+- [ ] Configurar 9 secrets no repositório: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME

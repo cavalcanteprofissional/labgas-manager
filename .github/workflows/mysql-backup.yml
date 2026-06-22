@@ -37,9 +37,24 @@ jobs:
           ERRLOG="backup_error.log"
           trap "rm -f '$TMPFILE'" EXIT
 
+          echo ">>> Validando secrets..."
+          missing=""
+          for var in DB_HOST DB_USER DB_PASS DB_NAME R2_ENDPOINT R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET; do
+            if [ -z "${!var}" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo ">>> Secrets faltando:$missing" >&2
+            echo "backup_status=error" >> $GITHUB_OUTPUT
+            echo "backup_reason=missing secrets:$missing" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
           echo ">>> Gerando dump..."
-          mysqldump -h "$DB_HOST" -P "$DB_PORT" \
-            -u "$DB_USER" -p"$DB_PASS" \
+          export MYSQL_PWD="$DB_PASS"
+          mysqldump -h "$DB_HOST" -P "$DB_PORT" --protocol=TCP \
+            -u "$DB_USER" \
             --single-transaction --routines --triggers \
             "$DB_NAME" > "$TMPFILE" 2>>"$ERRLOG"
 
