@@ -97,7 +97,7 @@ def _resolver_ipv4(url):
 
 def conectar():
     if not DB_URL:
-        sys.exit("ERRO: DATABASE_URL não definida no .env.local")
+        raise ValueError("DATABASE_URL não definida no .env.local")
     url, hostaddr = _resolver_ipv4(DB_URL)
     if hostaddr:
         conn_str = f"{url}&hostaddr={hostaddr}" if "?" in url else f"{url}?hostaddr={hostaddr}"

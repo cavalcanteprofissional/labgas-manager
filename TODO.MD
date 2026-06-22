@@ -1490,3 +1490,26 @@ Substituir a interpolação direta no JS por `fs.readFileSync()`:
 - [x] Step `Save failure reason` adicionado (if: failure())
 - [x] `const reason` lê de arquivo em vez de interpolação ${{ }}
 - [ ] Testar workflow manualmente via Actions → Run workflow
+
+---
+
+## Bugfix: `.backup_result.json` não gerado quando `conectar()` falha 🐛
+
+### Problema
+`conectar()` em `scripts/backup_db.py` usa `sys.exit()` quando `DB_URL` é None:
+```python
+if not DB_URL:
+    sys.exit("ERRO: DATABASE_URL não definida no .env.local")
+```
+`sys.exit()` levanta `SystemExit` (herda de `BaseException`, não de `Exception`).
+Como `conectar()` é chamado dentro de `_run_backup()` → `_run_backup_with_hash_check()`, o `SystemExit` **escapa do `except Exception`** (linha 546). O `.backup_result.json` nunca é escrito, e o workflow não tem resultado para parsear.
+
+### Solução
+Substituir `sys.exit()` por `raise ValueError(...)` em `conectar()`. O `except Exception` captura, escreve o result JSON com `reason`, e o workflow prossegue para notificação.
+
+### Arquivo alterado
+- `scripts/backup_db.py` — 1 linha: `sys.exit(...)` → `raise ValueError(...)`
+
+### Checklist
+- [x] `conectar()` usa `raise` em vez de `sys.exit()`
+- [ ] Testar workflow manualmente via Actions → Run workflow
