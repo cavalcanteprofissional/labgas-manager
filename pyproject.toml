@@ -11,7 +11,7 @@ package-mode = false
 python = "^3.11"
 flask = "3.0.0"
 flask-login = "0.6.3"
-flask-cors = "4.0.0"
+flask-cors = "6.0.5"
 flask-wtf = "1.2.1"
 flask-limiter = ">=3.6.0"
 flask-caching = ">=2.1.0"
