@@ -1,12 +1,13 @@
-# =====================================================
-# OBSOLETO — Este arquivo foi substituído pelo Poetry.
-# =====================================================
-# As dependências agora estão centralizadas em:
-#     pyproject.toml  (raiz do projeto)
-#
-# Para instalar, use:
-#     poetry install
-#     poetry shell
-#
-# Veja README.MD para instruções completas.
-# =====================================================
+flask==3.0.0
+flask-login==0.6.3
+flask-cors==4.0.0
+flask-wtf==1.2.1
+flask-limiter>=3.6.0
+flask-caching>=2.1.0
+supabase>=2.0.0
+python-dotenv==1.0.0
+gunicorn==21.2.0
+python-jose[cryptography]==3.3.0
+openpyxl==3.1.2
+psycopg2-binary>=2.9.9
+boto3>=1.34.0

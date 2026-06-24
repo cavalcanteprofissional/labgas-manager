@@ -1568,3 +1568,9 @@ Substituir `sys.exit()` por `raise ValueError(...)` em `conectar()`. O `except E
 ### Checklist
 - [x] `conectar()` usa `raise` em vez de `sys.exit()`
 - [ ] Testar workflow manualmente via Actions → Run workflow
+
+---
+
+## Fix Deploy Vercel: requirements.txt obsoleto
+
+- [x] **`frontend/requirements.txt`** — Arquivo estava obsoleto (continha apenas comentários indicando uso do Poetry). O build `@vercel/python` precisa de um `requirements.txt` válido para instalar dependências. A falta dele causava `FUNCTION_INVOCATION_FAILED` (500) no deploy. Substituído por lista real de dependências de produção compatível com o `pyproject.toml`.
