@@ -1571,6 +1571,158 @@ Substituir `sys.exit()` por `raise ValueError(...)` em `conectar()`. O `except E
 
 ---
 
+## Fase 61: Correção do Artigo Científico (artigo.md / artigo.tex) 📄✏️
+
+### Contexto
+O artigo científico (`latex/artigo.md` e `latex/artigo.tex`) estava desatualizado em relação ao estado real do projeto (v2.9.0). Principais discrepâncias encontradas:
+
+### Problemas Identificados e Corrigidos
+
+| # | Problema | Severidade | Correção |
+|---|----------|------------|----------|
+| 1 | `amostra` descrita com FK diretas `cilindro_id`+`elemento_id` (modelo antigo) | 🔴 Crítico | Renomeado para `leitura` em todo o texto; `amostra` atual tem N:N via `amostra_elemento` |
+| 2 | ER Diagram com `AMOSTRA` antiga (cilindro_id, elemento_id, quantidade_amostras) | 🔴 Crítico | Substituído por `LEITURA` + `AMOSTRA` nova + `AMOSTRA_ELEMENTO` |
+| 3 | Tabela `leitura` ausente do modelo de dados | 🔴 Crítico | Adicionada ao ER e descrições |
+| 4 | Tabela `amostra_elemento` ausente do modelo | 🔴 Crítico | Adicionada ao ER e descrições |
+| 5 | Apenas 4 métricas antigas no dashboard | 🟠 Alto | Substituído por 6 KPIs + 4 gráficos (Fase 50) |
+| 6 | Dashboard descrito como "amostras por cilindro" | 🟠 Alto | Corrigido para "leituras por cilindro" |
+| 7 | Backup como "backup automático Supabase" | 🟠 Alto | Corrigido para Cloudflare R2 + GitHub Actions (Fases 51, 58, 60) |
+| 8 | Apenas roles `admin`/`usuario` | 🟠 Alto | Adicionada role `dev` (Fase 47) + hierarquia |
+| 9 | `is_admin()` simples nos exemplos | 🟡 Médio | Atualizado para incluir `is_dev()`, `role_at_least()`, `ROLES_HIERARCHY` |
+| 10 | Gerenciamento pip/requirements.txt | 🟡 Médio | Atualizado para Poetry (Fase 52, v2.7.0) |
+| 11 | Sistema de cores não mencionado | 🟡 Médio | Adicionado Rainbow v3.0 (Fases 27-28) |
+| 12 | URL do repositório: `cavalcanteprofissional/lagbas-manager` | 🟡 Médio | Corrigido typos em todos os arquivos |
+| 13 | Data "Abril de 2026" | 🟢 Baixo | Atualizado para "Junho de 2026" |
+| 14 | `\subsubsubsection` no .tex (comando inválido) | 🔴 Crítico | Substituído por `\subsubsection` |
+| 15 | `includegraphics` sem `\` (linha 222 .tex) | 🔴 Crítico | Corrigido para `\includegraphics` |
+| 16 | `.tex` com `thebibliography` manual em vez de `.bib` | 🟠 Alto | Integrado `referencias.bib` via `\bibliography` + `\bibliographystyle` |
+| 17 | Cache: "5 minutos" genérico | 🟢 Baixo | Detalhado: 5min listagens, 30s KPIs, 300s usuários |
+
+### Arquivos Modificados
+
+| Arquivo | Ação |
+|---------|------|
+| `latex/artigo.md` | ✅ Reescrevido — modelo de dados, dashboard, roles, URLs, datas |
+| `latex/artigo.tex` | ✅ Reescrevido — mesmas correções + LaTeX syntax + bib |
+| `README.MD` (raiz) | ✅ URL do repositório corrigida |
+| `ARTIGO_COMPLETO.MD` (raiz) | ✅ Corrigido — sincronizado com artigo.md |
+| `latex/README.MD` | ✅ URL corrigida + referências de figuras |
+| `latex/figuras/banco_dados.mmd` | ✅ ER Diagram refeito — LEITURA + AMOSTRA + AMOSTRA_ELEMENTO |
+| `latex/figuras/banco_dados.png` | ✅ Regenerado do .mmd |
+| `latex/figuras/arquitetura.mmd` | ✅ Adicionado Leitura blueprint + Leitura tabela |
+| `latex/figuras/arquitetura.png` | ✅ Regenerado do .mmd |
+| `latex/figuras/navegacao_abas.mmd` | ✅ Adicionado is_dev() + Leitura |
+| `latex/figuras/navegacao_abas.png` | ✅ Regenerado do .mmd |
+| `latex/figuras/fluxo_dados.mmd` | ✅ Revisado (sem alterações necessárias) |
+| `latex/figuras/fluxo_dados.png` | ✅ Regenerado do .mmd |
+| `TODO.MD` | ✅ Registro desta fase |
+
+---
+
 ## Fix Deploy Vercel: requirements.txt obsoleto
 
 - [x] **`frontend/requirements.txt`** — Arquivo estava obsoleto (continha apenas comentários indicando uso do Poetry). O build `@vercel/python` precisa de um `requirements.txt` válido para instalar dependências. A falta dele causava `FUNCTION_INVOCATION_FAILED` (500) no deploy. Substituído por lista real de dependências de produção compatível com o `pyproject.toml`.
+
+---
+
+## Fase 62: Aba Disclaimer
+
+**Objetivo:** Adicionar página estática de disclaimer/copyright com informações legais, licença e autoria.
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/templates/disclaimer.html` | ✅ Criado — template com 4 cards: Sobre, Licença, Repositório, Autoria |
+| `frontend/app.py` | ✅ Modificado — rota `/disclaimer` adicionada |
+| `frontend/templates/base.html` | ✅ Modificado — link no sidebar entre Histórico e Perfil |
+| `frontend/utils/constants.py` | ✅ Modificado — `"disclaimer": "info-circle"` em ICON_TIPO |
+| `TODO.MD` | ✅ Registro desta fase |
+
+### Especificação
+
+- **Visibilidade:** Todos os usuários logados (sem verificação de role)
+- **Posição no sidebar:** Entre Histórico e Perfil
+- **Ícone:** `bi bi-info-circle`
+- **Licença:** Resumo MIT + link para LICENSE no GitHub
+- **Conteúdo:** Sobre o software, licença, repositório, autoria
+
+---
+
+## Fase 63: Cleanup — Remoção de Arquivos Não Utilizados
+
+**Objetivo:** Eliminar código morto e artefatos históricos que não são mais referenciados por nenhum arquivo ativo do projeto.
+
+### 🔴 Remoção Prioritária
+
+| # | Arquivo/Diretório | Motivo | Ação |
+|---|-------------------|--------|------|
+| 1 | `backend/` (inteiro) | API Flask standalone (porta 5001) nunca importada pelo frontend. Deploy real usa `frontend/app.py`. Nenhum workflow, teste ou config referencia. | `rm -rf backend/` |
+| 2 | `database/seed.sql` | Substituído por `scripts/seed.py` (CHANGELOG linha 309 confirma) | `rm database/seed.sql` |
+| 3 | `database/rls.sql` | Gerenciado via Supabase Dashboard / Python SDK. Nunca carregado. | `rm database/rls.sql` |
+| 4 | `database/backup_user.sql` | Auto-declarado **OBSOLETO** no próprio cabeçalho. Substituído por `scripts/setup_backup_user.py` | `rm database/backup_user.sql` |
+| 5 | `database/migration_amostra_v2.sql` | Migração histórica, nunca referenciada | `rm database/migration_amostra_v2.sql` |
+| 6 | `database/migration_amostra_v3.sql` | Migração histórica, nunca referenciada | `rm database/migration_amostra_v3.sql` |
+| 7 | `database/migration_amostra_v4.sql` | Migração histórica, nunca referenciada | `rm database/migration_amostra_v4.sql` |
+| 8 | `database/migration_v5_indices.sql` | Migração histórica, nunca referenciada | `rm database/migration_v5_indices.sql` |
+| 9 | `database/migration_v6_composite_indices.sql` | Migração histórica, nunca referenciada | `rm database/migration_v6_composite_indices.sql` |
+| 10 | `database/migrations/20260620_add_login_history.sql` | Nunca referenciado em código, workflow ou config | `rm database/migrations/20260620_add_login_history.sql` |
+| 11 | `scripts/__init__.py` | Pacote vazio (0 linhas). Scripts carregados via `importlib` ou chamados diretamente, nunca como pacote. | `rm scripts/__init__.py` |
+| 12 | `test.png` | Stray gerado durante teste do Mermaid API nesta sessão | `rm test.png` |
+
+### 🟡 Avaliar Manutenção
+
+| # | Arquivo | Situação | Recomendação |
+|---|---------|----------|--------------|
+| 13 | `scripts/seed.py` | Script standalone de uso manual. Não importado por ninguém. | Manter se usado periodicamente; senão, arquivar no CHANGELOG e remover |
+| 14 | `scripts/setup_backup_user.py` | Script standalone de uso manual. Não importado por ninguém. | Manter se usado periodicamente; senão, arquivar no CHANGELOG e remover |
+| 15 | `database/DIAGRAM.MD` | ER do banco, superseded pelo ER em `latex/figuras/` | Manter como documentação de referência ou remover |
+| 16 | `database/schema.sql` | Schema de referência, mencionado em CHANGELOG | Manter (fonte da verdade para o schema) |
+
+### ✅ Mantidos
+
+- `frontend/` (tudo) — 15 templates renderizados, 2 estáticos linkados, blueprints registrados
+- `latex/` — Artigo acadêmico referenciado pelo README
+- `.github/` — Workflows ativos
+- `scripts/backup_db.py`, `scripts/restore_db.py` — Usados em workflow e testes
+- `CHANGELOG.md`, `README.MD`, `LICENSE`, `TODO.MD`
+- `pyproject.toml`, `poetry.lock`, `Dockerfile`, `.pre-commit-config.yaml`
+- `frontend/Procfile`, `frontend/vercel.json`, `frontend/.env.example`
+- `database/schema.sql` (mantido como schema de referência)
+
+### ⚠️ Ordem Segura de Deleção
+
+1. `rm test.png` (mais seguro, independente)
+2. `rm scripts/__init__.py` (mais seguro, independente)
+3. `rm database/seed.sql database/rls.sql database/backup_user.sql`
+4. `rm database/migration_amostra_v2.sql database/migration_amostra_v3.sql database/migration_amostra_v4.sql`
+5. `rm database/migration_v5_indices.sql database/migration_v6_composite_indices.sql`
+6. `rm database/migrations/20260620_add_login_history.sql`
+7. `rm -rf backend/` (por último, após verificar que nenhum teste importa `backend/`)
+
+---
+
+## Fase 62b: UI/UX — Aba Disclaimer (Revisão)
+
+**Objetivo:** Melhorar layout da página de disclaimer: cards empilhados (full-width), card-headers com gradiente, badges de assinatura dos autores.
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/static/img/assinatura_lucas.png` | ✅ Movido de `ASSINATURA LUCAS CAVALCANTE DOS SANTOS.png` na raiz para `frontend/static/img/` |
+| `frontend/static/img/assinatura_thiago_placeholder.png` | ✅ Criado — placeholder genérico para assinatura do Thiago |
+| `frontend/templates/disclaimer.html` | ✅ Reescrevido — layout empilhado, cards com header gradiente, badges de assinatura |
+| `TODO.MD` | ✅ Registro desta fase |
+
+### Melhorias
+
+- **Layout:** Cards empilhados (full-width, `col-12`) com espaçamento vertical (`mb-4`)
+- **Headers:** Cada card com `card-header` gradiente colorido + ícone (padrão do projeto, como `perfil.html`)
+- **Autoria:** Badges retangulares arredondados com assinatura em PNG como avatar, hover animado (`scale(1.08)` + `box-shadow`)
+- Lucas: badge linkável para portfolio; Thiago: placeholder a ser substituído por assinatura real
+- **Aviso:** Mantido como alerta no final
+
+### Pendente
+
+- [ ] Substituir `assinatura_thiago_placeholder.png` pela assinatura real do Thiago quando disponível

@@ -22,6 +22,7 @@ ICON_TIPO = {
     "perfil": "person",
     "admin": "gear",
     "dashboard": "speedometer2",
+    "disclaimer": "info-circle",
     "ativos": "check-circle",
 }
 

@@ -10,6 +10,7 @@ flowchart TB
             Auth["auth.py<br/>Login, Register<br/>Logout"]
             Cilindro["cilindro.py<br/>CRUD Cilindros"]
             Elemento["elemento.py<br/>CRUD Elementos"]
+            Leitura["leitura.py<br/>CRUD Leituras"]
             Amostra["amostra.py<br/>CRUD Amostras"]
             Pressao["pressao.py<br/>CRUD Pressão"]
             Historico["historico.py<br/>Histórico"]
@@ -36,7 +37,9 @@ flowchart TB
             Perfil["perfil"]
             CilindroTB["cilindro"]
             ElementoTB["elemento"]
+            LeituraTB["leitura"]
             AmostraTB["amostra"]
+            AmostraElementoTB["amostra_elemento"]
             PressaoTB["pressao"]
             HistoricoTB["historico_log"]
         end
@@ -50,6 +53,7 @@ flowchart TB
     Servidor --> Auth
     Servidor --> Cilindro
     Servidor --> Elemento
+    Servidor --> Leitura
     Servidor --> Amostra
     Servidor --> Pressao
     Servidor --> Historico
@@ -58,6 +62,7 @@ flowchart TB
     Auth --> LoginManager
     Cilindro --> SupabaseClient
     Elemento --> SupabaseClient
+    Leitura --> SupabaseClient
     Amostra --> SupabaseClient
     Pressao --> SupabaseClient
     Historico --> SupabaseClient
@@ -67,7 +72,9 @@ flowchart TB
     SupabaseClient --> Perfil
     SupabaseClient --> CilindroTB
     SupabaseClient --> ElementoTB
+    SupabaseClient --> LeituraTB
     SupabaseClient --> AmostraTB
+    SupabaseClient --> AmostraElementoTB
     SupabaseClient --> PressaoTB
     SupabaseClient --> HistoricoTB
     

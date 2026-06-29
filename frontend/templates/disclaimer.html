@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Disclaimer - LabGas Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+.signature-badge {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.signature-badge:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4"><i class="bi bi-info-circle"></i> Disclaimer</h2>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #0070b8, #4da3e8); color: white;">
+            <h5 class="mb-0"><i class="bi bi-laptop me-2"></i>Sobre o Software</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                O <strong>LabGas Manager</strong> (v2.9.0) é um sistema web de código aberto
+                desenvolvido para gestão e rastreabilidade de dados em laboratórios químicos
+                acadêmicos. Construído com <strong>Flask</strong>, <strong>Jinja2</strong>
+                e <strong>Supabase</strong> (PostgreSQL), o sistema permite o registro e
+                acompanhamento de cilindros de gás, elementos analisados, leituras, amostras
+                e medições de pressão, com dashboard analítico e controle de acesso baseado
+                em papéis (RBAC).
+            </p>
+            <p class="text-muted small mb-0">
+                Este software foi desenvolvido no âmbito acadêmico como ferramenta de apoio
+                à gestão laboratorial, alinhado aos princípios das Boas Práticas de
+                Laboratório (BPL).
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #2d6a4f, #52b788); color: white;">
+            <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Licença</h5>
+        </div>
+        <div class="card-body">
+            <p>Este projeto é distribuído sob a <strong>Licença MIT</strong>:</p>
+            <div class="bg-light p-3 rounded small text-muted border">
+                <p class="mb-1"><em>MIT License</em></p>
+                <p class="mb-1">Copyright (c) 2026 Lucas Cavalcante dos Santos &amp; Thiago Bricio Pinheiro Sandre</p>
+                <p class="mb-0">
+                    Permissão é concedida, gratuitamente, a qualquer pessoa que obtenha uma cópia
+                    deste software e arquivos de documentação associados, de lidar com o Software
+                    sem restrições, incluindo os direitos de usar, copiar, modificar, fundir,
+                    publicar, distribuir, sublicenciar e/ou vender cópias do Software, desde que
+                    o aviso de copyright acima e este aviso de permissão sejam incluídos em todas
+                    as cópias ou partes substanciais do Software.
+                </p>
+            </div>
+            <p class="mt-3 mb-0">
+                <a href="https://github.com/cavalcanteprofessional/labgas-manager/blob/master/LICENSE"
+                   target="_blank" class="btn btn-outline-success btn-sm">
+                    <i class="bi bi-file-text me-1"></i>Ver Licença Completa
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #343a40, #6c757d); color: white;">
+            <h5 class="mb-0"><i class="bi bi-github me-2"></i>Repositório</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                O código-fonte completo está disponível no GitHub. Contribuições, relatos de
+                bugs e sugestões são bem-vindos.
+            </p>
+            <p>
+                <a href="https://github.com/cavalcanteprofessional/labgas-manager"
+                   target="_blank" class="btn btn-dark">
+                    <i class="bi bi-github me-2"></i>github.com/cavalcanteprofessional/labgas-manager
+                </a>
+            </p>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-info-circle me-1"></i>O repositório inclui código-fonte,
+                documentação, esquema do banco de dados e instruções de deploy.
+            </p>
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header" style="background: linear-gradient(135deg, #6a1b9a, #9c27b0); color: white;">
+            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Autoria</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <a href="https://cavalcanteprofissional.github.io/portfolio/"
+                           target="_blank"
+                           class="rounded me-3 d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0 signature-badge"
+                           style="width: 72px; height: 56px;">
+                            <img src="{{ url_for('static', filename='img/assinatura_lucas.png') }}"
+                                 alt="Assinatura Lucas Cavalcante"
+                                 style="width: 100%; height: 100%; object-fit: contain;">
+                        </a>
+                        <div>
+                            <a href="https://cavalcanteprofissional.github.io/portfolio/"
+                               target="_blank" class="text-decoration-none">
+                                <strong>Lucas Cavalcante dos Santos</strong>
+                            </a><br>
+                            <span class="text-muted small">Universidade de Fortaleza — UNIFOR</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded me-3 d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0 signature-badge"
+                             style="width: 72px; height: 56px; background: #f5f5f5;">
+                            <img src="{{ url_for('static', filename='img/assinatura_thiago_placeholder.png') }}"
+                                 alt="Assinatura Thiago Bricio"
+                                 style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                        <div>
+                            <strong>Thiago Bricio Pinheiro Sandre</strong><br>
+                            <span class="text-muted small">Universidade Estadual do Ceará — UECE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mt-3 mb-0 text-center">
+                <i class="bi bi-calendar me-1"></i>Versão 2.9.0 — Junho de 2026
+            </p>
+        </div>
+    </div>
+
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Aviso:</strong> Este software é fornecido "como está", sem garantia de qualquer
+        tipo, expressa ou implícita. Os autores não se responsabilizam por quaisquer danos ou
+        perdas decorrentes do uso deste software.
+    </div>
+</div>
+{% endblock %}

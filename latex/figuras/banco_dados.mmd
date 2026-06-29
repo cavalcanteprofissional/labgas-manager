@@ -1,17 +1,20 @@
 erDiagram
     PERFIL ||--o{ CILINDRO : "possui"
     PERFIL ||--o{ ELEMENTO : "possui"
+    PERFIL ||--o{ LEITURA : "possui"
     PERFIL ||--o{ AMOSTRA : "possui"
     PERFIL ||--o{ PRESSAO : "possui"
     PERFIL ||--o{ HISTORICO_LOG : "registra"
-    
-    CILINDRO ||--o{ AMOSTRA : "usado_em"
+
+    CILINDRO ||--o{ LEITURA : "usado_em"
     CILINDRO ||--o{ PRESSAO : "medido_em"
-    ELEMENTO ||--o{ AMOSTRA : "analisado_em"
+    ELEMENTO ||--o{ LEITURA : "analisado_em"
+    AMOSTRA ||--o{ AMOSTRA_ELEMENTO : "contem"
+    ELEMENTO ||--o{ AMOSTRA_ELEMENTO : "pertence_a"
 
     PERFIL {
         uuid id PK "ID do usuário (ref auth.users)"
-        varchar role "admin ou usuario"
+        varchar role "dev, admin ou usuario"
         boolean ativo "Usuário ativo?"
         varchar nome "Nome do usuário"
         varchar email "Email do usuário"
@@ -41,15 +44,29 @@ erDiagram
         timestamp created_at "Data de criação"
     }
 
-    AMOSTRA {
+    LEITURA {
         int id PK "ID automático"
         date data "Data da análise"
         varchar tempo_chama "Tempo de chama (HH:MM:SS)"
         int cilindro_id FK "Cilindro usado"
         int elemento_id FK "Elemento analisado"
-        int quantidade_amostras "Quantidade"
+        int quantidade "Quantidade de amostras"
         uuid user_id FK "Usuário dono"
         timestamp created_at "Data de criação"
+    }
+
+    AMOSTRA {
+        int id PK "ID automático"
+        int numero_amostra "Número da amostra"
+        int lote "Número do lote"
+        uuid user_id FK "Usuário dono"
+        timestamp created_at "Data de criação"
+    }
+
+    AMOSTRA_ELEMENTO {
+        int id PK "ID automático"
+        int amostra_id FK "Amostra associada"
+        int elemento_id FK "Elemento associado"
     }
 
     PRESSAO {
@@ -65,7 +82,7 @@ erDiagram
 
     HISTORICO_LOG {
         int id PK "ID automático"
-        varchar tipo "cilindro, elemento, amostra, pressao, perfil"
+        varchar tipo "cilindro, elemento, leitura, amostra, pressao, perfil"
         varchar acao "criado, atualizado, excluido"
         varchar nome "Nome do item"
         uuid user_id FK "Usuário que executou"

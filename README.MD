@@ -81,6 +81,7 @@ Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os
 | **Amostra** | CRUD completo com N:N elementos, lote, número manual (real positivo) |
 | **Histórico** | Log de todas as operações CRUD, filtros por tipo/ação |
 | **Perfil** | Edição de nome, visualização de role e permissões |
+| **Disclaimer** | Informações legais, licença MIT, repositório e autoria |
 | **Administração** | Painel admin, gerenciar usuários, controle de acesso por abas, exportar dados |
 
 ---

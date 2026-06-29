@@ -41,7 +41,6 @@
 }
 
 %% Comandos customizados
-\providecommand\关键字[1]{\textbf{#1}}
 
 %% Início do documento
 \title{Sistema de Gestão e Rastreabilidade para Laboratórios Químicos: Uma Abordagem Baseada em Boas Práticas de Laboratório}
@@ -49,7 +48,7 @@
 \author{Lucas Cavalcante dos Santos$^{1}$\footnote{Universidade de Fortaleza - UNIFOR} \and 
         Thiago Bricio Pinheiro Sandre$^{2}$\footnote{Universidade Estadual do Ceará - UECE}}
 
-\date{Abril de 2026}
+\date{Junho de 2026}
 
 \begin{document}
 
@@ -163,7 +162,8 @@ O sistema é composto pelos seguintes módulos principais:
 \textbf{Autenticação} & Gerencia login, registro, logout e recuperação de sessões com expiração por inatividade (10 minutos) \\
 \textbf{Cilindros} & Cadastro e controle de cilindro de gás com código único (formato CIL-XXX), data de compra, consumo em kg, litros equivalentes, custo e status \\
 \textbf{Elementos} & Registro de elementos analisados com consumo em litros por minuto (L/min) \\
-\textbf{Amostras} & Registro de amostras processadas vinculando cilindro, elemento, data, tempo de chama e quantidade \\
+\textbf{Leituras} & Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade \\
+\textbf{Amostras} & Registro de amostras com associação N:N a elementos, lote e número manual \\
 \textbf{Pressão} & Registro de medições de pressão (bar) e temperatura (°C) vinculadas a cilindro \\
 \textbf{Rastreabilidade} & Histórico completo de todas as operações CRUD com registro de usuário, data e tipo de operação \\
 \textbf{Administrativo} & Painel para gestão de usuários, habilitação de permissões e exportação de dados \\
@@ -178,7 +178,7 @@ O sistema \textit{LabGas Manager} é organizado em um estrutura de abas que prop
 
 O sistema organiza-se em \textbf{7 áreas funcionais} acessíveis via menu lateral, sendo \textbf{5 delas} passíveis de controle de permissão pelo administrador, e \textbf{2 áreas} com acesso livre a todos os usuários autenticados.
 
-\subsubsubsection{Abas com Controle de Permissão:}
+\subsubsection{Abas com Controle de Permissão:}
 
 \begin{table}[h!]
 \centering
@@ -188,16 +188,17 @@ O sistema organiza-se em \textbf{7 áreas funcionais} acessíveis via menu later
 \toprule
 \textbf{Aba} & \textbf{Descrição} \\
 \midrule
-\textbf{Cilindros} & Cadastro e controle de cilindro de gás com código único (formato CIL-XXX), status e consumo \\
+\textbf{Cilindros} & Cadastro e controle de cilindros de gás com código único (formato CIL-XXX), status e consumo \\
 \textbf{Elementos} & Catálogo de elementos analisados com consumo específico em litros por minuto (L/min) \\
-\textbf{Amostras} & Registro de amostras processadas vinculando cilindro, elemento, data, tempo de chama e quantidade \\
+\textbf{Leituras} & Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade \\
+\textbf{Amostras} & Registro de amostras com associação N:N a elementos, lote e número manual \\
 \textbf{Pressão} & Medições de pressão (bar) e temperatura (°C) vinculadas a cilindro \\
 \textbf{Histórico} & Log completo de rastreabilidade com todas as operações CRUD \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsubsection{Áreas de Acesso Livre:}
+\subsubsection{Áreas de Acesso Livre:}
 
 \begin{table}[h!]
 \centering
@@ -213,13 +214,13 @@ O sistema organiza-se em \textbf{7 áreas funcionais} acessíveis via menu later
 \end{tabular}
 \end{table}
 
-\textbf{Nota:} A aba Admin é acessível exclusivamente para usuários com perfil de administrador, sendo controlada pela verificação de \texttt{role = 'admin'}, não pelas permissões de abas.
+\textbf{Nota:} A aba Admin é acessível exclusivamente para usuários com perfil de administrador ou dev (\texttt{is\_admin()}), sendo controlada pela verificação de role, não pelas permissões de abas.
 
 A navegação entre as abas do sistema é realizadas através de um \textbf{menu lateral (sidebar)}, que exibe dinamicamente apenas as abas permitidas para o usuário logado. O Dashboard funciona como página inicial e ponto central de acesso.
 
 \begin{figure}[h!]
 \centering
-includegraphics[width=0.9\textwidth]{figuras/navegacao}
+\includegraphics[width=0.9\textwidth]{figuras/navegacao_abas}
 \caption{Fluxo de Navegação entre Abas do Sistema}
 \label{fig:navegacao}
 \end{figure}
@@ -230,8 +231,8 @@ includegraphics[width=0.9\textwidth]{figuras/navegacao}
 \item O usuário autenticado acessa o sistema pelo \textbf{Dashboard} (página inicial)
 \item O \textbf{menu lateral} exibe automaticamente apenas as abas que o usuário tem permissão para acessar
 \item Para as abas com controle de permissão (Cilindros, Elementos, Amostras, Pressão, Histórico), o sistema verifica \texttt{pode\_acessar\_aba()} antes de permitir acesso
-\item Usuários \textbf{admin} tem acesso irrestrito a todas as abas, incluindo o painel Admin
-\item O menu lateral só exibe a opção Admin para usuários com role=admin
+\item Usuários \textbf{admin} ou \textbf{dev} têm acesso irrestrito a todas as abas, incluindo o painel Admin
+\item O menu lateral só exibe a opção Admin para usuários com \texttt{is\_admin()} (admin ou dev)
 \end{enumerate}
 
 A implementação técnica utiliza duas funções principais:
@@ -240,17 +241,18 @@ A implementação técnica utiliza duas funções principais:
 \item \texttt{get\_habilitar\_abas(user\_id)}: Retorna o dicionário completo de permissões do usuário
 \end{itemize}
 
-\subsubsubsection{Sistema de Controle de Permissões}
+\subsubsection{Sistema de Controle de Permissões}
 
 O sistema implementa um \textbf{controle de acesso granular} que permite ao administrador gerenciar quais abas cada usuário pode acessar. Esta funcionalidade atende aos requisitos de segurança e confidencialidade das Boas Práticas de Laboratório, garantindo que cada usuário visualize apenas as funcionalidades relevantes às suas atividades.
 
-Apenas 5 abas possuem sistema de controle de permissão:
+Apenas 6 abas possuem sistema de controle de permissão:
 
 \begin{lstlisting}[language=JSON, caption=JSON de Permissões]
 {
     "cilindro": true,
     "pressao": true,
     "elemento": true,
+    "leitura": true,
     "amostra": true,
     "historico": true
 }
@@ -259,7 +261,7 @@ Apenas 5 abas possuem sistema de controle de permissão:
 \textbf{Características do Controle de Permissões:}
 
 \begin{enumerate}
-\item \textbf{Acesso padrão (default):} Todas as 5 abas controladas são liberadas automaticamente para novos usuários (\texttt{true} por padrão)
+\item \textbf{Acesso padrão (default):} Todas as 6 abas controladas são liberadas automaticamente para novos usuários (\texttt{true} por padrão)
 
 \item \textbf{Controle administrativo:} O usuário com perfil de administrador pode habilitar ou desabilitar o acesso a cada aba individualmente para cada usuário através do painel Admin
 
@@ -282,7 +284,7 @@ def listar_cilindros():
 {% endif %}
 \end{lstlisting}
 
-\item \textbf{Herança administrativa:} Usuários com perfil de administrador (\texttt{role = 'admin'}) têm acesso completo a todas as abas, independente das permissões configuradas. A verificação \texttt{is\_admin()} retorna \texttt{True} antes de verificar as permissões individuais.
+\item \textbf{Herança administrativa:} Usuários com perfil de administrador (\texttt{role = 'admin'} ou \texttt{'dev'}) têm acesso completo a todas as abas, independente das permissões configuradas. A verificação \texttt{is\_admin()} retorna \texttt{True} para ambos antes de verificar as permissões individuais.
 
 \item \textbf{Lógica de fallback:} Se o campo \texttt{habilitar\_abas} for \texttt{NULL} no banco de dados, o sistema considera todas as permissões como \texttt{True} (acesso permitido)
 
@@ -315,9 +317,9 @@ def get_habilitar_abas(user_id):
 \toprule
 \textbf{Característica} & \textbf{Descrição} \\
 \midrule
-Abas controladas & Cilindros, Pressão, Elementos, Amostras, Histórico \\
+Abas controladas & Cilindros, Pressão, Elementos, Leituras, Amostras, Histórico \\
 Abas livres & Dashboard, Perfil \\
-Acesso Admin & Por role (não por permissão de aba) \\
+Acesso Admin/Dev & Por role (não por permissão de aba) \\
 Armazenamento & Campo JSONB na tabela \texttt{perfil} \\
 Default & \texttt{true} para todas as abas \\
 \bottomrule
@@ -338,11 +340,13 @@ O modelo de dados foi implementado no PostgreSQL (via Supabase) com as seguintes
 \toprule
 \textbf{Tabela} & \textbf{Descrição} \\
 \midrule
-\texttt{cilindro} & Registro de cilindro de gás com código, data de compra, consumo, custo e status \\
+\texttt{cilindro} & Registro de cilindros de gás com código, data de compra, consumo, custo e status \\
 \texttt{elemento} & Catálogo de elementos analisados com consumo em L/min \\
-\texttt{amostra} & Registro de amostras processadas com vínculos a cilindro e elemento \\
+\texttt{leitura} & Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade \\
+\texttt{amostra} & Registro de amostras com associação N:N a elementos, lote e número manual \\
+\texttt{amostra\_elemento} & Tabela pivô da relação N:N entre amostras e elementos \\
 \texttt{pressao} & Medições de pressão e temperatura vinculadas a cilindro \\
-\texttt{perfil} & Perfis de usuários com role (admin/usuário), status e permissões por módulo \\
+\texttt{perfil} & Perfis de usuários com role (dev/admin/usuario), status e permissões por módulo \\
 \texttt{historico\_log} & Registro de todas as operações para fins de rastreabilidade \\
 \bottomrule
 \end{tabular}
@@ -350,7 +354,7 @@ O modelo de dados foi implementado no PostgreSQL (via Supabase) com as seguintes
 
 As tabelas \texttt{cilindro}, \texttt{elemento}, \texttt{amostra} e \texttt{pressao} contêm o campo \texttt{user\_id} que estabelece o vínculo com o usuário proprietário do registro, garantindo o isolamento de dados entre diferentes usuários do sistema.
 
-\subsubsubsection{Índices do Banco de Dados}
+\subsubsection{Índices do Banco de Dados}
 
 \begin{table}[h!]
 \centering
@@ -360,25 +364,30 @@ As tabelas \texttt{cilindro}, \texttt{elemento}, \texttt{amostra} e \texttt{pres
 \toprule
 \textbf{Tabela} & \textbf{Índice} & \textbf{Coluna(s)} \\
 \midrule
-cilindro & idx\_cilindro\_user\_id & user_id \\
+cilindro & idx\_cilindro\_user\_id & user\_id \\
 cilindro & idx\_cilindro\_codigo & codigo \\
-elemento & idx\_elemento\_user\_id & user_id \\
+elemento & idx\_elemento\_user\_id & user\_id \\
 elemento & idx\_elemento\_nome & nome \\
-amostra & idx\_amostra\_user\_id & user_id \\
-amostra & idx\_amostra\_cilindro\_id & cilindro_id \\
-amostra & idx\_amostra\_elemento\_id & elemento_id \\
-amostra & idx\_amostra\_data & data \\
-pressao & idx\_pressao\_user\_id & user_id \\
-pressao & idx\_pressao\_cilindro\_id & cilindro_id \\
+leitura & idx\_leitura\_user\_id & user\_id \\
+leitura & idx\_leitura\_cilindro\_id & cilindro\_id \\
+leitura & idx\_leitura\_elemento\_id & elemento\_id \\
+leitura & idx\_leitura\_data & data \\
+amostra & idx\_amostra\_user\_id & user\_id \\
+amostra & idx\_amostra\_lote & lote \\
+amostra & idx\_amostra\_lote\_created & lote, created\_at DESC \\
+amostra\_elemento & idx\_amostra\_elemento\_amostra\_id & amostra\_id \\
+amostra\_elemento & idx\_amostra\_elemento\_elemento\_id & elemento\_id \\
+pressao & idx\_pressao\_user\_id & user\_id \\
+pressao & idx\_pressao\_cilindro\_id & cilindro\_id \\
 pressao & idx\_pressao\_data & data \\
-historico\_log & idx\_historico\_log\_user\_id & user_id \\
+historico\_log & idx\_historico\_log\_user\_id & user\_id \\
 historico\_log & idx\_historico\_log\_tipo & tipo \\
 historico\_log & idx\_historico\_log\_created\_at & created\_at \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsubsection{Políticas RLS}
+\subsubsection{Políticas RLS}
 
 \begin{table}[h!]
 \centering
@@ -390,7 +399,9 @@ historico\_log & idx\_historico\_log\_created\_at & created\_at \\
 \midrule
 cilindro & Público & Próprio usuário & Próprio usuário \\
 elemento & Público & Próprio usuário & Próprio usuário \\
+leitura & Público & Próprio usuário & Próprio usuário \\
 amostra & Público & Próprio usuário & Próprio usuário \\
+amostra\_elemento & Público & Próprio usuário & Próprio usuário \\
 perfil & Próprio usuário & Próprio usuário & Próprio usuário \\
 pressao & Público & Próprio usuário & Próprio usuário \\
 historico\_log & Público & Admin (service\_role) & - \\
@@ -403,6 +414,7 @@ historico\_log & Público & Admin (service\_role) & - \\
 O sistema implementa múltiplas camadas de segurança para proteção dos dados e conformidade com requisitos de integridade:
 
 \begin{enumerate}
+\item \textbf{Hierarquia de Roles (3 níveis)} — \texttt{dev} (super-admin, bypass RLS), \texttt{admin} (gestão de usuários + exportação, respeita RLS nos dados), \texttt{usuario} (acesso apenas aos próprios dados)
 \item \textbf{Autenticação JWT} - Validação de identidade através de tokens assinados digitalmente
 \item \textbf{Políticas RLS} - O PostgreSQL aplica automaticamente políticas de Row Level Security que restringem o acesso aos dados apenas ao proprietário do registro
 \item \textbf{Proteção CSRF} - Token anti-Cross-Site Request Forgery em todos os formulários
@@ -497,29 +509,29 @@ O sistema desenvolvido contempla todas as funcionalidades planejadas, organizada
 
 O dashboard desenvolvido apresenta métricas agregadas para suporte à gestão e planejamento, com os seguintes cálculos:
 
-\subsubsubsection{1. Quantidade de Amostras por Cilindro}
+\subsubsection{1. Leituras por Cilindro}
 
-\textbf{Descrição:} Total de amostras processadas por cada cilindro, indicando o consumo relativo de cada unidade.
+\textbf{Descrição:} Total de leituras processadas por cada cilindro, indicando o consumo relativo de cada unidade.
 
-\textbf{Cálculo:} Para cada registro de amostra, o sistema soma o campo \texttt{quantidade\_amostras} agrupando pelo \texttt{cilindro\_id} do cilindro utilizado. O resultado é ordenado alfabeticamente pelo código do cilindro para exibição no gráfico.
+\textbf{Cálculo:} Para cada registro de leitura, o sistema conta as leituras agrupando pelo \texttt{cilindro\_id}. O resultado é ordenado alfabeticamente pelo código do cilindro.
 
-\subsubsubsection{2. Consumo por Elemento × Tempo de Chama}
+\subsubsection{2. Consumo por Elemento × Tempo de Chama}
 
 \textbf{Descrição:} Correlação entre elemento analisado e tempo de chama utilizado, útil para otimização de processos.
 
 \textbf{Cálculo:} O sistema converte o tempo de chama (formato HH:MM:SS) para minutos decimais e multiplica pelo consumo específico de cada elemento em litros por minuto (L/min), resultando no consumo total em litros por elemento analisado.
 
-\subsubsubsection{3. Elementos mais Analisados}
+\subsubsection{3. Elementos mais Analisados}
 
 \textbf{Descrição:} Ranking de elementos por frequência de análise, orientando o planejamento de estoque.
 
-\textbf{Cálculo:} O sistema agrupa as amostras por \texttt{elemento\_id}, soma a quantidade de amostras, e retorna o TOP 5 elementos com maior frequência de uso. Esta informação é crucial para previsões de estoque e planejamento de aquisição de gases.
+\textbf{Cálculo:} O sistema agrupa as leituras por \texttt{elemento\_id}, soma a quantidade de leituras, e retorna o TOP 5 elementos com maior frequência de uso. Esta informação é crucial para previsões de estoque e planejamento de aquisição de gases.
 
-\subsubsubsection{4. Eficiência de Cilindros por Elemento}
+\subsubsection{4. Eficiência de Cilindros por Elemento}
 
-\textbf{Descrição:} Métrica que relaciona a quantidade de amostras processadas com o consumo de gás, permitindo identificar cilindro com melhor desempenho.
+\textbf{Descrição:} Métrica que relaciona a quantidade de leituras processadas com o consumo de gás, permitindo identificar cilindro com melhor desempenho.
 
-\textbf{Cálculo:} Esta métrica identifica quais combinações de cilindro × elemento produzem mais amostras, permitindo otimizar o uso dos recursos e identificar padrões de consumo.
+\textbf{Cálculo:} Esta métrica identifica quais combinações de cilindro × elemento produzem mais leituras, permitindo otimizar o uso dos recursos e identificar padrões de consumo.
 
 As métricas são calculadas dinamicamente a partir dos dados armazenados, utilizando consultas SQL otimizadas com agregação e filtros. O sistema implementa cache de 5 minutos para reduzir a carga no banco de dados e melhorar a experiência do usuário.
 
@@ -602,68 +614,8 @@ O código fonte do sistema encontra-se disponível em repositório público: \te
 O sistema está disponível para colaborações e customizações pela comunidade acadêmica.
 
 %% Referências
-\begin{thebibliography}{99}
-
-%% LEGISLAÇÃO E NORMAS
-\addcontentsline{toc}{subsection}{Legislação e Normas}
-
-bibtex erro - corrigir manualmente:
-
-- ANVISA. \textbf{Boas Práticas de Laboratório de Controle de Qualidade de Produtos para Saúde}. Agência Nacional de Vigilância Sanitária, 2009.
-
-- OECD. \textbf{OECD Principles on Good Laboratory Practice (Revised 1997)}. Organisation for Economic Co-operation and Development, 1998. (OECD Series on Principles of Good Laboratory Practice and Compliance Monitoring, No. 1)
-
-- ISO. \textbf{ISO/IEC 17025:2017 - Requisitos gerais para a competência de ensaios e calibrações}. International Organization for Standardization, 2017.
-
-- INMETRO. \textbf{Critérios de Credenciamento de Laboratórios de Ensaios e Calibrações}. Instituto Nacional de Metrologia, Qualidade e Tecnologia, 2018.
-
-%% LIMS E SISTEMAS DE INFORMAÇÃO
-
-- Allison, J.; Jankowski, M.; Massey, S. \textbf{Laboratory Information Management Systems: A Review}. Analytical Chemistry, v. 87, n. 12, p. 5784-5794, 2015.
-
-- Wang, L.; Bazeley, J. \textbf{Modern LIMS: The Digital Backbone of the Modern Laboratory}. Journal of Laboratory Automation, v. 23, n. 1, p. 52-63, 2018.
-
-- Morales, M.; Chen, J.; Williams, R. \textbf{Cloud-based Laboratory Information Management Systems: A Review}. Trends in Analytical Chemistry, v. 116, p. 230-237, 2019.
-
-%% DESENVOLVIMENTO WEB E TECNOLOGIAS
-
-- Grinberg, M. \textbf{Flask Web Development: Developing Web Applications with Python}. 2. ed. O'Reilly Media, 2017.
-
-- Supabase. \textbf{Supabase: The Open Source Firebase Alternative}. 2024. Disponível em: https://supabase.com
-
-- Jones, M.; Bradley, J.; Sakimura, N. \textbf{RFC 7519 - JSON Web Token (JWT)}. Internet Engineering Task Force (IETF), 2015.
-
-- Lima, E. C. P. \textbf{Python para Desenvolvedores}. 4. ed. Novatec, 2019.
-
-- Python Software Foundation. \textbf{The Python Standard Library}. 2024. Disponível em: https://docs.python.org/3/
-
-%% BANCO DE DADOS E SEGURANÇA
-
-- PostgreSQL Global Development Group. \textbf{PostgreSQL Documentation}. 2024. Disponível em: https://www.postgresql.org/docs/
-
-- Stonebraker, M.; Brown, P.; Zhang, D. \textbf{The land of the PostgreSQL RDBMS}. IEEE Data Engineering Bulletin, v. 39, n. 1, p. 21-30, 2016.
-
-- Hardt, D. \textbf{RFC 6749 - The OAuth 2.0 Authorization Framework}. Internet Engineering Task Force (IETF), 2012.
-
-%% QUALIDADE EM LABORATÓRIOS
-
-- Starosta, V.; Ribeiro, C. A. F. \textbf{Introdução às Boas Práticas de Laboratório}. Editora Santos, 2018.
-
-- Silva, J. R.; Oliveira, A. C. \textbf{Rastreabilidade Analítica: Conceitos e Aplicações}. Química Nova, v. 40, n. 2, p. 224-231, 2017.
-
-- Skoog, D. A.; Holler, F. J.; Crouch, S. R. \textbf{Fundamentos de Química Analítica}. 10. ed. Cengage Learning, 2019.
-
-%% DESENVOLVIMENTO DE SOFTWARE
-
-- Sommerville, I. \textbf{Engenharia de Software}. 10. ed. Pearson, 2019.
-
-- Pressman, R. S.; Maxim, B. R. \textbf{Engenharia de Software: Uma Abordagem Profissional}. 9. ed. McGraw-Hill, 2021.
-
-%% APRESENTAÇÃO DE DADOS
-
-- Lavagnini, I.; Magno, F.; Seraglia, R. \textbf{Statistical Methods in Analytical Chemistry}. Data Analysis in Analytical Chemistry. Academic Press, 2020.
-
-\end{thebibliography}
+\bibliographystyle{abntex2-alf}
+\bibliography{referencias}
 
 %% Fim do documento
 \end{document}

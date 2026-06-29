@@ -8,15 +8,15 @@
 1. Universidade de Fortaleza - UNIFOR
 2. Universidade Estadual do Ceará - UECE
 
-**Data:** Abril de 2026
+**Data:** Junho de 2026
 
 ---
 
 ## Resumo
 
-O presente trabalho descreve o desenvolvimento e implementação de um sistema web para gestão e rastreabilidade de dados em laboratórios químicos, fundamentado nos princípios das Boas Práticas de Laboratório (BPL). O sistema foi desenvolvido utilizando Flask como framework backend, Jinja2 para templating, Supabase como banco de dados PostgreSQL e tecnologias de autenticação baseadas em JWT. A aplicação contempla o registro completo de cilindros, elementos analisados, amostras processadas e medições de pressão, permitindo o acompanhamento do ciclo de vida completo dos insumos laboratoriais. O dashboard analítico fornece métricas essenciais para o controle de qualidade, incluindo eficiência de cilindro por elemento, consumo por tempo de chama e frequência de análise por elemento. Os resultados demonstram que a digitalização dos processos de coleta de dados, aliados às políticas de segurança Row Level Security (RLS) e controle de acesso baseado em papéis, atende aos requisitos de rastreabilidade e integridade de dados exigidos pela literatura científica e regulamentações aplicáveis.
+O presente trabalho descreve o desenvolvimento e implementação de um sistema web para gestão e rastreabilidade de dados em laboratórios químicos, fundamentado nos princípios das Boas Práticas de Laboratório (BPL). O sistema foi desenvolvido utilizando Flask como framework backend, Jinja2 para templating, Supabase como banco de dados PostgreSQL e tecnologias de autenticação baseadas em JWT. A aplicação contempla o registro completo de cilindros, elementos analisados, leituras, amostras com associação N:N a elementos e medições de pressão, permitindo o acompanhamento do ciclo de vida completo dos insumos laboratoriais. O dashboard analítico fornece métricas essenciais para o controle de qualidade, incluindo 6 indicadores-chave (KPIs) e 4 gráficos interativos. Os resultados demonstram que a digitalização dos processos de coleta de dados, aliados às políticas de segurança Row Level Security (RLS) e controle de acesso baseado em papéis, atende aos requisitos de rastreabilidade e integridade de dados exigidos pela literatura científica e regulamentações aplicáveis.
 
-**Palavras-chave:** Boas Práticas de Laboratório; Sistema de Gestão de Laboratórios; Rastreabilidade; Flask; Supabase; Desenvolvimento Web.
+**Palavras-chave:** Boas Práticas de Laboratório; Sistema de Gestão de Laboratórios; Rastreabilidade; Flask; Supabase; LIMS; Desenvolvimento Web.
 
 ---
 
@@ -34,10 +34,10 @@ A fundamentação técnica do sistema baseia-se em tecnologias de código aberto
 
 ### 1.1 Objetivos Específicos
 
-- Implementar um sistema de registro digital para cilindro de gás, elementos e amostras
+- Implementar um sistema de registro digital para cilindros de gás, elementos, leituras, amostras (N:N) e medições de pressão
 - Desenvolver um módulo de rastreabilidade que permita consultas históricas completas
-- Construir um dashboard analítico para suporte à tomada de decisão
-- Implementar controles de segurança e acesso baseados em papéis
+- Construir um dashboard analítico com 6 KPIs e 4 gráficos para suporte à tomada de decisão
+- Implementar controles de segurança e acesso baseados em papéis (dev, admin, usuario)
 - Avaliar a conformidade do sistema com os princípios das Boas Práticas de Laboratório
 
 ---
@@ -211,13 +211,14 @@ O sistema é composto pelos seguintes módulos principais:
 | Módulo | Descrição |
 |--------|-----------|
 | **Autenticação** | Gerencia login, registro, logout e recuperação de sessões com expiração por inatividade (10 minutos) |
-| **Cilindros** | Cadastro e controle de cilindro de gás com código único (formato CIL-XXX), data de compra, consumo em kg, litros equivalentes, custo e status |
+| **Cilindros** | Cadastro e controle de cilindros de gás com código único (formato CIL-XXX), data de compra, consumo em kg, litros equivalentes, custo e status |
 | **Elementos** | Registro de elementos analisados com consumo em litros por minuto (L/min) |
-| **Amostras** | Registro de amostras processadas vinculando cilindro, elemento, data, tempo de chama e quantidade |
+| **Leituras** | Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade |
+| **Amostras** | Registro de amostras com associação N:N a elementos, lote e número manual |
 | **Pressão** | Registro de medições de pressão (bar) e temperatura (°C) vinculadas a cilindro |
 | **Rastreabilidade** | Histórico completo de todas as operações CRUD com registro de usuário, data e tipo de operação |
 | **Administrativo** | Painel para gestão de usuários, habilitação de permissões e exportação de dados |
-| **Analítico** | Dashboard com métricas de eficiência, consumo e frequência de análise |
+| **Analítico** | Dashboard com 6 KPIs e 4 gráficos interativos |
 
 ### 3.2 Fluxo de Abas do Sistema
 
@@ -225,15 +226,16 @@ O sistema LabGas Manager é organizado em um estrutura de abas que proporciona n
 
 #### 3.2.1 Abas Disponíveis
 
-O sistema organiza-se em **7 áreas funcionais** acessíveis via menu lateral, sendo **5 delas** passíveis de controle de permissão pelo administrador, e **2 áreas** com acesso livre a todos os usuários autenticados.
+O sistema organiza-se em **8 áreas funcionais** acessíveis via menu lateral, sendo **6 delas** passíveis de controle de permissão pelo administrador, e **2 áreas** com acesso livre a todos os usuários autenticados.
 
 ##### Abas com Controle de Permissão:
 
 | Aba | Descrição |
 |-----|-----------|
-| **Cilindros** | Cadastro e controle de cilindro de gás com código único (formato CIL-XXX), status e consumo |
+| **Cilindros** | Cadastro e controle de cilindros de gás com código único (formato CIL-XXX), status e consumo |
 | **Elementos** | Catálogo de elementos analisados com consumo específico em litros por minuto (L/min) |
-| **Amostras** | Registro de amostras processadas vinculando cilindro, elemento, data, tempo de chama e quantidade |
+| **Leituras** | Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade |
+| **Amostras** | Registro de amostras com associação N:N a elementos, lote e número manual |
 | **Pressão** | Medições de pressão (bar) e temperatura (°C) vinculadas a cilindro |
 | **Histórico** | Log completo de rastreabilidade com todas as operações CRUD |
 
@@ -244,7 +246,7 @@ O sistema organiza-se em **7 áreas funcionais** acessíveis via menu lateral, s
 | **Dashboard** | Métricas e gráficos analíticos - visão geral do laboratório com indicadores de desempenho |
 | **Perfil** | Edição de dados pessoais e visualização de permissões |
 
-**Nota:** A aba Admin é acessível exclusivamente para usuários com perfil de administrador, sendo controlada pela verificação de `role = 'admin'`, não pelas permissões de abas.
+**Nota:** A aba Admin é acessível exclusivamente para usuários com perfil de administrador ou dev (`is_admin()`), sendo controlada pela verificação de role, não pelas permissões de abas.
 
 #### 3.2.2 Fluxo de Navegação
 
@@ -277,6 +279,7 @@ flowchart TB
         direction TB
         Cil["Cilindros"]
         Elem["Elementos"]
+        Leit["Leituras"]
         Amost["Amostras"]
         Press["Pressão"]
         Hist["Histórico"]
@@ -298,12 +301,14 @@ flowchart TB
     IsAdmin -->|Sim| Show
     IsAdmin -->|Não| Cil
     IsAdmin -->|Não| Elem
+    IsAdmin -->|Não| Leit
     IsAdmin -->|Não| Amost
     IsAdmin -->|Não| Press
     IsAdmin -->|Não| Hist
     
     Cil -.-> CheckAba
     Elem -.-> CheckAba
+    Leit -.-> CheckAba
     Amost -.-> CheckAba
     Press -.-> CheckAba
     Hist -.-> CheckAba
@@ -319,21 +324,22 @@ flowchart TB
 
 1. O usuário autenticado acessa o sistema pelo **Dashboard** (página inicial)
 2. O **menu lateral** exibe automaticamente apenas as abas que o usuário tem permissão para acessar
-3. Para as abas com controle de permissão (Cilindros, Elementos, Amostras, Pressão, Histórico), o sistema verifica `pode_acessar_aba()` antes de permitir acesso
-4. Usuários **admin** tem acesso irrestrito a todas as abas, incluindo o painel Admin
-5. O menu lateral só exibe a opção Admin para usuários com role=admin
+3. Para as abas com controle de permissão (Cilindros, Elementos, Leituras, Amostras, Pressão, Histórico), o sistema verifica `pode_acessar_aba()` antes de permitir acesso
+4. Usuários com role **admin** ou **dev** têm acesso irrestrito a todas as abas, incluindo o painel Admin
+5. O menu lateral só exibe a opção Admin para usuários com `is_admin()` (admin ou dev)
 
 #### 3.2.3 Sistema de Controle de Permissões
 
 O sistema implementa um **controle de acesso granular** que permite ao administrador gerenciar quais abas cada usuário pode acessar. Esta funcionalidade atende aos requisitos de segurança e confidencialidade das Boas Práticas de Laboratório, garantindo que cada usuário visualize apenas as funcionalidades relevantes às suas atividades.
 
-Apenas 5 abas possuem sistema de controle de permissão:
+Apenas 6 abas possuem sistema de controle de permissão:
 
 ```json
 {
     "cilindro": true,
     "pressao": true,
     "elemento": true,
+    "leitura": true,
     "amostra": true,
     "historico": true
 }
@@ -341,7 +347,7 @@ Apenas 5 abas possuem sistema de controle de permissão:
 
 **Características do Controle de Permissões:**
 
-1. **Acesso padrão (default):** Todas as 5 abas controladas são liberadas automaticamente para novos usuários (`true` por padrão)
+1. **Acesso padrão (default):** Todas as 6 abas controladas são liberadas automaticamente para novos usuários (`true` por padrão)
 
 2. **Controle administrativo:** O usuário com perfil de administrador pode habilitar ou desabilitar o acesso a cada aba individualmente para cada usuário através do painel Admin
 
@@ -364,7 +370,7 @@ def listar_cilindros():
 {% endif %}
 ```
 
-5. **Herança administrativa:** Usuários com perfil de administrador (`role = 'admin'`) têm acesso completo a todas as abas, independente das permissões configuradas. A verificação `is_admin()` retorna `True` antes de verificar as permissões individuais.
+5. **Herança administrativa:** Usuários com perfil de administrador (`role = 'admin'` ou `'dev'`) têm acesso completo a todas as abas, independente das permissões configuradas. A verificação `is_admin()` retorna `True` para ambos antes de verificar as permissões individuais.
 
 6. **Lógica de fallback:** Se o campo `habilitar_abas` for `NULL` no banco de dados, o sistema considera todas as permissões como `True` (acesso permitido)
 
@@ -374,9 +380,9 @@ def listar_cilindros():
 
 | Característica | Descrição |
 |--------------|-----------|
-| Abas controladas | Cilindros, Pressão, Elementos, Amostras, Histórico |
+| Abas controladas | Cilindros, Pressão, Elementos, Leituras, Amostras, Histórico |
 | Abas livres | Dashboard, Perfil |
-| Acesso Admin | Por role (não por permissão de aba) |
+| Acesso Admin/Dev | Por role (não por permissão de aba) |
 | Armazenamento | Campo JSONB na tabela `perfil` |
 | Default | `true` para todas as abas |
 
@@ -388,11 +394,13 @@ O modelo de dados foi implementado no PostgreSQL (via Supabase) com as seguintes
 
 | Tabela | Descrição |
 |--------|-----------|
-| `cilindro` | Registro de cilindro de gás com código, data de compra, consumo, custo e status |
+| `cilindro` | Registro de cilindros de gás com código, data de compra, consumo, custo e status |
 | `elemento` | Catálogo de elementos analisados com consumo em L/min |
-| `amostra` | Registro de amostras processadas com vínculos a cilindro e elemento |
+| `leitura` | Registro de análises vinculando cilindro, elemento, data, tempo de chama e quantidade |
+| `amostra` | Registro de amostras com associação N:N a elementos, lote e número manual |
+| `amostra_elemento` | Tabela pivô da relação N:N entre amostras e elementos |
 | `pressao` | Medições de pressão e temperatura vinculadas a cilindro |
-| `perfil` | Perfis de usuários com role (admin/usuário), status e permissões por módulo |
+| `perfil` | Perfis de usuários com role (dev/admin/usuario), status e permissões por módulo |
 | `historico_log` | Registro de todas as operações para fins de rastreabilidade |
 
 #### Schema do Banco de Dados (ER Diagram)
@@ -401,17 +409,20 @@ O modelo de dados foi implementado no PostgreSQL (via Supabase) com as seguintes
 erDiagram
     PERFIL ||--o{ CILINDRO : "possui"
     PERFIL ||--o{ ELEMENTO : "possui"
+    PERFIL ||--o{ LEITURA : "possui"
     PERFIL ||--o{ AMOSTRA : "possui"
     PERFIL ||--o{ PRESSAO : "possui"
     PERFIL ||--o{ HISTORICO_LOG : "registra"
     
-    CILINDRO ||--o{ AMOSTRA : "usado_em"
+    CILINDRO ||--o{ LEITURA : "usado_em"
     CILINDRO ||--o{ PRESSAO : "medido_em"
-    ELEMENTO ||--o{ AMOSTRA : "analisado_em"
+    ELEMENTO ||--o{ LEITURA : "analisado_em"
+    AMOSTRA ||--o{ AMOSTRA_ELEMENTO : "contem"
+    ELEMENTO ||--o{ AMOSTRA_ELEMENTO : "selecionado_em"
 
     PERFIL {
         uuid id PK "ID do usuário (ref auth.users)"
-        varchar role "admin ou usuario"
+        varchar role "dev, admin ou usuario"
         boolean ativo "Usuário ativo?"
         varchar nome "Nome do usuário"
         varchar email "Email do usuário"
@@ -441,15 +452,29 @@ erDiagram
         timestamp created_at "Data de criação"
     }
 
-    AMOSTRA {
+    LEITURA {
         int id PK "ID automático"
         date data "Data da análise"
         varchar tempo_chama "Tempo de chama (HH:MM:SS)"
         int cilindro_id FK "Cilindro usado"
         int elemento_id FK "Elemento analisado"
-        int quantidade_amostras "Quantidade"
+        int quantidade "Quantidade de leituras"
         uuid user_id FK "Usuário dono"
         timestamp created_at "Data de criação"
+    }
+
+    AMOSTRA {
+        int id PK "ID automático"
+        int numero_amostra "Número da amostra"
+        int lote "Lote da amostra"
+        uuid user_id FK "Usuário dono"
+        timestamp created_at "Data de criação"
+    }
+
+    AMOSTRA_ELEMENTO {
+        int id PK "ID automático"
+        int amostra_id FK "Amostra"
+        int elemento_id FK "Elemento selecionado"
     }
 
     PRESSAO {
@@ -465,7 +490,7 @@ erDiagram
 
     HISTORICO_LOG {
         int id PK "ID automático"
-        varchar tipo "cilindro, elemento, amostra, pressao, perfil"
+        varchar tipo "cilindro, elemento, leitura, amostra, pressao, perfil"
         varchar acao "criado, atualizado, excluido"
         varchar nome "Nome do item"
         uuid user_id FK "Usuário que executou"
@@ -473,7 +498,7 @@ erDiagram
     }
 ```
 
-As tabelas `cilindro`, `elemento`, `amostra` e `pressao` contêm o campo `user_id` que estabelece o vínculo com o usuário proprietário do registro, garantindo o isolamento de dados entre diferentes usuários do sistema.
+As tabelas `cilindro`, `elemento`, `leitura`, `amostra` e `pressao` contêm o campo `user_id` que estabelece o vínculo com o usuário proprietário do registro, garantindo o isolamento de dados entre diferentes usuários do sistema.
 
 #### Índices do Banco de Dados
 
@@ -483,10 +508,15 @@ As tabelas `cilindro`, `elemento`, `amostra` e `pressao` contêm o campo `user_i
 | cilindro | idx_cilindro_codigo | codigo | Busca por código |
 | elemento | idx_elemento_user_id | user_id | Filtrar por usuário |
 | elemento | idx_elemento_nome | nome | Busca por nome |
+| leitura | idx_leitura_user_id | user_id | Filtrar por usuário |
+| leitura | idx_leitura_cilindro_id | cilindro_id | Vincular cilindro |
+| leitura | idx_leitura_elemento_id | elemento_id | Vincular elemento |
+| leitura | idx_leitura_data | data | Filtrar por data |
 | amostra | idx_amostra_user_id | user_id | Filtrar por usuário |
-| amostra | idx_amostra_cilindro_id | cilindro_id | Vincular cilindro |
-| amostra | idx_amostra_elemento_id | elemento_id | Vincular elemento |
-| amostra | idx_amostra_data | data | Filtrar por data |
+| amostra | idx_amostra_lote | lote | Busca por lote |
+| amostra | idx_amostra_lote_created | lote, created_at DESC | Lotes + ordenação |
+| amostra_elemento | idx_amostra_elemento_amostra_id | amostra_id | Vincular amostra |
+| amostra_elemento | idx_amostra_elemento_elemento_id | elemento_id | Vincular elemento |
 | pressao | idx_pressao_user_id | user_id | Filtrar por usuário |
 | pressao | idx_pressao_cilindro_id | cilindro_id | Vincular cilindro |
 | pressao | idx_pressao_data | data | Filtrar por data |
@@ -500,7 +530,9 @@ As tabelas `cilindro`, `elemento`, `amostra` e `pressao` contêm o campo `user_i
 |--------|--------|--------|--------|--------|
 | cilindro | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | elemento | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
+| leitura | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | amostra | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
+| amostra_elemento | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
 | pressao | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | historico_log | Público (todos) | Admin (service_role) | - | - |
@@ -509,12 +541,13 @@ As tabelas `cilindro`, `elemento`, `amostra` e `pressao` contêm o campo `user_i
 
 O sistema implementa múltiplas camadas de segurança para proteção dos dados e conformidade com requisitos de integridade:
 
-1. **Autenticação JWT** - Validação de identidade através de tokens assinados digitalmente
-2. **Políticas RLS** - O PostgreSQL aplica automaticamente políticas de Row Level Security que restringem o acesso aos dados apenas ao proprietário do registro
-3. **Proteção CSRF** - Token anti-Cross-Site Request Forgery em todos os formulários
-4. **Rate Limiting** - Limite de tentativas de login (5/min) e registro (3/min)
-5. **Validação de Entrada** - Sanitização e validação de todos os dados recebidos
-6. **Expiração de Sessão** - Sessões expiram após 10 minutos de inatividade
+1. **Hierarquia de Roles (3 níveis)** — `dev` (super-admin, bypass RLS), `admin` (gestão de usuários + exportação, respeita RLS nos dados), `usuario` (acesso apenas aos próprios dados)
+2. **Autenticação JWT** - Validação de identidade através de tokens assinados digitalmente
+3. **Políticas RLS** - O PostgreSQL aplica automaticamente políticas de Row Level Security que restringem o acesso aos dados apenas ao proprietário do registro
+4. **Proteção CSRF** - Token anti-Cross-Site Request Forgery em todos os formulários
+5. **Rate Limiting** - Limite de tentativas de login (5/min) e registro (3/min)
+6. **Validação de Entrada** - Sanitização e validação de todos os dados recebidos
+7. **Expiração de Sessão** - Sessões expiram após 10 minutos de inatividade
 
 #### 3.4.1 Sistema de Auditoria e Registro de Log
 
@@ -534,6 +567,7 @@ O sistema possui um módulo completo de auditoria que registra todas as operaç�
 |--------|---------------------|
 | Cilindro | Criado, atualizado, excluido |
 | Elemento | Criado, atualizado, excluido |
+| Leitura | Criado, atualizado, excluido |
 | Amostra | Criado, atualizado, excluido |
 | Pressão | Criado, atualizado, excluido |
 | **Perfil** | **Criado (cadastro), atualizado (role, permissões, status)** |
@@ -565,7 +599,9 @@ O sistema desenvolvido contempla todas as funcionalidades planejadas, organizada
 
 **Módulo de Elementos:** Registra os elementos químicos analisados no laboratório, com cadastro automático de 20 elementos padrão comuns (Alumínio, Cálcio, Ferro, Magnésio, entre outros). Cada elemento possui um consumo específico em litros por minuto, informação essencial para o cálculo de eficiência dos cilindro.
 
-**Módulo de Amostras:** Constitui o registro central das análises realizadas. Cada amostra é vinculada a um cilindro e um elemento específicos, com registro de data, tempo de chama (formato HH:MM:SS) e quantidade de amostras processadas. O sistema impede a exclusão de cilindro ou elementos que possuam amostras vinculadas, preservando a integridade referencial.
+**Módulo de Leituras:** Constitui o registro central das análises realizadas. Cada leitura é vinculada a um cilindro e um elemento específicos, com registro de data, tempo de chama (formato HH:MM:SS) e quantidade de leituras. O sistema impede a exclusão de cilindros ou elementos que possuam leituras vinculadas, preservando a integridade referencial.
+
+**Módulo de Amostras (N:N):** Gerencia amostras com associação muitos-para-muitos a elementos via tabela `amostra_elemento`. Cada amostra possui número manual (real positivo), lote e pode conter múltiplos elementos simultaneamente. O módulo inclui sugestão de lotes via `<datalist>`, paginação padronizada e validação de pelo menos um elemento por amostra.
 
 **Módulo de Pressão:** Permite o registro sistemático de medições de pressão (em bar) e temperatura (em °C) associadas a cada cilindro. Esta funcionalidade atende à necessidade de monitoramento das condições de armazenamento e uso dos gases, conforme exigido pelas BPL.
 
@@ -580,33 +616,78 @@ O sistema desenvolvido contempla todas as funcionalidades planejadas, organizada
 
 ### 4.2 Dashboard Analítico
 
-O dashboard desenvolvido apresenta métricas agregadas para suporte à gestão e planejamento, com os seguintes cálculos:
+O dashboard foi reestruturado para fornecer 6 indicadores-chave (KPIs) e 4 gráficos interativos, organizados em 4 linhas:
 
-#### 4.2.1 Quantidade de Amostras por Cilindro
+#### Layout do Dashboard
 
-**Descrição:** Total de amostras processadas por cada cilindro, indicando o consumo relativo de cada unidade.
+```
+LINHA 1 — 6 KPI Cards
+┌──────────┬──────────┬──────────┬─────────┬──────────┬─────────┐
+│Cilindros │ Gás      │ Leituras │Amostras │Custo/    │ Gás     │
+│ Ativos   │ Restante │ Totais   │ Totais  │Leitura   │Consumido│
+└──────────┴──────────┴──────────┴─────────┴──────────┴─────────┘
 
-**Cálculo:** Para cada registro de amostra, o sistema soma o campo `quantidade_amostras` agrupando pelo `cilindro_id` do cilindro utilizado. O resultado é ordenado alfabeticamente pelo código do cilindro para exibição no gráfico.
+LINHA 2 — Gráficos Principais
+┌────────────────────────────────────┬──────────────────────────┐
+│ Curva de Pressão por Cilindro     │ Leituras por Mês        │
+│ (line chart, multicolor)          │ (bar chart, 12 meses)   │
+└────────────────────────────────────┴──────────────────────────┘
 
-#### 4.2.2 Consumo por Elemento × Tempo de Chama
+LINHA 3 — Análise
+┌────────────────────────────────────┬──────────────────────────┐
+│ Leituras por Cilindro (doughnut)  │ Elementos por Amostra   │
+│ (intensidade por rank)            │ (bar chart, distribuição)│
+└────────────────────────────────────┴──────────────────────────┘
 
-**Descrição:** Correlação entre elemento analisado e tempo de chama utilizado, útil para otimização de processos.
+LINHA 4 — Atividade Recente
+┌──────────────────┬──────────────────┬─────────────────────────┐
+│ Elementos mais   │ Últimas Leituras │ Últimas Amostras       │
+│ Analisados (Top5)│ (5 recentes)     │ (5 recentes)           │
+└──────────────────┴──────────────────┴─────────────────────────┘
+```
 
-**Cálculo:** O sistema converte o tempo de chama (formato HH:MM:SS) para minutos decimais e multiplica pelo consumo específico de cada elemento em litros por minuto (L/min), resultando no consumo total em litros por elemento analisado.
+#### KPIs (Linha 1)
 
-#### 4.2.3 Elementos mais Analisados
+| KPI | Fórmula | Exemplo | Propósito |
+|-----|---------|---------|-----------|
+| **Cilindros Ativos** | `COUNT(cilindro WHERE status = "ativo")` | 3 | Quantos cilindros estão em uso |
+| **Gás Restante** | `Σ(litros_equivalentes - gas_consumido)` por cilindro ativo | 845L | Quanto gás ainda pode ser utilizado |
+| **Leituras Totais** | `Σ(quantidade)` de todas as leituras | 127 | Total de análises realizadas |
+| **Amostras Totais** | `COUNT(amostra)` | 24 | Total de amostras cadastradas |
+| **Custo/Leitura** | `Σ(custo dos cilindros) ÷ Σ(quantidade das leituras)` | R$ 4,57 | Custo médio por análise |
+| **Gás Consumido** | `Σ(minutos_de_chama ÷ 60 × consumo_lpm)` | 112L | Total de gás já consumido |
 
-**Descrição:** Ranking de elementos por frequência de análise, orientando o planejamento de estoque.
+O cálculo de **Gás Consumido** considera cada leitura: o tempo de chama (HH:MM:SS) é convertido para minutos e multiplicado pelo consumo do elemento (L/min). O **Gás Restante** subtrai o consumido dos litros equivalentes de cada cilindro ativo. O **Custo/Leitura** é uma estimativa baseada no custo total dos cilindros dividido pelo total de leituras.
 
-**Cálculo:** O sistema agrupa as amostras por `elemento_id`, soma a quantidade de amostras, e retorna o TOP 5 elementos com maior frequência de uso. Esta informação é crucial para previsões de estoque e planejamento de aquisição de gases.
+#### Gráficos (Linhas 2 e 3)
 
-#### 4.2.4 Eficiência de Cilindros por Elemento
+**Curva de Pressão por Cilindro** — gráfico de linha que mostra a evolução da pressão (bar) ao longo do tempo para cada cilindro. Cada cilindro ganha uma cor diferente da paleta rainbow. O sistema coleta as últimas 10 medições de pressão de cada cilindro ativo, permitindo visualizar o decaimento natural do gás.
 
-**Descrição:** Métrica que relaciona a quantidade de amostras processadas com o consumo de gás, permitindo identificar cilindro com melhor desempenho.
+**Leituras por Mês** — gráfico de barras que agrupa as leituras por mês nos últimos 12 meses. O eixo X exibe os meses em português (Jan 2026, Fev 2026, etc.), o eixo Y é a soma das quantidades. Essencial para enxergar sazonalidade no laboratório.
 
-**Cálculo:** Esta métrica identifica quais combinações de cilindro × elemento produzem mais amostras, permitindo otimizar o uso dos recursos e identificar padrões de consumo.
+**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra a distribuição de leituras entre cilindros. As cores variam por intensidade conforme o rank de uso (mais usado = cor mais escura), utilizando o sistema de paletas rainbow de 5 níveis.
 
-As métricas são calculadas dinamicamente a partir dos dados armazenados, utilizando consultas SQL otimizadas com agregação e filtros. O sistema implementa cache de 5 minutos para reduzir a carga no banco de dados e melhorar a experiência do usuário.
+**Elementos por Amostra** — gráfico de barras que mostra a distribuição de quantos elementos cada amostra possui (1, 2, 3, 4+ elementos). Ajuda a entender a complexidade média das amostras registradas no laboratório.
+
+#### Sistema de Cores Rainbow v3.0
+
+O dashboard utiliza um esquema de cores **rainbow ordenado por dependência** entre entidades:
+
+| Entidade | Relação | Cor | Hex |
+|----------|---------|-----|-----|
+| Cilindro | Raiz, base de medições | Vermelho | `#e63946` |
+| Pressão | Depende de Cilindro | Laranja | `#f77f00` |
+| Elemento | Raiz, base de análises | Verde | `#2a9d8f` |
+| Leitura | Depende de Cilindro + Elemento | Azul | `#457b9d` |
+| Amostra | N:N com Elementos | Violeta | `#6a1b9a` |
+
+Cada entidade possui uma paleta de **5 níveis claro→escuro** para os gráficos Chart.js. A função `getColorByIntensity()` mapeia o rank do valor para a cor correspondente: valores baixos recebem cores claras, valores altos recebem cores escuras.
+
+Os botões de ação e sinalização (primary, danger, success, warning) mantêm as cores padrão do Bootstrap, não sendo modificados pelo sistema rainbow.
+
+#### Cache e Performance
+
+As métricas são cacheadas com diferentes TTLs: **30 segundos** para KPIs (consultas frequentes), **5 minutos** para listagens de dados e **300 segundos** para lista de usuários. O cache é invalidado automaticamente via `invalidate_user_caches(user_id)` após qualquer CREATE, UPDATE ou DELETE em todos os blueprints, garantindo que os dados exibidos sejam sempre atuais.
 
 ### 4.3 Sistema de Administração
 
@@ -616,7 +697,7 @@ O módulo administrativo permite a gestão completa de usuários, incluindo:
 - Ativação e desativação de acesso de usuários
 - Promoção e rebaixamento de funções (administrador/usuário)
 - Exclusão de usuários com remoção cascade de todos os dados associados
-- Controle granular de permissões por módulo (habilitar/desabilitar acesso a Cilindros, Elementos, Amostras, Pressão, Histórico)
+- Controle granular de permissões por módulo (habilitar/desabilitar acesso a Cilindros, Elementos, Leituras, Amostras, Pressão, Histórico)
 - Exportação de dados em múltiplos formatos (JSON, CSV, Excel, Markdown)
 
 As funcionalidades de exportação são especialmente úteis para geração de relatórios conforme exigido pelas BPL, permitindo a extração de dados para auditorias e análises externas.
@@ -630,7 +711,7 @@ A avaliação do sistema em relação aos requisitos das BPL demonstra conformid
 | Registro imediato | Entrada de dados direto no sistema sem papel intermediário |
 | Identificação do responsável | Registro automático de user_id em todas as operações |
 | Rastreabilidade | Histórico completo de CRUD com timestamp e usuário |
-| Dados à prova de adulteração | RLS + log de auditoria + backup automático Supabase |
+| Dados à prova de adulteração | RLS + log de auditoria + backup diário Cloudflare R2 + GitHub Actions |
 | Arquivamento | Dados persistidos em PostgreSQL com políticas de retenção |
 | Controle de acesso | Autenticação JWT + permissões por perfil + Rate Limiting |
 | Validação de dados | Validações server-side + Constraints PostgreSQL |
@@ -734,4 +815,4 @@ A conformidade com os princípios das Boas Práticas de Laboratório foi verific
 
 ---
 
-*Artigo desenvolvido em Abril de 2026*
+*Artigo desenvolvido em Junho de 2026*

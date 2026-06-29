@@ -468,6 +468,12 @@ def dashboard():
     )
 
 
+@app.route("/disclaimer")
+@login_required
+def disclaimer():
+    return render_template("disclaimer.html")
+
+
 @app.route("/perfil", methods=["GET", "POST"])
 @login_required
 def perfil():

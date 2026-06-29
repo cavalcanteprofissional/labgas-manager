@@ -17,13 +17,15 @@ flowchart TB
     subgraph Permissao["Verificação de Permissão"]
         direction TB
         CheckAba["pode_acessar_aba(aba)"]
-        IsAdmin["is_admin()"]
+        IsAdmin["is_admin()<br/>(admin ou dev)"]
+        IsDev["is_dev()<br/>Acesso irrestrito<br/>Bypass RLS"]
     end
 
     subgraph AbasControladas["Abas com Controle"]
         direction TB
         Cil["Cilindros"]
         Elem["Elementos"]
+        Leit["Leituras"]
         Amost["Amostras"]
         Press["Pressão"]
         Hist["Histórico"]
@@ -36,7 +38,7 @@ flowchart TB
 
     subgraph Admin["Área Administrativa"]
         direction TB
-        AdminPanel["Admin<br/>Apenas role=admin"]
+        AdminPanel["Admin<br/>Apenas is_admin()"]
     end
 
     subgraph Resultado["Resultado"]
@@ -55,12 +57,14 @@ flowchart TB
     IsAdmin -->|Sim| Show
     IsAdmin -->|Não| Cil
     IsAdmin -->|Não| Elem
+    IsAdmin -->|Não| Leit
     IsAdmin -->|Não| Amost
     IsAdmin -->|Não| Press
     IsAdmin -->|Não| Hist
     
     Cil -.-> CheckAba
     Elem -.-> CheckAba
+    Leit -.-> CheckAba
     Amost -.-> CheckAba
     Press -.-> CheckAba
     Hist -.-> CheckAba
@@ -70,6 +74,8 @@ flowchart TB
     
     Show --> Perf
     Show --> AdminPanel
+    
+    IsDev -.->|Bypass RLS| AdminPanel
     
     style Show fill:#90EE90
     style Block fill:#FFB6C1

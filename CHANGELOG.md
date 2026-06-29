@@ -2,6 +2,19 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.9.1] — 2026-06-29
+
+### Aba Disclaimer — Informações Legais e Autoria (Fase 62) 🆕
+
+- **`frontend/templates/disclaimer.html`**: nova página com 4 cards empilhados (Sobre, Licença, Repositório, Autoria) + alerta de aviso legal
+- **`frontend/app.py`**: nova rota `/disclaimer`
+- **`frontend/templates/base.html`**: link no sidebar entre Histórico e Perfil
+- **`frontend/utils/constants.py`**: entrada `"disclaimer": "info-circle"` em ICON_TIPO
+- **`frontend/static/img/assinatura_lucas.png`**: assinatura do autor movida da raiz para `static/img/`
+- **`frontend/static/img/assinatura_thiago_placeholder.png`**: placeholder criado para segunda assinatura
+- Cards com header gradiente (padrão do projeto), badges de assinatura com hover animado
+- Licença MIT exibida em resumo com link para o arquivo LICENSE no repositório
+
 ## [2.9.0] — 2026-06-22
 
 ### Backup Inteligente Aprimorado — Pre-flight, Schema Tracking, Métricas, Retenção (Fase 60) 🔧

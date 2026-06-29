@@ -112,4 +112,4 @@ Este artigo está disponível para fins acadêmicos.
 **Autor:** Lucas Cavalcante dos Santos e Thiago Bricio Pinheiro Sandre  
 **Data:** Abril de 2026
 
-**Repositório do Projeto:** https://github.com/cavalcanteprofissional/lagbas-manager
+**Repositório do Projeto:** https://github.com/cavalcanteprofessional/labgas-manager
