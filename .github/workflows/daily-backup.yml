@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload backup artifact
         if: steps.parse_result.outputs.status == 'uploaded'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: labgas-backup-${{ steps.parse_result.outputs.timestamp }}
           path: ${{ steps.parse_result.outputs.filename }}
@@ -63,7 +63,7 @@ jobs:
 
       - name: Upload error logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backup-error-logs-${{ github.run_id }}
           path: |
