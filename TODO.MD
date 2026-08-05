@@ -1923,3 +1923,23 @@ response = query.order(...).range(offset, offset + per_page - 1).execute()
 - [ ] Filtro Leitura corrigido + query otimizada
 - [ ] Filtro na aba Amostras
 - [ ] Placeholder do Histórico melhorado
+
+## Fase 69: Ajuste dos testes (unitários e globais) às mudanças executadas
+
+### Contexto
+As implementações das Fases 66 (navegação), 67 (isolamento por usuário nas abas) e do dashboard (KPIs, filtros `milhar`/`data_relativa`, barra de progresso de gás) foram aplicadas e commitadas na v2.10.0, mas a suíte de testes ainda não foi atualizada/validada integralmente contra essas mudanças.
+
+### Mudanças Planejadas
+
+- Revisar e ajustar os testes unitários afetados pelas mudanças:
+  - `test_dashboard.py` — novos KPIs (`gas_total`, `gas_pct`) e filtros `milhar`/`data_relativa` no template
+  - `test_pressao.py`, `test_cilindro.py`, `test_leitura.py`, `test_amostra.py`, `test_elemento.py` — isolamento por usuário nas listagens (não-dev só vê os próprios dados); badge placeholder "—" em `pressao.html`
+  - `test_session_footer.py` — footer oculto no mobile + bottom navigation (Fase 66)
+- Rodar e validar a suíte completa/global, incluindo `--run-modais` e demais marcadores, corrigindo falhas decorrentes das mudanças
+- Observar o flake pré-existente de login/timer no harness combinado (rodar suítes isoladas quando necessário)
+
+### Status
+- [ ] Revisão dos testes de dashboard (KPIs/filtros)
+- [ ] Ajuste dos testes das abas (isolamento por usuário)
+- [ ] Ajuste dos testes de navegação/footer (Fase 66)
+- [ ] Suíte global validada
