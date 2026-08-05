@@ -236,7 +236,10 @@ def leitura_list():
             return redirect(url_for("leitura.leitura_list"))
     
     offset = (page - 1) * per_page
-    response = get_supabase_client().table("leitura").select("*", count="exact").order("data", desc=True).range(offset, offset + per_page - 1).execute()
+    query = get_supabase_client().table("leitura").select("*", count="exact")
+    if not dev:
+        query = query.eq("user_id", user_id)
+    response = query.order("data", desc=True).range(offset, offset + per_page - 1).execute()
     leituras = response.data or []
     total = response.count or 0
     

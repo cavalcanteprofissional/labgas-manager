@@ -237,7 +237,10 @@ def list():
             return redirect(url_for("amostra.list"))
 
     offset = (page - 1) * per_page
-    response = supabase.table("amostra").select("*", count="exact").order("numero_amostra", desc=True).range(offset, offset + per_page - 1).execute()
+    query = supabase.table("amostra").select("*", count="exact")
+    if not dev:
+        query = query.eq("user_id", user_id)
+    response = query.order("numero_amostra", desc=True).range(offset, offset + per_page - 1).execute()
     amostras = response.data or []
     total = response.count or 0
 
@@ -258,8 +261,10 @@ def list():
     for a in amostras:
         a["elementos_nomes"] = elementos_map.get(a["id"], [])
 
-    elementos_disponiveis = supabase.table("elemento").select("id, nome").order("nome").execute()
-    elementos = elementos_disponiveis.data or []
+    elementos_disponiveis = supabase.table("elemento").select("id, nome")
+    if not dev:
+        elementos_disponiveis = elementos_disponiveis.eq("user_id", user_id)
+    elementos = (elementos_disponiveis.order("nome").execute().data) or []
 
     lotes_vistos = []
     vistos = set()

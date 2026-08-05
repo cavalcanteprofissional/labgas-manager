@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.9.0** (Branch: master)
+**Versão: 2.10.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -437,7 +437,7 @@ O banco de dados possui índices otimizados para as operações mais frequentes:
 
 ### Políticas RLS (Row Level Security)
 
-O banco de dados utiliza **Row Level Security** para garantir o isolamento de dados entre usuários. Cada tabela possui políticas específicas que determinam quais registros cada usuário pode acessar.
+O banco de dados utiliza **Row Level Security** para proteger escritas (cada usuário só insere/atualiza/exclui os próprios registros). As políticas `SELECT` são públicas — o **isolamento por usuário na leitura é aplicado na camada da aplicação**: as queries de listagem das abas (Cilindros, Pressão, Leituras, Amostras, Elementos) filtram por `user_id` para usuários comuns, enquanto desenvolvedores/administradores visualizam todos os dados (visão completa de administração).
 
 | Tabela | SELECT | INSERT | UPDATE | DELETE |
 |--------|--------|--------|--------|--------|

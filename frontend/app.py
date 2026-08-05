@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, redirect, url_for, session, request, flash
 from flask_login import LoginManager, login_required, current_user
@@ -15,7 +16,9 @@ from utils.erros_utils import formatar_erro_supabase
 # Carrega .env.local para desenvolvimento local (se existir)
 # Na Vercel, as variáveis são injetadas automaticamente via Environment Variables
 try:
-    load_dotenv('.env.local')
+    dotenv_path = Path(__file__).resolve().parent / ".env.local"
+    if dotenv_path.exists():
+        load_dotenv(dotenv_path)
 except Exception:
     pass  # Se não existir, continua sem erro
 
@@ -226,6 +229,50 @@ def formatar_data(data):
     return data
 
 
+@app.template_filter("data_relativa")
+def data_relativa(data):
+    if not data:
+        return "-"
+    if isinstance(data, str):
+        if "T" in data:
+            data = data.split("T")[0]
+        try:
+            dt = datetime.strptime(data, "%Y-%m-%d")
+        except ValueError:
+            return data
+    elif isinstance(data, datetime):
+        dt = data
+    else:
+        return data
+
+    hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    alvo = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    dias = (hoje - alvo).days
+    if dias <= 0:
+        return "hoje"
+    if dias == 1:
+        return "ontem"
+    if dias < 7:
+        return f"há {dias} dias"
+    if dias < 30:
+        semanas = dias // 7
+        return f"há {semanas} semana(s)"
+    return dt.strftime("%d/%m/%Y")
+
+
+@app.template_filter("milhar")
+def milhar(valor, casas=None):
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return valor
+    if casas is None:
+        casas = 0 if numero == int(numero) else 1
+    txt = f"{numero:,.{int(casas)}f}"
+    txt = txt.replace(",", "X").replace(".", ",").replace("X", ".")
+    return txt
+
+
 @app.route("/")
 def index():
     if current_user.is_authenticated:
@@ -308,13 +355,17 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
 
     # Gás Restante
     gas_restante = 0.0
+    gas_total = 0.0
     for c in cilindro:
         if c.get("status") == "ativo":
             litros = float(c.get("litros_equivalentes", 0))
+            gas_total += litros
             usado = gas_por_cilindro.get(c["id"], 0)
             restante = litros - usado
             if restante > 0:
                 gas_restante += restante
+
+    gas_pct = round(gas_restante / gas_total * 100, 1) if gas_total > 0 else 0
 
     # Custo Médio por Leitura
     custo_total = sum(float(c.get("custo", 0)) for c in cilindro if c.get("custo"))
@@ -374,6 +425,8 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     return dict(
         cilindros_ativos=cilindros_ativos,
         gas_restante=round(gas_restante, 1),
+        gas_total=round(gas_total, 1),
+        gas_pct=gas_pct,
         total_quantidade=total_quantidade,
         amostras_total=len(amostras_data),
         custo_por_leitura=custo_por_leitura,

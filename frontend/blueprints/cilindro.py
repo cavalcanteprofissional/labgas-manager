@@ -253,7 +253,10 @@ def list():
             return redirect(url_for("cilindro.list"))
     
     offset = (page - 1) * per_page
-    response = get_supabase_client().table("cilindro").select("*", count="exact").order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
+    query = get_supabase_client().table("cilindro").select("*", count="exact")
+    if not dev:
+        query = query.eq("user_id", user_id)
+    response = query.order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
     cilindro = response.data or []
     total = response.count or 0
     

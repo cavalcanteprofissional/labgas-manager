@@ -182,7 +182,10 @@ def list():
             return redirect(url_for("elemento.list"))
     
     offset = (page - 1) * per_page
-    response = get_supabase_client().table("elemento").select("*", count="exact").order("nome", desc=False).range(offset, offset + per_page - 1).execute()
+    query = get_supabase_client().table("elemento").select("*", count="exact")
+    if not dev:
+        query = query.eq("user_id", user_id)
+    response = query.order("nome", desc=False).range(offset, offset + per_page - 1).execute()
     elementos = response.data or []
     total = response.count or 0
     

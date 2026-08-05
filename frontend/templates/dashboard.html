@@ -2,11 +2,84 @@
 
 {% block title %}Dashboard - LabGas Manager{% endblock %}
 
+{% block extra_css %}
+<style>
+    .dash-header {
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .dash-header-cilindro { background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); }
+    .dash-header-pressao  { background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); }
+    .dash-header-leitura   { background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); }
+    .dash-header-elemento  { background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); }
+    .dash-header-amostra   { background: var(--amostra-rainbow); }
+    .dash-subtitle {
+        font-size: 0.9rem;
+        color: var(--bs-secondary-color);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .stat-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+    }
+    .gas-progress {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.35);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .gas-progress-bar {
+        height: 100%;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+    .chart-container {
+        position: relative;
+        height: 250px;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--bs-secondary-color);
+    }
+    .empty-state i {
+        font-size: 2.5rem;
+        opacity: 0.35;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .dash-kpi-tooltip {
+        cursor: help;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<h2 class="mb-4">
-    <i class="bi bi-{{ ICON_TIPO["dashboard"] }}"></i> Dashboard
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+    <div class="me-2">
+        <h2 class="mb-1">
+            <i class="bi bi-{{ ICON_TIPO["dashboard"] }}"></i> Dashboard
+        </h2>
+        <div class="dash-subtitle">
+            <i class="bi bi-calendar3"></i> Atualizado em {{ today|formatar_data }}
+            <a href="{{ request.full_path }}" class="btn btn-link btn-sm p-0 ms-1 text-decoration-none"
+               data-no-loading onclick="showLoadingDelayed()" title="Recarregar dados">
+                <i class="bi bi-arrow-clockwise"></i> Recarregar
+            </a>
+        </div>
+    </div>
     {% if is_admin %}
-    <div class="dropdown d-inline-block ms-3">
+    <div class="dropdown">
         <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-download"></i> Exportar Dados
         </button>
@@ -19,7 +92,7 @@
         </ul>
     </div>
     {% endif %}
-</h2>
+</div>
 
 {% if is_dev and lista_usuarios %}
 <div class="row mb-3">
@@ -39,51 +112,68 @@
 
 <!-- LINHA 1: 6 KPI Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card cilindro h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card cilindro h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Quantos cilindros estão em uso (status = ativo)">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["cilindro"] }}"></i> Cilindros Ativos</h5>
-                <h2 class="mb-0">{{ cilindros_ativos }}</h2>
+                <h2 class="mb-0">{{ cilindros_ativos|milhar }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card green h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card green h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Gás que ainda dá pra usar = soma dos litros restantes dos cilindros ativos">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-fuel-pump"></i> Gás Restante</h5>
-                <h2 class="mb-0">{{ gas_restante }}L</h2>
+                <h2 class="mb-1">{{ gas_restante|milhar }}<span class="fs-6 fw-normal"> L</span></h2>
+                <div class="gas-progress" role="progressbar" aria-label="Percentual de gás restante"
+                     aria-valuenow="{{ gas_pct }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="gas-progress-bar" style="width: {{ gas_pct }}%;"></div>
+                </div>
+                <small class="d-block mt-1" style="opacity: 0.85;">{{ gas_pct }}% do total disponível</small>
             </div>
         </div>
     </div>
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card leitura h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card leitura h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Total de análises realizadas (soma das quantidades das leituras)">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Leituras</h5>
-                <h2 class="mb-0">{{ total_quantidade }}</h2>
+                <h2 class="mb-0">{{ total_quantidade|milhar }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card amostra h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card amostra h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Total de amostras cadastradas">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Amostras</h5>
-                <h2 class="mb-0">{{ amostras_total }}</h2>
+                <h2 class="mb-0">{{ amostras_total|milhar }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card pressao h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card pressao h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Custo total dos cilindros ÷ número total de leituras (estimativa)">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-cash-coin"></i> Custo/Leitura</h5>
-                <h2 class="mb-0">R${{ "%.2f"|format(custo_por_leitura) }}</h2>
+                <h2 class="mb-0">R$ {{ custo_por_leitura|milhar(2) }}</h2>
             </div>
         </div>
     </div>
-    <div class="col-4 col-lg-2">
-        <div class="card stat-card orange h-100 text-center">
+    <div class="col-6 col-md-4 col-xxl-2">
+        <div class="card stat-card orange h-100 text-center kpi-card dash-kpi-tooltip"
+             data-bs-toggle="tooltip" data-bs-placement="top"
+             title="Total de gás consumido = soma dos tempos de chama × consumo do elemento (L/min)">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h5 class="card-title"><i class="bi bi-fire"></i> Gás Consumido</h5>
-                <h2 class="mb-0">{{ total_gas_consumido }}L</h2>
+                <h2 class="mb-0">{{ total_gas_consumido|milhar }}<span class="fs-6 fw-normal"> L</span></h2>
             </div>
         </div>
     </div>
@@ -93,32 +183,38 @@
 <div class="row g-3 mb-4">
     <div class="col-12 col-lg-6">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); color: white;">
+            <div class="card-header dash-header dash-header-pressao">
                 <h5 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Curva de Pressão por Cilindro</h5>
             </div>
             <div class="card-body">
                 {% if pressao_chart %}
-                <div class="chart-container" style="position: relative; height: 250px;">
+                <div class="chart-container">
                     <canvas id="pressaoChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhuma medição de pressão.</p>
+                <div class="empty-state">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <p class="mb-0">Nenhuma medição de pressão.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
     <div class="col-12 col-lg-6">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
+            <div class="card-header dash-header dash-header-leitura">
                 <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Leituras por Mês</h5>
             </div>
             <div class="card-body">
                 {% if leituras_mes_labels %}
-                <div class="chart-container" style="position: relative; height: 250px;">
+                <div class="chart-container">
                     <canvas id="leiturasMesChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhuma leitura registrada.</p>
+                <div class="empty-state">
+                    <i class="bi bi-bar-chart"></i>
+                    <p class="mb-0">Nenhuma leitura registrada.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -129,32 +225,38 @@
 <div class="row g-3 mb-4">
     <div class="col-12 col-lg-6">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); color: white;">
+            <div class="card-header dash-header dash-header-cilindro">
                 <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Leituras por Cilindro</h5>
             </div>
             <div class="card-body">
                 {% if cilindro_leituras_values %}
-                <div class="chart-container" style="position: relative; height: 250px;">
+                <div class="chart-container">
                     <canvas id="cilindroChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhuma leitura cadastrada.</p>
+                <div class="empty-state">
+                    <i class="bi bi-pie-chart"></i>
+                    <p class="mb-0">Nenhuma leitura cadastrada.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
     <div class="col-12 col-lg-6">
         <div class="card h-100">
-            <div class="card-header" style="background: var(--amostra-rainbow); color: white;">
+            <div class="card-header dash-header dash-header-amostra">
                 <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Elementos por Amostra</h5>
             </div>
             <div class="card-body">
                 {% if dist_values and dist_values|sum > 0 %}
-                <div class="chart-container" style="position: relative; height: 250px;">
+                <div class="chart-container">
                     <canvas id="distChart"></canvas>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-5">Nenhuma amostra com elementos.</p>
+                <div class="empty-state">
+                    <i class="bi bi-diagram-3"></i>
+                    <p class="mb-0">Nenhuma amostra com elementos.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -165,7 +267,7 @@
 <div class="row g-3 mb-4">
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--elemento-dark), var(--elemento-light)); color: white;">
+            <div class="card-header dash-header dash-header-elemento">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Elementos mais analisados</h6>
             </div>
             <div class="card-body p-0">
@@ -174,19 +276,22 @@
                     {% for item in elementos_mais_analisados %}
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
-                        <span class="badge bg-secondary">{{ item.quantidade }} leitura(s)</span>
+                        <span class="badge bg-secondary">{{ item.quantidade|milhar }} leitura(s)</span>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma leitura registrada.</p>
+                <div class="empty-state">
+                    <i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i>
+                    <p class="mb-0">Nenhuma leitura registrada.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); color: white;">
+            <div class="card-header dash-header dash-header-leitura">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Últimas Leituras</h6>
             </div>
             <div class="card-body p-0">
@@ -198,7 +303,7 @@
                             <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ cilindro_dict.get(a.cilindro_id, a.cilindro_id) }}</span>
                             <span class="badge mx-1" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ elemento_dict.get(a.elemento_id, a.elemento_id) }}</span>
                         </div>
-                        <small class="text-muted">{{ a.data|formatar_data if a.data else '-' }}</small>
+                        <small class="text-muted text-nowrap">{{ a.data|data_relativa }}</small>
                     </div>
                     {% endfor %}
                 </div>
@@ -206,14 +311,17 @@
                     <a href="{{ url_for('leitura.leitura_list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma leitura</p>
+                <div class="empty-state">
+                    <i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i>
+                    <p class="mb-0">Nenhuma leitura</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
     <div class="col-12 col-lg-4">
         <div class="card h-100">
-            <div class="card-header" style="background: var(--amostra-rainbow); color: white;">
+            <div class="card-header dash-header dash-header-amostra">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Últimas Amostras</h6>
             </div>
             <div class="card-body p-0">
@@ -225,7 +333,7 @@
                             <span class="badge" style="background: {{ COR_TIPO['amostra']['var'] }};">#{{ a.numero_amostra }}</span>
                             <small class="text-muted ms-1">Lote {{ a.lote }}</small>
                         </div>
-                        <small class="text-muted">{{ a.created_at|formatar_data if a.created_at else '-' }}</small>
+                        <small class="text-muted text-nowrap">{{ a.created_at|data_relativa }}</small>
                     </div>
                     {% endfor %}
                 </div>
@@ -233,7 +341,10 @@
                     <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
                 </div>
                 {% else %}
-                <p class="text-muted text-center py-4">Nenhuma amostra</p>
+                <div class="empty-state">
+                    <i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i>
+                    <p class="mb-0">Nenhuma amostra</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -244,7 +355,15 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-{% if cilindro_leituras_values %}
+var tooltipStyle = {
+    backgroundColor: 'rgba(0, 20, 35, 0.92)',
+    titleColor: '#ffffff',
+    bodyColor: 'rgba(255, 255, 255, 0.9)',
+    cornerRadius: 6,
+    padding: 10,
+    displayColors: false
+};
+
 function getColorByIntensity(values, palette) {
     var sorted = [...values].sort(function(a, b){return a-b;});
     return values.map(function(v){
@@ -252,6 +371,8 @@ function getColorByIntensity(values, palette) {
         return palette[Math.round(rank * (palette.length - 1))];
     });
 }
+
+{% if cilindro_leituras_values %}
 new Chart(document.getElementById('cilindroChart'), {
     type: 'doughnut',
     data: {
@@ -261,7 +382,13 @@ new Chart(document.getElementById('cilindroChart'), {
             backgroundColor: getColorByIntensity({{ cilindro_leituras_values|tojson }}, {{ paleta_cilindro|tojson }})
         }]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { padding: 15, usePointStyle: true } } } }
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            tooltip: tooltipStyle,
+            legend: { position: 'right', labels: { padding: 15, usePointStyle: true } }
+        }
+    }
 });
 {% endif %}
 
@@ -291,7 +418,10 @@ new Chart(pressaoCtx, {
     options: {
         responsive: true, maintainAspectRatio: false,
         scales: { y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' } } },
-        plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } }
+        plugins: {
+            tooltip: tooltipStyle,
+            legend: { position: 'bottom', labels: { usePointStyle: true } }
+        }
     }
 });
 {% endif %}
@@ -310,7 +440,10 @@ new Chart(document.getElementById('leiturasMesChart'), {
     },
     options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+            tooltip: tooltipStyle,
+            legend: { display: false }
+        },
         scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
     }
 });
@@ -330,7 +463,10 @@ new Chart(document.getElementById('distChart'), {
     },
     options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+            tooltip: tooltipStyle,
+            legend: { display: false }
+        },
         scales: {
             x: { title: { display: true, text: 'Nº de Elementos' } },
             y: { beginAtZero: true, ticks: { stepSize: 1 } }
@@ -338,5 +474,9 @@ new Chart(document.getElementById('distChart'), {
     }
 });
 {% endif %}
+
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
 </script>
 {% endblock %}

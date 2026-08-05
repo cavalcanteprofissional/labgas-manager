@@ -2,7 +2,32 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
-## [2.9.1] — 2026-06-29
+## [2.10.0] — 2026-08-05
+
+### Bugfix: Aviso "Nenhum cilindro cadastrado" incorreto na aba Pressão (Fase 67) 🐛
+
+- **Causa raiz**: as queries de listagem das abas não filtravam por `user_id`, enquanto o dropdown de cilindros do formulário de pressão filtrava. Um usuário sem cilindros via o aviso *"Nenhum cilindro cadastrado. Cadastre um cilindro primeiro para registrar pressões."* (dropdown vazio) ao mesmo tempo em que a tabela exibia registros de outros usuários — com o badge da coluna Cilindro caindo para o `cilindro_id` bruto (ex.: "44")
+- **`frontend/blueprints/pressao.py`**: query principal de pressões agora filtra por `user_id` para usuários não-admin
+- **`frontend/blueprints/cilindro.py`**, **`frontend/blueprints/leitura.py`**, **`frontend/blueprints/amostra.py`** (lista + dropdown de elementos), **`frontend/blueprints/elemento.py`**: mesmo filtro de isolamento por usuário nas listagens
+- **`frontend/templates/pressao.html`**: badge da coluna Cilindro usa placeholder "—" em vez de exibir o id numérico bruto quando o código não é encontrado
+- Resultado: cada usuário vê apenas os próprios dados nas abas (padrão do dashboard); desenvolvedores/administradores mantêm visão completa
+
+### Navegação (Fase 66) 🧭
+
+- Logo "LabGas" virou botão que alterna o colapso da sidebar (removeu chevron/botão dedicado e drawer mobile)
+- Animação de colapso sincronizada e mais rápida (~0.18s) com fade dos textos do menu
+- **Mobile (<768px)**: nova bottom navigation fixa com 5 slots (Dashboard + 3 primeiras abas acessíveis + "Mais") e bottom sheet "Mais" (Offcanvas `place="bottom"`) com as demais opções, Histórico, Perfil, Disclaimer, Administração e Sair
+- Footer de sessão oculto no mobile para não conflitar com a bottom nav
+- Top bar mobile simplificada (apenas a marca "LabGas")
+
+### Dashboard (KPIs e visual) 📊
+
+- Novos filtros Jinja `milhar` e `data_relativa` (`frontend/app.py`)
+- Cards de estatística com gradiente por categoria + tooltip
+- Barra de progresso de gás restante (% do total disponível) com novos KPIs `gas_total` e `gas_pct`
+- Layout da página reestruturado (`frontend/templates/dashboard.html`)
+
+
 
 ### Aba Disclaimer — Informações Legais e Autoria (Fase 62) 🆕
 

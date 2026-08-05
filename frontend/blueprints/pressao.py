@@ -248,7 +248,10 @@ def pressao_list():
             return redirect(url_for("pressao.pressao_list"))
     
     offset = (page - 1) * per_page
-    response = get_supabase_client().table("pressao").select("*", count="exact").order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
+    query = get_supabase_client().table("pressao").select("*", count="exact")
+    if not dev:
+        query = query.eq("user_id", user_id)
+    response = query.order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
     pressoes = response.data or []
     total = response.count or 0
     

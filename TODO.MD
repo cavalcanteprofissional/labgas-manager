@@ -1726,3 +1726,200 @@ O artigo científico (`latex/artigo.md` e `latex/artigo.tex`) estava desatualiza
 ### Pendente
 
 - [ ] Substituir `assinatura_thiago_placeholder.png` pela assinatura real do Thiago quando disponível
+
+## Fase 64: UI/UX — Dashboard (Melhorias Visuais) 🎨
+
+**Objetivo:** Melhorar a apresentação visual da aba Dashboard sem alterar a lógica de dados (multi-usuário, cache e cálculo de KPIs permanecem intactos).
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/templates/dashboard.html` | 🔨 Melhorias visuais (KPIs, gráficos, listas, cabeçalho) |
+| `frontend/app.py` | ✨ Novo filter `data_relativa` + `gas_pct` no `_compute_kpis` |
+| `TODO.MD` | ✅ Registro desta fase |
+
+### Mudanças Planejadas
+
+#### 1. KPI Cards (`dashboard.html:41-90`)
+- Ícone de cada entidade em destaque (grande, semitransparente) no canto do card
+- Tooltip (Bootstrap) em cada KPI explicando o cálculo (mesmo texto do README)
+- Formatação de milhar nos números (ex: `1.250`)
+- Barra de progresso em "Gás Restante" com % (litros restantes ÷ litros totais dos ativos)
+- Responsividade: `col-6 col-md-4 col-xxl-2` (substitui `col-4 col-lg-2`)
+- Hover: leve elevação + sombra
+
+#### 2. Cards de Gráfico (`dashboard.html:93-162`)
+- Gradientes inline substituídos por classes CSS reutilizáveis (bloco `{% block extra_css %}`)
+- Estados vazios aprimorados (ícone grande + mensagem centralizada)
+- Tooltips do Chart.js com melhor formatação (fundo escuro, arredondado)
+
+#### 3. Listas de Atividade (`dashboard.html:164-241`)
+- Datas relativas via novo filter Jinja (`data_relativa`): "hoje", "ontem", "há X dias"
+- Badges e espaçamento mais consistentes
+
+#### 4. Cabeçalho da Página (`dashboard.html:6-22`)
+- Subtítulo com data de atualização + botão de recarregar dados
+- Melhor alinhamento do dropdown de exportação (só admin)
+
+### Garantias
+- `canvas`, `.stat-card` e seções "Últimas Leituras / Elementos mais analisados / Últimas Amostras" permanecem no DOM (testes `test_dashboard.py`)
+- Lógica multi-usuário (filtro por `selected_user_id`) intacta
+
+### Status
+- [x] Registro do plano no TODO.MD
+- [x] Filter `data_relativa` + `gas_pct` (backend)
+- [x] KPI cards melhorados
+- [x] Cards de gráfico melhorados
+- [x] Listas de atividade melhoradas
+- [x] Cabeçalho melhorado
+- [x] Verificação visual + testes (5/5 `test_dashboard.py`; suíte 59 passed)
+
+## Fase 65: Navegação entre Abas — Sidebar Colapsável + Drawer Mobile 🧭
+
+**Objetivo:** Melhorar a navegação entre abas: sidebar fixa colapsável (rail de ícones) em desktop/tablet e drawer melhorado no mobile.
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/templates/base.html` | 🔨 CSS, estrutura do header da sidebar, top bar mobile, JS |
+| `TODO.MD` | ✅ Registro desta fase |
+
+### Decisões (confirmadas com o usuário)
+- Mobile (<768px): **drawer melhorado** (top bar fixa + auto-close + scroll lock)
+- Tablet retrato (768–991px): usa **rail de ícones** (breakpoint 992 → 768)
+
+### Mudanças Planejadas
+
+#### 1. Breakpoint 992px → 768px
+- `@media (min-width: 768px)` exibe sidebar fixa; `.mobile-toggle`/`.sidebar-overlay` ocultos em ≥768px
+- Tablet retrato passa a usar a sidebar fixa (rail de ícones)
+
+#### 2. Sidebar colapsável (desktop + tablet)
+- Nova variável `--sidebar-collapsed-width: 76px`
+- Header da sidebar flex: brand + botão colapsar (chevron)
+- `body.sidebar-collapsed`: `padding-left` 76px, `.sidebar` 76px, `a span` oculto, ícones centralizados
+- Tooltips Bootstrap nos links (placement right, container body) quando colapsado
+- Persistência em `localStorage` (`lg_sidebar_collapsed`)
+
+#### 3. Mobile drawer melhorado
+- Top bar fixa (hambúrguer + logo) substitui botão flutuante
+- Cabeçalho do drawer com botão fechar
+- Auto-close ao navegar + trava de scroll
+
+#### 4. Acessibilidade
+- `aria-expanded`, `aria-label` nos botões de toggle/colapso/fechar
+
+### Status
+- [x] Registro do plano no TODO.MD
+- [x] Breakpoint 768 + CSS do rail
+- [x] Header da sidebar (brand + colapsar + fechar)
+- [x] Top bar mobile + drawer
+- [x] JS (colapso, tooltips, persistência, auto-close, scroll lock)
+- [x] Verificação visual + testes (15 checks Playwright nas 3 viewports; `test_dashboard.py` 5/5 isolado — flake de login no harness é pré-existente, confirmado via `git stash`)
+
+## Fase 66: Navegação — Logo como Toggle + Bottom Navigation Mobile 🧭
+
+**Objetivo:** Refinar a navegação: no desktop/tablet a logo "LabGas" vira o botão de expandir/colapsar (sem seta indicadora, sem sublinhado) com animação mais rápida e sincronizada; no mobile, substituir o drawer lateral por **bottom navigation** com bottom sheet "Mais" e ocultar o footer de sessão.
+
+### Arquivos
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/templates/base.html` | 🔨 CSS, HTML (sidebar header, top bar, bottom nav, offcanvas), JS |
+| `TODO.MD` | ✅ Registro desta fase |
+
+### Decisões (confirmadas com o usuário)
+- Desktop/tablet: **logo "LabGas" é o toggle** de colapso (remove chevron e `updateSidebarCollapseIcon`)
+- Animação: ~0.18s, com `padding-left` do body sincronizado + fade dos spans (sem `display:none` brusco)
+- Mobile (<768px): **bottom navigation** (5 slots) + **bottom sheet "Mais"** (Offcanvas Bootstrap `place="bottom"`)
+- Conflito com o footer de sessão no mobile: **ocultar `.session-footer`** em <768px (nome/timer seguem no desktop/tablet)
+
+### Mudanças Planejadas
+
+#### 1. Logo "LabGas" como botão de colapso (desktop/tablet)
+- `<a class="sidebar-brand" href>` → `<button type="button" class="sidebar-brand" onclick="toggleSidebarCollapse()">`
+- Remove `.sidebar-btn` desktop (chevron `#collapseIcon`) e `updateSidebarCollapseIcon()`
+- Reset de botão no `.sidebar-brand`: `background: transparent; border: none; padding: 0; text-align: left; text-decoration: none` (sem sublinhado)
+- `applySidebarCollapsed` atualiza apenas `aria-expanded` do brand; guarda `if (window.innerWidth < 768) return;` em `toggleSidebarCollapse()`
+- Logo deixa de navegar para o Dashboard (permanece como aba no menu)
+
+#### 2. Animação mais rápida e sincronizada
+- `.sidebar`: `transition: transform .3s ease, width .18s ease`
+- `body`: `transition: padding-left .18s ease`
+- Spans da brand + nav: `opacity: 0; max-width: 0; overflow: hidden` com `transition: opacity .12s ease, max-width .18s ease` (substitui `display: none`)
+
+#### 3. Mobile: bottom navigation (substitui drawer)
+- Remove: hambúrguer `.mobile-toggle`, `.sidebar-overlay`, drawer lateral (sidebar `display:none` no mobile), `toggleSidebar()`, auto-close, scroll lock
+- Top bar mobile simplificada: só a marca "LabGas"
+- Bottom nav fixa (56px, fundo `--primary-darkest`), 5 slots:
+  1. Dashboard (sempre)
+  2–4. Primeiras 3 abas acessíveis na prioridade [Cilindros, Pressão, Elementos, Leitura, Amostras] (via Jinja + `pode_acessar_aba`/admin)
+  5. **Mais** → bottom sheet (Offcanvas `place="bottom"`) com: abas restantes + Histórico + Perfil + Disclaimer + Administração (admin) + Sair
+- Item ativo destacado; `padding-bottom` no `body` no mobile para não esconder conteúdo
+
+#### 4. Footer de sessão
+- `@media (max-width: 767px) { .session-footer { display: none; } }`
+
+### Status
+- [x] Registro do plano no TODO.MD
+- [x] Logo como toggle (remover chevron/sublinhado + guards JS)
+- [x] Animação sincronizada (~0.18s, fade dos spans)
+- [x] Bottom nav + bottom sheet "Mais" (Jinja/permissões)
+- [x] Remoção do drawer mobile + top bar simplificada + footer oculto
+- [x] Verificação visual + testes (25/25 Playwright nas 3 viewports; `test_dashboard.py` 5/5, `test_session_footer.py` 4/4, `test_auth.py` isolados — flake de login/timer no harness é pré-existente)
+
+## Fase 67: Isolamento por usuário nas abas de listagem
+- Decisão do usuário: cada usuário vê só os próprios dados (padrão do dashboard); dev continua vendo tudo. Escopo: todas as 5 abas.
+- **Causa raiz do bug "Pressão 44"**: dropdown de cilindros filtra por `user_id`, mas as queries de listagem das abas não filtram → usuário sem cilindros vê pressões/cilindros de outros usuários, com badge caindo para o `cilindro_id` bruto ("44").
+
+### Mudanças Planejadas
+
+#### 1. Filtrar query principal de listagem por `user_id` (não-dev)
+Padrão (cliente anon atual + `.eq` condicional):
+```python
+query = get_supabase_client().table("X").select("*", count="exact")
+if not dev:
+    query = query.eq("user_id", user_id)
+response = query.order(...).range(offset, offset + per_page - 1).execute()
+```
+- `pressao.py:251` — `table("pressao")`, order `created_at` desc
+- `cilindro.py:256` — `table("cilindro")`, order `created_at` desc
+- `leitura.py:239` — `table("leitura")`, order `data` desc
+- `amostra.py:240` — `table("amostra")`, order `numero_amostra` desc
+- `elemento.py:185` — `table("elemento")`, order `nome`
+
+#### 2. Dropdown de elementos em `amostra.py:261`
+- `elementos_disponiveis` sem filtro → adicionar `.eq("user_id", user_id)` para não-dev (mesma inconsistência do `pressao.py:27`)
+
+#### 3. Badge "44" em `pressao.html`
+- Linhas `109` e `197`: `{{ p.cilindro_codigo or p.cilindro_id }}` → `{{ p.cilindro_codigo or '—' }}`
+
+### Status
+- [x] Registro do plano no TODO.MD
+- [x] Filtro por usuário em `pressao.py` + `cilindro.py`
+- [x] Filtro por usuário em `leitura.py` + `amostra.py` (lista + dropdown) + `elemento.py`
+- [x] Badge "44" → placeholder em `pressao.html`
+- [ ] Verificação (adiada a pedido do usuário; `py_compile` OK nos 5 blueprints): Playwright (usuário sem dados vê abas vazias; dev vê tudo) + testes isolados (`test_pressao`, `test_cilindro`, `test_leitura`, `test_amostra`, `test_elemento`, `test_dashboard`)
+
+## Fase 68: Filtros e busca — correções e melhorias
+
+### Mudanças Planejadas
+
+1. **Filtro da aba Pressão** — o seletor de cilindros não está funcionando corretamente: somente a opção "Todos os cilindros" filtra. Corrigir o filtro por cilindro (e demais campos) na lista de pressões.
+
+2. **Filtro de elementos na aba Pressão** — adicionar um menu seletor de elementos no filtro da aba Pressão (mesmo padrão do seletor de cilindros), listando somente os elementos do usuário.
+
+3. **Filtro da aba Leitura** — corrigir o filtro (mesmo problema da aba Pressão) **e otimizar a query**: está muito lenta. Avaliar uso dos índices existentes (`idx_leitura_user_id`, `idx_leitura_cilindro_id`, `idx_leitura_elemento_id`, `idx_leitura_data`) e reduzir `select("*")` para as colunas necessárias.
+
+4. **Filtro da aba Amostras** — adicionar filtro de busca/filtragem (equivalente ao padrão das demais abas).
+
+5. **Placeholder do filtro da aba Histórico** — especificar melhor o texto, ex.: "Busque por data, nome, etc..." (atualmente vago).
+
+### Status
+- [ ] Filtro Pressão funcionando (todos os campos, não só "Todos os cilindros")
+- [ ] Seletor de elementos no filtro da aba Pressão
+- [ ] Filtro Leitura corrigido + query otimizada
+- [ ] Filtro na aba Amostras
+- [ ] Placeholder do Histórico melhorado

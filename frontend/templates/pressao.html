@@ -106,7 +106,7 @@
                     <tr>
                         <td><input type="checkbox" name="pressao_ids" value="{{ p.id }}" class="item-checkbox"></td>
                         <td>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ p.cilindro_codigo or p.cilindro_id }}</span>
+                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ p.cilindro_codigo or '—' }}</span>
                         </td>
                         <td>
                             <span class="badge bg-{{ 'danger' if p.pressao > 2.5 else 'success' if p.pressao < 0.5 else 'warning' }}">
@@ -194,7 +194,7 @@
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir o registro de pressão do cilindro <strong>{{ p.cilindro_codigo or p.cilindro_id }}</strong>?</p>
+                                    <p>Tem certeza que deseja excluir o registro de pressão do cilindro <strong>{{ p.cilindro_codigo or '—' }}</strong>?</p>
                                     <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
                                 </div>
                                 <div class="modal-footer">
