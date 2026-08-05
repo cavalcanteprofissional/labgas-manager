@@ -56,7 +56,7 @@ def test_edit_modal_preenche_campos(login, page, supabase_admin, test_user_id,
         "amostra_id": amostra_id, "elemento_id": elem_id,
     }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=100")
     page.wait_for_selector("body")
     page.locator(f"button[data-bs-target='#editModal{amostra_id}']").click()
     page.wait_for_timeout(1000)
@@ -88,7 +88,7 @@ def test_edit_modal_valida_elemento(login, page, supabase_admin, test_user_id,
         "amostra_id": amostra_id, "elemento_id": elem_id,
     }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=101")
     page.wait_for_selector("body")
     page.locator(f"button[data-bs-target='#editModal{amostra_id}']").click()
     page.wait_for_timeout(1000)
@@ -117,7 +117,7 @@ def test_edit_modal_submit_atualiza(login, page, supabase_admin, test_user_id,
         "amostra_id": amostra_id, "elemento_id": elem_id,
     }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=102")
     page.wait_for_selector("body")
     page.locator(f"button[data-bs-target='#editModal{amostra_id}']").click()
     page.wait_for_timeout(1000)
@@ -128,6 +128,8 @@ def test_edit_modal_submit_atualiza(login, page, supabase_admin, test_user_id,
     page.wait_for_timeout(3000)
     assert "/amostras" in page.url
 
+    page.goto("http://localhost:5000/amostras?q=102")
+    page.wait_for_selector("body")
     body = page.text_content("body")
     assert "99" in body
 
@@ -147,7 +149,7 @@ def test_delete_modal_exclui(login, page, supabase_admin, test_user_id,
         "amostra_id": amostra_id, "elemento_id": elem_id,
     }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=103")
     page.wait_for_selector("body")
     page.locator(f"button[data-bs-target='#deleteModal{amostra_id}']").click()
     page.wait_for_timeout(1000)
@@ -179,7 +181,7 @@ def test_delete_modal_cancela(login, page, supabase_admin, test_user_id,
         "amostra_id": amostra_id, "elemento_id": elem_id,
     }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=104")
     page.wait_for_selector("body")
     page.locator(f"button[data-bs-target='#deleteModal{amostra_id}']").click()
     page.wait_for_timeout(1000)
@@ -202,7 +204,7 @@ def test_bulk_delete_modal(login, page, supabase_admin, test_user_id,
     ids = []
     for i in range(2):
         a = supabase_admin.table("amostra").insert({
-            "numero_amostra": 200 + i, "lote": 50 + i, "user_id": test_user_id,
+            "numero_amostra": 200 + i, "lote": 7777, "user_id": test_user_id,
         }).execute()
         aid = a.data[0]["id"]
         ids.append(aid)
@@ -210,7 +212,7 @@ def test_bulk_delete_modal(login, page, supabase_admin, test_user_id,
             "amostra_id": aid, "elemento_id": elem_id,
         }).execute()
 
-    page.goto("http://localhost:5000/amostras")
+    page.goto("http://localhost:5000/amostras?q=7777")
     page.wait_for_selector("body")
 
     for aid in ids:

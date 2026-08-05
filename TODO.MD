@@ -1951,7 +1951,9 @@ As implementações das Fases 66 (navegação), 67 (isolamento por usuário nas 
 - Observar o flake pré-existente de login/timer no harness combinado (rodar suítes isoladas quando necessário)
 
 ### Status
-- [ ] Revisão dos testes de dashboard (KPIs/filtros)
-- [ ] Ajuste dos testes das abas (isolamento por usuário)
-- [ ] Ajuste dos testes de navegação/footer (Fase 66)
-- [ ] Suíte global validada
+- [x] Revisão dos testes de dashboard (KPIs/filtros) — `test_dashboard.py` (5 testes) OK sem alterações
+- [x] Ajuste dos testes das abas (isolamento por usuário) — `test_amostra.py` modais ajustados para usar o filtro `q` (usuário dev vê todos os dados; amostra criada com numeração baixa ficava fora da página 1)
+- [x] Ajuste dos testes de navegação/footer (Fase 66) — `test_session_footer.py` (4 testes) OK sem alterações
+- [x] Suíte global validada (isolada por arquivo; flake de rede/Supabase pré-existente reaproveitado com rerun):
+  - `test_pressao` (5 com modais), `test_leitura` (7 com modais), `test_amostra` (8+1 flake, rerun OK), `test_cilindro`+`test_elemento` (12 com modais), `test_dashboard` (5), `test_session_footer` (4), `test_auth` (7), `test_admin` (2), `test_backup` (27), `test_export` (5 com `--run-export`)
+- [x] Smoke test HTTP das rotas com filtros Fase 68 (inclui `?page=999` → sem 416)

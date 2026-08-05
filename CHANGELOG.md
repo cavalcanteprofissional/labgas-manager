@@ -4,6 +4,11 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 
 ## [2.11.0] — 2026-08-05
 
+### Testes ajustados à Fase 68/69 🧪
+
+- `test_amostra.py`: testes de modal (editar/validar/submeter/excluir/bulk) agora navegam com o filtro `q` (`?q=<n°>`), garantindo que a amostra recém-criada apareça na página 1 mesmo com o usuário dev vendo todos os dados
+- Suíte validada isolada por arquivo: pressão, leitura, amostra, cilindro, elemento (com `--run-modais`), dashboard, session_footer, auth, admin, backup, export (com `--run-export`)
+
 ### Filtros e busca server-side nas abas (Fase 68) 🔍
 
 - Filtros movidos de JS client-side (ocultava linhas via `display:none`, só filtravam a página corrente — quebrava com paginação server-side) para **GET params processados no backend**, aproveitando os índices existentes
