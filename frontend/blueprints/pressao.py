@@ -1,4 +1,5 @@
 # Pressao blueprint - CRUD operations
+import re
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
@@ -6,7 +7,7 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
 
 pressao_bp = Blueprint('pressao', __name__)
@@ -247,18 +248,66 @@ def pressao_list():
 
             return redirect(url_for("pressao.pressao_list"))
     
-    offset = (page - 1) * per_page
-    query = get_supabase_client().table("pressao").select("*", count="exact")
-    if not dev:
-        query = query.eq("user_id", user_id)
-    response = query.order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
-    pressoes = response.data or []
-    total = response.count or 0
-    
+    q = request.args.get("q", "").strip()
+    cilindro_filtro = request.args.get("cilindro_id", "").strip()
+    data_inicio = request.args.get("data_inicio", "").strip()
+    data_fim = request.args.get("data_fim", "").strip()
+
+    def montar(query):
+        if q:
+            ids = [c["id"] for c in cilindro_list if q.lower() in c["codigo"].lower()]
+            clauses = []
+            if ids:
+                clauses.append(f"cilindro_id.in.({','.join(str(i) for i in ids)})")
+            data_normalizada = None
+            if re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", q):
+                try:
+                    data_normalizada = datetime.strptime(q, "%d/%m/%Y").strftime("%Y-%m-%d")
+                except ValueError:
+                    data_normalizada = None
+            if data_normalizada:
+                clauses.append(f"data.eq.{data_normalizada}")
+            if clauses:
+                query = query.or_(",".join(clauses))
+            else:
+                query = query.eq("id", 0)
+
+        if cilindro_filtro:
+            try:
+                query = query.eq("cilindro_id", int(cilindro_filtro))
+            except (ValueError, TypeError):
+                pass
+
+        if data_inicio:
+            try:
+                datetime.strptime(data_inicio, "%Y-%m-%d")
+                query = query.gte("data", data_inicio)
+            except ValueError:
+                pass
+
+        if data_fim:
+            try:
+                datetime.strptime(data_fim, "%Y-%m-%d")
+                query = query.lte("data", data_fim)
+            except ValueError:
+                pass
+
+    pressoes, total, page, pages = consultar_paginado(
+        get_supabase_client(),
+        "pressao",
+        "id,cilindro_id,pressao,temperatura,data,hora,user_id,created_at",
+        page,
+        per_page,
+        dev,
+        user_id,
+        montar,
+        ordem_coluna="created_at",
+        desc=True,
+    )
+
     for p in pressoes:
         p["cilindro_codigo"] = cilindro_dict_lookup.get(p.get("cilindro_id"), "")
     
-    pages = (total + per_page - 1) // per_page if total > 0 else 1
     end_page = min(page * per_page, total) if total > 0 else 0
     max_pages = min(pages, 10)
         

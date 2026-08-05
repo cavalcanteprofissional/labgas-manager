@@ -19,11 +19,17 @@ def list():
     
     page = int(request.args.get("page", 1))
     per_page = 20
+
+    def construir():
+        return get_supabase_client().table("historico_log").select("*", count="exact")
+
+    total = (construir().execute().count) or 0
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, pages))
     offset = (page - 1) * per_page
     
-    response = get_supabase_client().table("historico_log").select("*", count="exact").order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
+    response = construir().order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
     historico_log = response.data or []
-    total = response.count or 0
     
     all_user_ids = {h.get("user_id") for h in historico_log if h.get("user_id")}
     user_map = buscar_perfis_usuarios(all_user_ids)

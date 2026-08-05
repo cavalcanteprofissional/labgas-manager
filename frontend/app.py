@@ -201,6 +201,17 @@ def inject_user_info():
 
     cached = session.get('cached_user_info', {})
 
+    def qs(*exclude):
+        """Query string de filtros (GET) preservada na paginação, sem page/per_page."""
+        args = {}
+        for k, v in request.args.items():
+            if k in ('page', 'per_page') or k in exclude:
+                continue
+            args[k] = v
+        if not args:
+            return ""
+        return "&" + "&".join(f"{k}={v}" for k, v in args.items())
+
     return dict(
         is_admin=cached.get('is_admin', False),
         is_dev=cached.get('is_dev', False),
@@ -211,6 +222,7 @@ def inject_user_info():
         ICON_TIPO=ICON_TIPO,
         COR_TIPO=COR_TIPO,
         session_remaining_seconds=remaining,
+        qs=qs,
     )
 
 

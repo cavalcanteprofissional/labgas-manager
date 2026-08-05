@@ -62,24 +62,43 @@
 
 <div class="card mb-4">
     <div class="card-header bg-light">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" id="searchLeitura" class="form-control" placeholder="Buscar por cilindro ou elemento...">
+        <form method="GET" class="row g-2 align-items-center">
+            <div class="col-12 col-md-3">
+                <input type="text" name="q" class="form-control" placeholder="Busque por código do cilindro (ex: CIL-001) ou nome do elemento..." value="{{ request.args.get('q', '') }}">
             </div>
-            <div class="col-md-5">
-                <select id="filterCilindro" class="form-select">
+            <div class="col-12 col-md-2">
+                <select name="cilindro_id" class="form-select">
                     <option value="">Todos os Cilindros</option>
                     {% for c in cilindro %}
-                    <option value="{{ c.codigo }}">{{ c.codigo }}</option>
+                    <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.codigo }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-outline-secondary w-100" onclick="filterLeitura()">
-                    <i class="bi bi-funnel"></i> Filtrar
-                </button>
+            <div class="col-12 col-md-2">
+                <select name="elemento_id" class="form-select">
+                    <option value="">Todos os Elementos</option>
+                    {% for e in elementos %}
+                    <option value="{{ e.id }}" {% if request.args.get('elemento_id')|string == e.id|string %}selected{% endif %}>{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
             </div>
-        </div>
+            <div class="col-6 col-md-2">
+                <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial">
+            </div>
+            <div class="col-6 col-md-2">
+                <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final">
+            </div>
+            <div class="col-12 col-md-1 d-flex gap-2">
+                <button class="btn btn-outline-secondary w-100" type="submit">
+                    <i class="bi bi-funnel"></i>
+                </button>
+                {% if request.args %}
+                <a href="?" class="btn btn-outline-secondary" title="Limpar filtros">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
     </div>
 </div>
 
@@ -221,18 +240,18 @@
             </div>
             <nav>
                 <ul class="pagination mb-0">
-                    <li class="page-item {{ 'disabled' if page == 1 }}"><a class="page-link" href="?page={{ page-1 }}&per_page={{ per_page }}">Anterior</a></li>
+                    <li class="page-item {{ 'disabled' if page == 1 }}"><a class="page-link" href="?page={{ page-1 }}&per_page={{ per_page }}{{ qs() }}">Anterior</a></li>
                     {% for p in range(1, max_pages + 1) %}
-                    <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}">{{ p }}</a></li>
+                    <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}{{ qs() }}">{{ p }}</a></li>
                     {% endfor %}
                     {% if pages > 10 %}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <li class="page-item {{ 'active' if page == pages }}"><a class="page-link" href="?page={{ pages }}&per_page={{ per_page }}">{{ pages }}</a></li>
+                    <li class="page-item {{ 'active' if page == pages }}"><a class="page-link" href="?page={{ pages }}&per_page={{ per_page }}{{ qs() }}">{{ pages }}</a></li>
                     {% endif %}
-                    <li class="page-item {{ 'disabled' if page == pages }}"><a class="page-link" href="?page={{ page+1 }}&per_page={{ per_page }}">Próxima</a></li>
+                    <li class="page-item {{ 'disabled' if page == pages }}"><a class="page-link" href="?page={{ page+1 }}&per_page={{ per_page }}{{ qs() }}">Próxima</a></li>
                 </ul>
             </nav>
-            <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?page=1&per_page='+this.value">
+            <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?page=1&per_page='+this.value+'{{ qs() }}'">
                 <option value="10" {{ 'selected' if per_page == 10 }}>10 por página</option>
                 <option value="25" {{ 'selected' if per_page == 25 }}>25 por página</option>
                 <option value="50" {{ 'selected' if per_page == 50 }}>50 por página</option>
@@ -296,25 +315,6 @@ function autoFormatTime(el, digits) {
 
 autoFormatTime(document.querySelector('#createForm input[name="tempo_chama"]'), 6);
 document.querySelectorAll('.modal input[name="tempo_chama"]').forEach(function (el) { autoFormatTime(el, 6); });
-
-function filterLeitura() {
-    const search = document.getElementById('searchLeitura').value.toLowerCase();
-    const cilindro = document.getElementById('filterCilindro').value;
-    
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        const codigo = row.cells[3].textContent.toLowerCase();
-        const elemento = row.cells[4].textContent.toLowerCase();
-        
-        let show = true;
-        if (search && !codigo.includes(search) && !elemento.includes(search)) show = false;
-        if (cilindro && codigo !== cilindro.toLowerCase()) show = false;
-        
-        row.style.display = show ? '' : 'none';
-    });
-}
-
-document.getElementById('searchLeitura').addEventListener('keyup', filterLeitura);
 
 document.getElementById('selectAll').addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.item-checkbox');

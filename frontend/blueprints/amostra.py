@@ -3,8 +3,9 @@ from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
+import re
 
 amostra_bp = Blueprint("amostra", __name__)
 
@@ -236,13 +237,40 @@ def list():
 
             return redirect(url_for("amostra.list"))
 
-    offset = (page - 1) * per_page
-    query = supabase.table("amostra").select("*", count="exact")
-    if not dev:
-        query = query.eq("user_id", user_id)
-    response = query.order("numero_amostra", desc=True).range(offset, offset + per_page - 1).execute()
-    amostras = response.data or []
-    total = response.count or 0
+    q = request.args.get("q", "").strip()
+    elemento_filtro = request.args.get("elemento_id", "").strip()
+
+    def montar(query):
+        if q:
+            if re.fullmatch(r"\d+", q):
+                query = query.or_(f"numero_amostra.eq.{int(q)},lote.eq.{int(q)}")
+            else:
+                query = query.eq("id", 0)
+
+        if elemento_filtro:
+            try:
+                elem_id_int = int(elemento_filtro)
+                ae_rows = supabase.table("amostra_elemento").select("amostra_id").eq("elemento_id", elem_id_int).execute().data or []
+                amostra_ids = [r["amostra_id"] for r in ae_rows]
+                if amostra_ids:
+                    query = query.in_("id", amostra_ids)
+                else:
+                    query = query.eq("id", 0)
+            except (ValueError, TypeError):
+                pass
+
+    amostras, total, page, pages = consultar_paginado(
+        supabase,
+        "amostra",
+        "id,numero_amostra,lote,user_id",
+        page,
+        per_page,
+        dev,
+        user_id,
+        montar,
+        ordem_coluna="numero_amostra",
+        desc=True,
+    )
 
     amostra_ids = [a["id"] for a in amostras]
     elementos_map = {a["id"]: [] for a in amostras}
@@ -274,7 +302,6 @@ def list():
             vistos.add(l)
             lotes_vistos.append(l)
 
-    pages = (total + per_page - 1) // per_page
     end_page = min(page * per_page, total)
     max_pages = min(pages, 10)
 

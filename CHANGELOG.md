@@ -2,6 +2,19 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.11.0] — 2026-08-05
+
+### Filtros e busca server-side nas abas (Fase 68) 🔍
+
+- Filtros movidos de JS client-side (ocultava linhas via `display:none`, só filtravam a página corrente — quebrava com paginação server-side) para **GET params processados no backend**, aproveitando os índices existentes
+- **`frontend/app.py`**: novo helper `qs()` no context processor — preserva os filtros na paginação (exclui `page`/`per_page`)
+- **`frontend/blueprints/helpers.py`**: novo `consultar_paginado()` — conta primeiro e limita a página ao intervalo existente, evitando o erro **416 "JSON could not be generated"** do PostgREST (`count=exact` + `range` além do fim), que também derrubava páginas fora de alcance (`?page=N`) em pressão/leitura/amostra/histórico
+- **Pressão** (`pressao.py` + `pressao.html`): filtros `q` (código do cilindro ou data `dd/mm/aaaa`), `cilindro_id`, `data_inicio`, `data_fim`; placeholder "Busque por código do cilindro (ex: CIL-001) ou data (16/06/2025)"; JS `filterPressao` removido
+- **Leitura** (`leitura.py` + `leitura.html`): filtros `q` (código do cilindro ou nome do elemento), `cilindro_id`, `elemento_id`, `data_inicio`, `data_fim`; select reduzido de `*` para `id,data,tempo_chama,cilindro_id,elemento_id,quantidade,user_id`; JS `filterLeitura` removido
+- **Amostras** (`amostra.py` + `amostra.html`): filtros `q` (N° da amostra ou lote) e `elemento_id` (via `amostra_elemento`); select reduzido para `id,numero_amostra,lote,user_id`
+- **Histórico** (`historico.html`): placeholder "Busque por ação, tabela, detalhes ou responsável..." (antes "Buscar...")
+- Nota: filtro de elemento na aba Pressão **não** foi adicionado por decisão do usuário — a tabela `pressao` não possui `elemento_id` (ver TODO.MD Fase 68)
+
 ## [2.10.0] — 2026-08-05
 
 ### Bugfix: Aviso "Nenhum cilindro cadastrado" incorreto na aba Pressão (Fase 67) 🐛

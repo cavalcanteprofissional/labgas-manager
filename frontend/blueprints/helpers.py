@@ -106,6 +106,32 @@ def pode_acessar_aba(aba):
     return habilitar_abas.get(aba, True)
 
 
+def consultar_paginado(supabase, tabela, cols, page, per_page, dev, user_id, montar, ordem_coluna=None, desc=True):
+    """Consulta paginada segura: conta primeiro e limita a página ao intervalo existente.
+
+    Evita o erro 416 (\"JSON could not be generated\") do PostgREST quando
+    count=exact é combinado com range além do fim do resultado.
+    `montar` é um callable que aplica os filtros adicionais ao builder.
+    """
+    def construir():
+        q = supabase.table(tabela).select(cols, count="exact")
+        if not dev:
+            q = q.eq("user_id", user_id)
+        montar(q)
+        return q
+
+    total = (construir().execute().count) or 0
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, pages))
+    offset = (page - 1) * per_page
+
+    q = construir()
+    if ordem_coluna:
+        q = q.order(ordem_coluna, desc=desc)
+    response = q.range(offset, offset + per_page - 1).execute()
+    return (response.data or []), total, page, pages
+
+
 def get_habilitar_abas(user_id=None):
     """Retorna o dicionário de abas habilitadas para o usuário - usa cache da sessão"""
     if user_id is None:

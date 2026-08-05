@@ -1,11 +1,12 @@
 from datetime import datetime
+import re
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int, safe_float, formatar_tempo_chama
 from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
-from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
+from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
 
 leitura_bp = Blueprint('leitura', __name__)
@@ -235,21 +236,71 @@ def leitura_list():
 
             return redirect(url_for("leitura.leitura_list"))
     
-    offset = (page - 1) * per_page
-    query = get_supabase_client().table("leitura").select("*", count="exact")
-    if not dev:
-        query = query.eq("user_id", user_id)
-    response = query.order("data", desc=True).range(offset, offset + per_page - 1).execute()
-    leituras = response.data or []
-    total = response.count or 0
-    
-    pages = (total + per_page - 1) // per_page
-    end_page = min(page * per_page, total)
-    max_pages = min(pages, 10)
-    
+    q = request.args.get("q", "").strip()
+    cilindro_filtro = request.args.get("cilindro_id", "").strip()
+    elemento_filtro = request.args.get("elemento_id", "").strip()
+    data_inicio = request.args.get("data_inicio", "").strip()
+    data_fim = request.args.get("data_fim", "").strip()
+
+    def montar(query):
+        if q:
+            cil_ids = [c["id"] for c in cilindro if q.lower() in c["codigo"].lower()]
+            elem_ids = [e["id"] for e in elementos if q.lower() in e["nome"].lower()]
+            clauses = []
+            if cil_ids:
+                clauses.append(f"cilindro_id.in.({','.join(str(i) for i in cil_ids)})")
+            if elem_ids:
+                clauses.append(f"elemento_id.in.({','.join(str(i) for i in elem_ids)})")
+            if clauses:
+                query = query.or_(",".join(clauses))
+            else:
+                query = query.eq("id", 0)
+
+        if cilindro_filtro:
+            try:
+                query = query.eq("cilindro_id", int(cilindro_filtro))
+            except (ValueError, TypeError):
+                pass
+
+        if elemento_filtro:
+            try:
+                query = query.eq("elemento_id", int(elemento_filtro))
+            except (ValueError, TypeError):
+                pass
+
+        if data_inicio:
+            try:
+                datetime.strptime(data_inicio, "%Y-%m-%d")
+                query = query.gte("data", data_inicio)
+            except ValueError:
+                pass
+
+        if data_fim:
+            try:
+                datetime.strptime(data_fim, "%Y-%m-%d")
+                query = query.lte("data", data_fim)
+            except ValueError:
+                pass
+
+    leituras, total, page, pages = consultar_paginado(
+        get_supabase_client(),
+        "leitura",
+        "id,data,tempo_chama,cilindro_id,elemento_id,quantidade,user_id",
+        page,
+        per_page,
+        dev,
+        user_id,
+        montar,
+        ordem_coluna="data",
+        desc=True,
+    )
+
     for leitura in leituras:
         leitura["cilindro_nome"] = cilindro_dict.get(leitura.get("cilindro_id"), "")
         leitura["elemento_nome"] = elemento_dict.get(leitura.get("elemento_id"), "")
+    
+    end_page = min(page * per_page, total)
+    max_pages = min(pages, 10)
     
     return render_template(
         "leitura.html", 

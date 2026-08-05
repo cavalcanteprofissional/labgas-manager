@@ -1909,7 +1909,7 @@ response = query.order(...).range(offset, offset + per_page - 1).execute()
 
 1. **Filtro da aba Pressão** — o seletor de cilindros não está funcionando corretamente: somente a opção "Todos os cilindros" filtra. Corrigir o filtro por cilindro (e demais campos) na lista de pressões.
 
-2. **Filtro de elementos na aba Pressão** — adicionar um menu seletor de elementos no filtro da aba Pressão (mesmo padrão do seletor de cilindros), listando somente os elementos do usuário.
+2. **Filtro de elementos na aba Pressão** — ~~adicionar um menu seletor de elementos no filtro da aba Pressão (mesmo padrão do seletor de cilindros), listando somente os elementos do usuário~~. **DECISÃO DO USUÁRIO: item removido** — a tabela `pressao` não possui `elemento_id` (schema.sql:42-51), então o filtro é impossível sem mudança de schema. Em seu lugar: melhorar o placeholder do filtro pesquisador e corrigir o funcionamento do filtro.
 
 3. **Filtro da aba Leitura** — corrigir o filtro (mesmo problema da aba Pressão) **e otimizar a query**: está muito lenta. Avaliar uso dos índices existentes (`idx_leitura_user_id`, `idx_leitura_cilindro_id`, `idx_leitura_elemento_id`, `idx_leitura_data`) e reduzir `select("*")` para as colunas necessárias.
 
@@ -1917,12 +1917,24 @@ response = query.order(...).range(offset, offset + per_page - 1).execute()
 
 5. **Placeholder do filtro da aba Histórico** — especificar melhor o texto, ex.: "Busque por data, nome, etc..." (atualmente vago).
 
+### Implementação
+
+- Filtros movidos de JS client-side (`display:none`, só filtrava a página corrente) para **GET params no backend**, usando os índices existentes.
+- Helper `qs()` no context_processor (`app.py`) preserva os filtros na paginação (exclui `page`/`per_page`).
+- Helper `consultar_paginado` (`blueprints/helpers.py`): conta primeiro e limita a página ao intervalo existente, evitando o erro **416 "JSON could not be generated"** do PostgREST (count=exact + range além do fim), que afetava também `?page=N` fora do alcance em pressão/leitura/amostra/histórico.
+- **Pressão** (`pressao.py` + `pressao.html`): filtros `q` (código do cilindro ou data dd/mm/aaaa), `cilindro_id`, `data_inicio`, `data_fim`; placeholder "Busque por código do cilindro (ex: CIL-001) ou data (16/06/2025)". JS `filterPressao` removido.
+- **Leitura** (`leitura.py` + `leitura.html`): filtros `q` (código do cilindro ou nome do elemento), `cilindro_id`, `elemento_id`, `data_inicio`, `data_fim`; select reduzido de `*` para `id,data,tempo_chama,cilindro_id,elemento_id,quantidade,user_id`. JS `filterLeitura` removido.
+- **Amostras** (`amostra.py` + `amostra.html`): filtros `q` (N° da amostra ou lote, numérico) e `elemento_id` (via `amostra_elemento`); select reduzido para `id,numero_amostra,lote,user_id`.
+- **Histórico** (`historico.html`): placeholder "Busque por ação, tabela, detalhes ou responsável...".
+
 ### Status
-- [ ] Filtro Pressão funcionando (todos os campos, não só "Todos os cilindros")
-- [ ] Seletor de elementos no filtro da aba Pressão
-- [ ] Filtro Leitura corrigido + query otimizada
-- [ ] Filtro na aba Amostras
-- [ ] Placeholder do Histórico melhorado
+- [x] Filtro Pressão funcionando (todos os campos, não só "Todos os cilindros")
+- [x] Item 2 substituído (placeholder melhorado + filtro pesquisador corrigido) — ver decisão acima
+- [x] Filtro Leitura corrigido + query otimizada
+- [x] Filtro na aba Amostras
+- [x] Placeholder do Histórico melhorado
+- [x] Paginação segura (fix 416) em pressão/leitura/amostra/histórico
+- [x] Smoke test HTTP das rotas (incluindo `?page=999`)
 
 ## Fase 69: Ajuste dos testes (unitários e globais) às mudanças executadas
 
