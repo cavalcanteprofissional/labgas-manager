@@ -1901,7 +1901,10 @@ response = query.order(...).range(offset, offset + per_page - 1).execute()
 - [x] Filtro por usuário em `pressao.py` + `cilindro.py`
 - [x] Filtro por usuário em `leitura.py` + `amostra.py` (lista + dropdown) + `elemento.py`
 - [x] Badge "44" → placeholder em `pressao.html`
-- [ ] Verificação (adiada a pedido do usuário; `py_compile` OK nos 5 blueprints): Playwright (usuário sem dados vê abas vazias; dev vê tudo) + testes isolados (`test_pressao`, `test_cilindro`, `test_leitura`, `test_amostra`, `test_elemento`, `test_dashboard`)
+- [x] Verificação concluída via Playwright:
+  - Usuário sem dados (`isolacao@labgas.com`, role `usuario`): todas as abas (pressão, leitura, amostras, cilindros, elementos) exibem 0 linhas — mesmo com dados de outros usuários no banco. Histórico segue global (log de atividades compartilhado, por design)
+  - Dev (`teste@labgas.com`, role `dev`): vê dados em todas as abas
+  - Smoke test HTTP das rotas com filtros Fase 68 (inclui `?page=999` → sem 416)
 
 ## Fase 68: Filtros e busca — correções e melhorias
 

@@ -4,6 +4,11 @@ Todas as alterações notáveis no LabGas Manager serão documentadas neste arqu
 
 ## [2.11.0] — 2026-08-05
 
+### Verificação do isolamento por usuário (Fase 67) ✅
+
+- Confirmado via Playwright: usuário `usuario` sem dados vê 0 linhas em todas as abas (pressão, leitura, amostras, cilindros, elementos) mesmo com dados de outros usuários no banco; usuário `dev` vê tudo
+- Histórico permanece global (log de atividades compartilhado, por design)
+
 ### Testes ajustados à Fase 68/69 🧪
 
 - `test_amostra.py`: testes de modal (editar/validar/submeter/excluir/bulk) agora navegam com o filtro `q` (`?q=<n°>`), garantindo que a amostra recém-criada apareça na página 1 mesmo com o usuário dev vendo todos os dados
