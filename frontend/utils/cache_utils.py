@@ -45,6 +45,9 @@ def invalidate_cache(prefix, user_id=None):
 def invalidate_user_caches(user_id):
     for prefix in ["dashboard", "cilindro", "elemento", "leitura", "pressao", "amostra"]:
         invalidate_cache(prefix, user_id)
+    cache = _get_cache()
+    if cache:
+        cache.delete("dashboard:all")
 
 
 def dashboard_cache_key(user_id):

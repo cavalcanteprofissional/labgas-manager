@@ -2,6 +2,13 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.20.1] — 2026-08-06
+
+### Dashboard — cache da visão "Todos os usuários" invalidado no CRUD 🔄
+
+- `invalidate_user_caches()` agora também remove a chave `dashboard:all` (visão do dev "Todos os usuários"), que antes só era invalidada por timeout (30s) — dados alterados por qualquer usuário já refletem imediatamente nessa visão
+- Análise confirmou que o dashboard computa corretamente os KPIs (valores conferidos contra o banco); os zeros exibidos vêm de dados reais (todos os cilindros de Thiago estão `esgotado` e as contas teste/Raimundo/Isolação não possuem registros)
+
 ## [2.20.0] — 2026-08-06
 
 ### Filtros de todas as abas padronizados pelo padrão Cilindro (Fase 81) 🔍
