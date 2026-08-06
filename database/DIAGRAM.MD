@@ -29,7 +29,7 @@ erDiagram
 
     CILINDRO {
         int id PK
-        varchar codigo
+        int numero
         date data_compra
         date data_inicio_consumo
         date data_fim
@@ -150,7 +150,7 @@ flowchart TB
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | UUID | PK - ID do usuário (ref auth.users) |
-| role | VARCHAR(20) | 'admin' ou 'usuario' |
+| role | VARCHAR(20) | 'dev', 'admin' ou 'usuario' |
 | ativo | BOOLEAN | Se o usuário está ativo |
 | nome | VARCHAR(100) | Nome do usuário |
 | email | VARCHAR(255) | Email do usuário |
@@ -166,7 +166,7 @@ flowchart TB
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | SERIAL | PK - ID automático |
-| codigo | VARCHAR(50) | Código único (ex: CIL-001) |
+| numero | INTEGER | Número do cilindro (único por usuário) |
 | data_compra | DATE | Data de compra |
 | data_inicio_consumo | DATE | Início de uso |
 | data_fim | DATE | Fim de uso (opcional) |
@@ -286,11 +286,11 @@ Todas as tabelas possuem Row Level Security (RLS) habilitado:
 
 | Tabela | SELECT | INSERT | UPDATE | DELETE |
 |--------|--------|--------|--------|--------|
-| cilindro | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| elemento | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| leitura | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| amostra | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| amostra_elemento | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
-| pressao | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| historico_auditoria | Público | Admin (service_role) | - | - |
+| cilindro | Dono ou dev | Próprio usuário | Próprio usuário | Próprio usuário |
+| elemento | Dono ou dev | Próprio usuário | Próprio usuário | Próprio usuário |
+| leitura | Dono ou dev | Próprio usuário | Próprio usuário | Próprio usuário |
+| amostra | Dono ou dev | Próprio usuário | Próprio usuário | Próprio usuário |
+| amostra_elemento | Dono da amostra ou dev | Dono da amostra | Dono da amostra | Dono da amostra |
+| perfil | Próprio usuário ou dev | Próprio usuário | Próprio usuário | - |
+| pressao | Dono ou dev | Próprio usuário | Próprio usuário | Próprio usuário |
+| historico_auditoria | Dono ou dev | Admin (service_role) | - | - |

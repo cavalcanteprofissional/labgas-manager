@@ -2121,3 +2121,65 @@ Remover a tabela legada `historico_log` do Supabase real após a migração comp
 - [x] Pós-validação: smoke no app local (`/historico` + insert/leitura/limpeza via `registrar_historico`) e `backup_db.py --no-upload`
 - [x] `DROP TABLE historico_log_bkp_20260805;` (após validação — decisão do usuário)
 - [x] `database/migrations/20260805_historico_auditoria.sql` — bloco 4 marcado como executado em 2026-08-05
+
+## Fase 78: Filtro da aba Cilindro — busca server-side por número (bugfix) 🔍
+
+### Objetivo
+O campo de filtro da aba Cilindro não funciona corretamente: alguns números filtram e outros "não acham nada" (relatado: 5,6,7,8,10-13 funcionam; 1,2,3,4,9 não). Causa raiz — **dois bugs** no filtro client-side (`filterCilindro` em `cilindro.html`):
+- **Vazamento de dígitos (falsos positivos)**: `row.cells[1].textContent.includes(search)` casa substring na célula inteira, que concatena o badge (`numero_exibicao`) com o `<div>` mobile de `gas_kg`/`custo` (ex.: `"1"+"1.00kg | R$ 290.00"`). Dígitos de `kg`/`R$` "vazam": buscar "2"/"9" casa com qualquer cilindro com custo `290.00`. Ampliado na Fase 74 (badge passou de código completo para número puro).
+- **Cegueira de paginação (falsos negativos / "não acha nada")**: filtro opera só nas linhas da página atual (10/página default). A listagem busca `order(created_at, desc)` e ordena por número **depois** do slice da página (`cilindro.py`), então cilindros de páginas 2+ não existem no DOM.
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/cilindro.py` — filtro server-side: ler `q` (GET) e aplicar `codigo_corresponde` (de `cilindro_utils`, mesmo helper de pressão/leitura) via `in_("id", ids)`/`eq("id", 0)`; ler `status` (GET) e aplicar `eq("status", ...)` validado contra `CILINDRO_STATUS`
+- [x] `frontend/templates/cilindro.html` — envolver input `#searchCilindro` + select `#filterStatus` + botão em `<form method="get">`; remover `filterCilindro()`/listener `keyup`; adicionar `{{ qs() }}` nos links de paginação e no select `per_page` (preserva `q`/`status`)
+- [x] `frontend/tests/test_cilindro.py` — testes do filtro: achar cilindro em outra página (`?q=1` com 12 cilindros), sem vazamento de dígitos de `kg`/`R$`, substring por código (`?q=5` acha CIL-005 e CIL-015) e filtro por status
+- [x] Validar suíte e registrar no `CHANGELOG.md`/`README.MD` se necessário
+
+## Fase 79: Filtros da aba Cilindro — data (de/até), busca dinâmica e ordenação por código 📅
+
+### Objetivo
+Aprimoramentos no filtro da aba Cilindro solicitados pelo usuário: (1) filtro por **Data de Compra** em intervalo (de/até), no padrão da aba Leituras (`data_inicio`/`data_fim` com `gte`/`lte`); (2) voltar o comportamento **dinâmico** da busca (digitar e já filtrar, sem clicar em Filtrar ou dar Enter) mantendo o filtro server-side da Fase 78 (debounce no `input` de `#searchCilindro`); (3) **ordenar a tabela por ordem do código** (número), removendo o agrupamento "ativos primeiro" e paginando globalmente na ordem do código (`order("codigo")`).
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/cilindro.py` — filtro por `data_compra`: ler `data_inicio`/`data_fim` (GET), validar `%Y-%m-%d` e aplicar `gte`/`lte`; ordenação: `_chave_ordenacao_cilindros` só pelo número e listagem com `order("codigo")` (asc) no lugar de `created_at desc`
+- [x] `frontend/templates/cilindro.html` — inputs `data_inicio`/`data_fim` (date) no form de filtro com valores preservados; JS de debounce (~350ms) no `#searchCilindro` que submete o form; datas e status com `onchange="this.form.submit()"`
+- [x] `frontend/tests/test_cilindro.py` — testes: ordem por código (códigos distintos fora de ordem/status mistos), filtro data de compra em intervalo e busca dinâmica ao digitar (esperar URL `?q=`)
+- [x] Validar suíte e registrar no `CHANGELOG.md`
+
+## Fase 80: Cilindro passa a usar `numero` inteiro — integridade, RLS e docs (refatoração) 🔢
+
+### Objetivo
+Refatorar o identificador de cilindro de `codigo VARCHAR(50)` ("CIL-XXX") para `numero INTEGER` (1, 2, 3...), exibindo **só números em tudo** (tabela, exports CSV/Markdown e label do histórico). Aproveitar para fechar lacunas de integridade/segurança identificadas na análise do schema (banco vivo via `DATABASE_URL_POSTGRES`): UNIQUE e CHECK que hoje só existem a nível de app, RLS que permite qualquer usuário autenticado ler dados de todos, e sync de `schema.sql`/`rls.sql`/`DIAGRAM.MD` com o banco real.
+
+### Mudanças Planejadas
+
+- [x] `database/migrations/20260806_cilindro_numero.sql` — `cilindro.numero` (backfill numérico, NOT NULL, `UNIQUE(numero, user_id)`, CHECK `status`), `elemento UNIQUE(nome, user_id)`, CHECK `tipo` em `historico_auditoria`, RLS dev-aware (próprio usuário ou role `dev`) em cilindro/elemento/leitura/pressao/amostra/amostra_elemento/historico_auditoria
+- [x] `frontend/utils/cilindro_utils.py` — `codigo_corresponde` por número (aceita "1"/"001"/"CIL-015"), `enriquecer_cilindros` → `str(numero)`, remover `normalizar_codigo_cilindro`; `constants.py`/`validators.py` — remover regex/validador de CIL-XXX
+- [x] `frontend/blueprints/cilindro.py`, `leitura.py`, `pressao.py`, `admin.py`, `app.py` — criar/atualizar por `numero`, `order("numero")`, histórico/exports com só número, `/api/buscar-codigo` aceita número ou "CIL-XXX"
+- [x] `cilindro.html` (input number) e `static/js/voice_assistant.js` (remove `/^CIL-\d{3}$/` e `padStart`)
+- [x] `backend/routes/cilindro.py` — campo `numero`
+- [x] Testes atualizados (`test_cilindro`, `test_leitura`, `test_pressao`, `test_compute_kpis`, `test_export`, `test_helpers_historico`) + comentário nos fixtures temporários (CIL-800/900)
+- [x] Sync `database/schema.sql`/`rls.sql`/`DIAGRAM.MD` + `CHANGELOG.md`
+
+## Fase 81: Padronizar filtros de todas as abas (padrão aba Cilindro) 🔍
+
+### Objetivo
+Padronizar os filtros de todas as abas pelo padrão da aba Cilindro (Fases 78-79): filtro `GET` no servidor, busca com debounce ~350ms, selects/datas com `onchange`, paginação preservando filtros via `{{ qs() }}` e seletor `per_page`. Decisões do usuário: Pressão mantém os 3 campos (só padroniza interação e renomeia `q_codigo`→`q_numero`); Histórico vira server-side com `q` (label + responsável) + `tipo` + `acao` + datas; Admin `user_data` server-side; Admin ganha busca por nome/email; Amostra `q` passa a substring.
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/leitura.py` — dropdowns `cilindro`/`elementos` com `if not dev:` antes do `.eq("user_id")` (corrige dev enxergando tudo na tabela mas dropdowns/busca só dos próprios)
+- [x] `frontend/templates/leitura.html` — `id="searchLeitura"` + debounce no `q`; `onchange="this.form.submit()"` no select cilindro, select elemento e datas
+- [x] `frontend/blueprints/pressao.py` — renomear `q_codigo` → `q_numero`; `cilindro_list` com `if not dev:`
+- [x] `frontend/templates/pressao.html` — `id`s nos 3 inputs + debounce; `onchange` no select cilindro e datas
+- [x] `frontend/blueprints/amostra.py` — `q` substring (padrão cilindro, match em Python por `numero_amostra`/`lote` + `in_("id")`); mantém filtro `elemento_id`
+- [x] `frontend/templates/amostra.html` — `id="searchAmostra"` + debounce; `onchange` no select de elemento
+- [x] `frontend/blueprints/historico.py` — migrar para server-side: `montar(query)` com `q` (label ilike + user_id via nomes), `tipo`, `acao`, `data_inicio`/`data_fim`; `per_page` param
+- [x] `frontend/templates/historico.html` — filtros em `<form method="get">` com `name`; remover `filterHistory()`; `qs()` na paginação + seletor `per_page`
+- [x] `frontend/blueprints/admin.py` — `user_data()` com filtros `tipo`/`acao` server-side + `per_page`; `panel()` com busca `q` por nome/email
+- [x] `frontend/templates/admin_user_data.html` — selects em `<form method="get">` com `onchange`; remover `filterHistory()`; `qs()` na paginação
+- [x] `frontend/templates/admin.html` — input `q` (debounce) para buscar usuários
+- [x] Testes: `test_leitura` (filtros), `test_pressao` (`q_numero`), `test_amostra` (substring + elemento), `test_historico` (novo), `test_admin` (busca + user_data)
+- [x] `CHANGELOG.md`

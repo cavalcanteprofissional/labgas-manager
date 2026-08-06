@@ -19,6 +19,28 @@
 </style>
 <h2 class="mb-4"><i class="bi bi-{{ ICON_TIPO["admin"] }}"></i> Painel de Administração</h2>
 
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-12 col-md-6">
+                <input type="text" name="q" id="searchAdminUser" class="form-control" placeholder="Buscar usuário por nome ou email..." value="{{ request.args.get('q', '') }}" autocomplete="off">
+            </div>
+            <div class="col-12 col-md-2">
+                <button class="btn btn-outline-secondary w-100" type="submit">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+            {% if request.args.get('q') %}
+            <div class="col-12 col-md-2">
+                <a href="{{ url_for('admin.panel') }}" class="btn btn-outline-secondary w-100" title="Limpar filtros">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
 <!-- Desktop Table View -->
 <div class="card mb-4 d-none d-lg-block">
     <div class="card-header">
@@ -403,4 +425,13 @@
     </div>
 </div>
 {% endfor %}
+
+<script>
+let debounceTimer;
+
+document.getElementById('searchAdminUser').addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => this.form.submit(), 350);
+});
+</script>
 {% endblock %}

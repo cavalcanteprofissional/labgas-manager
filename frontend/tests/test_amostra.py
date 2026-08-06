@@ -233,3 +233,38 @@ def test_bulk_delete_modal(login, page, supabase_admin, test_user_id,
     bulk.locator("button[type='submit']").click()
     page.wait_for_timeout(3000)
     assert "/amostras" in page.url
+
+
+def test_amostra_filter_por_elemento(login, page, supabase_admin, test_user_id,
+                                     cleanup_amostras, cleanup_elementos, cleanup_historico):
+    elem = supabase_admin.table("elemento").insert({
+        "nome": "FiltroAmostraElem", "consumo_lpm": 1.0, "user_id": test_user_id,
+    }).execute()
+    elem_id = elem.data[0]["id"]
+    amostra = supabase_admin.table("amostra").insert({
+        "numero_amostra": 500, "lote": 50, "user_id": test_user_id,
+    }).execute()
+    amostra_id = amostra.data[0]["id"]
+    supabase_admin.table("amostra_elemento").insert({
+        "amostra_id": amostra_id, "elemento_id": elem_id,
+    }).execute()
+
+    page.goto(f"http://localhost:5000/amostras?elemento_id={elem_id}&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{amostra_id}']").count() == 1
+
+
+def test_amostra_filter_q_substring(login, page, supabase_admin, test_user_id,
+                                    cleanup_amostras, cleanup_elementos, cleanup_historico):
+    amostra = supabase_admin.table("amostra").insert({
+        "numero_amostra": 501, "lote": 777, "user_id": test_user_id,
+    }).execute()
+    amostra_id = amostra.data[0]["id"]
+
+    page.goto("http://localhost:5000/amostras?q=50&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{amostra_id}']").count() == 1
+
+    page.goto("http://localhost:5000/amostras?q=777&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{amostra_id}']").count() == 1

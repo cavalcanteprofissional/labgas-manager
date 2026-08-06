@@ -92,6 +92,13 @@ def panel():
         else:
             user["habilitar_abas"] = get_habilitar_abas(user["id"])
     
+    q = request.args.get("q", "").strip().lower()
+    if q:
+        users = [
+            u for u in users
+            if q in (u.get("nome") or "").lower() or q in (u.get("email") or "").lower()
+        ]
+
     users = sorted(users, key=lambda x: (x.get("nome") or x.get("email") or "").lower())
     
     return render_template("admin.html", users=users)
@@ -267,21 +274,58 @@ def user_data(target_user_id):
     
     client = get_admin_client()
     
-    page = int(request.args.get("page", 1))
-    per_page = 20
-    
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    if per_page not in (10, 20, 50, 100):
+        per_page = 20
+
+    tipo_filtro = request.args.get("tipo", "").strip()
+    acao_filtro = request.args.get("acao", "").strip()
+    data_inicio = request.args.get("data_inicio", "").strip()
+    data_fim = request.args.get("data_fim", "").strip()
+
+    TIPOS_VALIDOS = {"cilindro", "pressao", "elemento", "leitura", "amostra", "perfil"}
+    ACOES_VALIDAS = {"criado", "atualizado", "excluido"}
+    if tipo_filtro not in TIPOS_VALIDOS:
+        tipo_filtro = ""
+    if acao_filtro not in ACOES_VALIDAS:
+        acao_filtro = ""
+
+    def montar_historico(query):
+        query = query.eq("user_id", target_user_id)
+        if tipo_filtro:
+            query = query.eq("tipo", tipo_filtro)
+        if acao_filtro:
+            query = query.eq("acao", acao_filtro)
+        if data_inicio:
+            try:
+                datetime.strptime(data_inicio, "%Y-%m-%d")
+                query = query.gte("created_at", data_inicio)
+            except ValueError:
+                pass
+        if data_fim:
+            try:
+                datetime.strptime(data_fim, "%Y-%m-%d")
+                query = query.lte("created_at", data_fim)
+            except ValueError:
+                pass
+        return query
+
     cilindro_total = client.table("cilindro").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     elementos_total = client.table("elemento").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     leituras_total = client.table("leitura").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     pressoes_total = client.table("pressao").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     amostras_total = client.table("amostra").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
-    
-    historico_offset = (page - 1) * per_page
-    historico_aud = client.table("historico_auditoria").select(
+
+    historico_base = montar_historico(client.table("historico_auditoria").select(
         "tipo, acao, label, ref_id, detalhe, created_at"
-    ).eq("user_id", target_user_id).order("created_at", desc=True).range(historico_offset, historico_offset + per_page - 1).execute().data or []
-    
-    historico_total = client.table("historico_auditoria").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
+    ))
+    historico_total = montar_historico(client.table("historico_auditoria").select("*", count="exact")).execute().count or 0
+    pages = max(1, (historico_total + per_page - 1) // per_page)
+    page = max(1, min(page, pages))
+    historico_offset = (page - 1) * per_page
+    historico_aud = historico_base.order("created_at", desc=True).range(historico_offset, historico_offset + per_page - 1).execute().data or []
+    end = min(page * per_page, historico_total)
     
     history = [{
         "tipo": h.get("tipo"),
@@ -309,7 +353,9 @@ def user_data(target_user_id):
         history=history,
         historico_total=historico_total,
         page=page,
-        per_page=per_page
+        per_page=per_page,
+        pages=pages,
+        end=end
     )
 
 
@@ -441,7 +487,7 @@ def export_data():
             a["usuario_email"] = u.get("email", "")
             a["usuario_nome"] = u.get("nome", "")
     
-    cilindro_dict = {c.get("id"): c.get("codigo") for c in cilindro_data}
+    cilindro_dict = {c.get("id"): c.get("numero") for c in cilindro_data}
     elemento_dict = {e.get("id"): e.get("nome") for e in elementos_data}
     
     for a in leituras_data:
@@ -450,11 +496,11 @@ def export_data():
             u = usuarios_dict.get(uid, {})
             a["usuario_email"] = u.get("email", "")
             a["usuario_nome"] = u.get("nome", "")
-        a["cilindro_codigo"] = cilindro_dict.get(a.get("cilindro_id"), "")
+        a["cilindro_numero"] = cilindro_dict.get(a.get("cilindro_id"), "")
         a["elemento_nome"] = elemento_dict.get(a.get("elemento_id"), "")
     
     for p in pressoes_data:
-        p["cilindro_codigo"] = cilindro_dict.get(p.get("cilindro_id"), "")
+        p["cilindro_numero"] = cilindro_dict.get(p.get("cilindro_id"), "")
     
     # Agrupa elementos por amostra
     amostra_e_ids = defaultdict(list)
@@ -504,7 +550,7 @@ def export_data():
         
         output.write("# CILINDROS\n")
         if cilindro_data:
-            headers = ["id", "codigo", "data_compra", "data_inicio_consumo", "data_fim",
+            headers = ["id", "numero", "data_compra", "data_inicio_consumo", "data_fim",
                       "gas_kg", "litros_equivalentes", "custo", "status",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
@@ -522,7 +568,7 @@ def export_data():
         
         output.write("\n# LEITURAS\n")
         if leituras_data:
-            headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_codigo",
+            headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_numero",
                       "elemento_id", "elemento_nome", "quantidade",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
@@ -532,7 +578,7 @@ def export_data():
         
         output.write("\n# PRESSOES\n")
         if pressoes_data:
-            headers = ["id", "cilindro_id", "cilindro_codigo", "pressao", "temperatura", "data", "hora",
+            headers = ["id", "cilindro_id", "cilindro_numero", "pressao", "temperatura", "data", "hora",
                       "usuario_email", "usuario_nome", "created_at"]
             output.write(",".join(headers) + "\n")
             for row in pressoes_data:
@@ -566,13 +612,13 @@ def export_data():
         
         ws_cilindros = wb.create_sheet("Cilindros")
         if cilindro_data:
-            headers = ["ID", "Código", "Data Compra", "Data Início", "Data Fim",
+            headers = ["ID", "Número", "Data Compra", "Data Início", "Data Fim",
                       "Gas (kg)", "Litros", "Custo", "Status",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_cilindros.append(headers)
             for row in cilindro_data:
                 ws_cilindros.append([
-                    row.get("id"), row.get("codigo"), row.get("data_compra"),
+                    row.get("id"), row.get("numero"), row.get("data_compra"),
                     row.get("data_inicio_consumo"), row.get("data_fim"),
                     row.get("gas_kg"), row.get("litros_equivalentes"), row.get("custo"),
                     row.get("status"),
@@ -591,14 +637,14 @@ def export_data():
         
         ws_leituras = wb.create_sheet("Leituras")
         if leituras_data:
-            headers = ["ID", "Data", "Tempo Chama", "Cilindro ID", "Cilindro Código",
+            headers = ["ID", "Data", "Tempo Chama", "Cilindro ID", "Cilindro Número",
                       "Elemento ID", "Elemento Nome", "Qtd",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_leituras.append(headers)
             for row in leituras_data:
                 ws_leituras.append([
                     row.get("id"), row.get("data"), row.get("tempo_chama"),
-                    row.get("cilindro_id"), row.get("cilindro_codigo"),
+                    row.get("cilindro_id"), row.get("cilindro_numero"),
                     row.get("elemento_id"), row.get("elemento_nome"),
                     row.get("quantidade"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
@@ -606,12 +652,12 @@ def export_data():
         
         ws_pressoes = wb.create_sheet("Pressoes")
         if pressoes_data:
-            headers = ["ID", "Cilindro ID", "Cilindro Código", "Pressão (bar)", "Temperatura (°C)", "Data", "Hora",
+            headers = ["ID", "Cilindro ID", "Cilindro Número", "Pressão (bar)", "Temperatura (°C)", "Data", "Hora",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_pressoes.append(headers)
             for row in pressoes_data:
                 ws_pressoes.append([
-                    row.get("id"), row.get("cilindro_id"), row.get("cilindro_codigo"),
+                    row.get("id"), row.get("cilindro_id"), row.get("cilindro_numero"),
                     row.get("pressao"), row.get("temperatura"), row.get("data"), row.get("hora"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
@@ -650,10 +696,10 @@ def export_data():
         
         md_output.write("## Cilindros\n\n")
         if cilindro_data:
-            md_output.write("| ID | Código | Status | Gas (kg) | Custo | Usuário |\n")
+            md_output.write("| ID | Número | Status | Gas (kg) | Custo | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|\n")
             for row in cilindro_data:
-                md_output.write(f"| {row.get('id')} | {row.get('codigo')} | {row.get('status')} | {row.get('gas_kg')} | R${row.get('custo')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {row.get('id')} | {row.get('numero')} | {row.get('status')} | {row.get('gas_kg')} | R${row.get('custo')} | {row.get('usuario_email')} |\n")
         else:
             md_output.write("*Nenhum cilindro encontrado.*\n\n")
         
@@ -662,7 +708,7 @@ def export_data():
             md_output.write("| ID | Cilindro | Pressão (bar) | Temperatura (°C) | Data | Hora | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|---|\n")
             for row in pressoes_data:
-                md_output.write(f"| {row.get('id')} | {row.get('cilindro_codigo')} | {row.get('pressao')} | {row.get('temperatura')} | {row.get('data')} | {row.get('hora')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {row.get('id')} | {row.get('cilindro_numero')} | {row.get('pressao')} | {row.get('temperatura')} | {row.get('data')} | {row.get('hora')} | {row.get('usuario_email')} |\n")
         else:
             md_output.write("*Nenhuma pressão encontrada.*\n\n")
         
@@ -680,7 +726,7 @@ def export_data():
             md_output.write("| ID | Data | Tempo | Cilindro | Elemento | Qtd | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|---|\n")
             for row in leituras_data:
-                md_output.write(f"| {row.get('id')} | {row.get('data')} | {row.get('tempo_chama')} | {row.get('cilindro_codigo')} | {row.get('elemento_nome')} | {row.get('quantidade')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {row.get('id')} | {row.get('data')} | {row.get('tempo_chama')} | {row.get('cilindro_numero')} | {row.get('elemento_nome')} | {row.get('quantidade')} | {row.get('usuario_email')} |\n")
         else:
             md_output.write("*Nenhuma leitura encontrada.*\n\n")
         

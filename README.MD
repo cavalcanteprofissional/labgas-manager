@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.17.0** (Branch: master)
+**Versão: 2.20.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -74,7 +74,7 @@ Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os
 | Aba | Funcionalidades |
 |-----|-----------------|
 | **Dashboard** | 6 KPIs, 4 gráficos, top elementos, últimas leituras e amostras |
-| **Cilindros** | CRUD completo, código CIL-XXX, status (ativo/esgotado) |
+| **Cilindros** | CRUD completo, número do cilindro, status (ativo/esgotado) |
 | **Pressão** | CRUD completo, pressão (bar), temperatura (°C), data e hora, vinculado a cilindro |
 | **Elementos** | CRUD completo, consumo em L/min, 20 elementos padrão pré-carregados |
 | **Leitura** | CRUD completo, vinculado a cilindro/elemento, tempo de chama, quantidade |
@@ -344,7 +344,7 @@ erDiagram
 
     CILINDRO {
         int id PK "ID automático"
-        varchar codigo "Código único (CIL-XXX)"
+        int numero "Número do cilindro (único por usuário)"
         date data_compra "Data de compra"
         date data_inicio_consumo "Início de uso"
         date data_fim "Fim de uso"
@@ -416,7 +416,7 @@ O banco de dados possui índices otimizados para as operações mais frequentes:
 | Tabela | Índice | Coluna(s) | Propósito |
 |--------|--------|-----------|-----------|
 | cilindro | idx_cilindro_user_id | user_id | Filtrar por usuário |
-| cilindro | idx_cilindro_codigo | codigo | Busca por código |
+| cilindro | idx_cilindro_numero | numero | Busca por número |
 | elemento | idx_elemento_user_id | user_id | Filtrar por usuário |
 | elemento | idx_elemento_nome | nome | Busca por nome |
 | amostra | idx_amostra_user_id | user_id | Filtrar por usuário |
@@ -662,8 +662,7 @@ Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.e
 ## Regras de Negócio
 
 ### Cilindro
-- Código único por usuário
-- Código deve seguir formato CIL-XXX (ex: CIL-001, CIL-002)
+- Número único por usuário (1, 2, 3...)
 - Valores padrão: 1kg = 956L, R$290
 - Status: ativo, esgotado
 
@@ -718,14 +717,14 @@ Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.e
 
 ### Histórico
 - Registro de todas as operações CRUD
-- Filtros por tipo (cilindro/pressao/elemento/leitura/amostra/perfil) e ação (criado/atualizado/excluido)
+- Filtros por tipo (cilindro/pressao/elemento/leitura/amostra/perfil), ação (criado/atualizado/excluido), busca por item/responsável e intervalo de datas
 - Exibição do usuário que realizou a ação
 - **Log de usuários**: Cadastro, alteração de role, ativação/desativação, permissões de abas
 
 ### Validações
-- Não permitir duplicatas (código de cilindro, nome de elemento)
+- Não permitir duplicatas (número de cilindro, nome de elemento)
 - Cilindro e elemento não podem ser excluídos se possuírem amostras vinculadas
-- Validação de código de cilindro (CIL-XXX)
+- Validação de número de cilindro (inteiro >= 1)
 - Normalização de nomes de elementos
 - **Mensagens de erro amigáveis**: Erros técnicos são convertidos para mensagens amigáveis
 

@@ -67,13 +67,13 @@
             <div class="col-12">
                 <div class="row g-2 align-items-center">
                     <div class="col-12 col-md-3">
-                        <input type="text" name="q_codigo" class="form-control" placeholder="Buscar por número" value="{{ request.args.get('q_codigo', '') }}">
+                        <input type="text" name="q_numero" id="searchNumero" class="form-control" placeholder="Buscar por número" value="{{ request.args.get('q_numero', '') }}" autocomplete="off">
                     </div>
                     <div class="col-12 col-md-3">
-                        <input type="text" name="q_pressao" class="form-control" placeholder="Buscar por pressão" value="{{ request.args.get('q_pressao', '') }}">
+                        <input type="text" name="q_pressao" id="searchPressao" class="form-control" placeholder="Buscar por pressão" value="{{ request.args.get('q_pressao', '') }}" autocomplete="off">
                     </div>
                     <div class="col-12 col-md-3">
-                        <input type="text" name="q_temperatura" class="form-control" placeholder="Buscar por temperatura" value="{{ request.args.get('q_temperatura', '') }}">
+                        <input type="text" name="q_temperatura" id="searchTemperatura" class="form-control" placeholder="Buscar por temperatura" value="{{ request.args.get('q_temperatura', '') }}" autocomplete="off">
                     </div>
                     <div class="col-12 col-md-3 d-flex gap-2">
                         <button class="btn btn-outline-secondary w-100" type="submit">
@@ -88,7 +88,7 @@
                 </div>
             </div>
             <div class="col-12 col-md-4">
-                <select name="cilindro_id" class="form-select">
+                <select name="cilindro_id" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos os Cilindros</option>
                     {% for c in cilindro_list %}
                     <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.numero_exibicao }}</option>
@@ -96,10 +96,10 @@
                 </select>
             </div>
             <div class="col-6 col-md-4">
-                <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial">
+                <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial" onchange="this.form.submit()">
             </div>
             <div class="col-6 col-md-4">
-                <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final">
+                <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final" onchange="this.form.submit()">
             </div>
         </form>
     </div>
@@ -309,6 +309,15 @@
 </div>
 
 <script>
+let debounceTimer;
+
+['searchNumero', 'searchPressao', 'searchTemperatura'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => this.form.submit(), 350);
+    });
+});
+
 function autoFormatTime(el, digits) {
     el.addEventListener('input', function () {
         var old = this.value;

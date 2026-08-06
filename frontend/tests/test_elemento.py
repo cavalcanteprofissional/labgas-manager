@@ -37,6 +37,34 @@ def test_elemento_table_visible(login, page):
     assert table.is_visible()
 
 
+def test_elemento_filtro_por_seletor(login, page, supabase_admin, test_user_id,
+                                     cleanup_elementos, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    supabase_admin.table("elemento").insert({
+        "nome": "FilterElemA", "consumo_lpm": 1.0, "user_id": test_user_id,
+    }).execute()
+    supabase_admin.table("elemento").insert({
+        "nome": "FilterElemB", "consumo_lpm": 2.0, "user_id": test_user_id,
+    }).execute()
+
+    page.goto("http://localhost:5000/elementos?q=FilterElemA&per_page=1000")
+    page.wait_for_selector("body")
+
+    table_text = page.locator("table tbody").first.text_content()
+    assert "FilterElemA" in table_text
+    assert "FilterElemB" not in table_text
+
+    select = page.locator("select[name='q']").first
+    assert select.input_value() == "FilterElemA"
+
+    page.goto("http://localhost:5000/elementos?per_page=1000")
+    page.wait_for_selector("body")
+    table_text = page.locator("table tbody").first.text_content()
+    assert "FilterElemA" in table_text
+    assert "FilterElemB" in table_text
+
+
 @pytest.mark.modais
 def test_elemento_edit_modal_preenche_campos(login, page, supabase_admin, test_user_id,
                                               cleanup_elementos, cleanup_historico):

@@ -10,7 +10,7 @@ def test_leitura_list_page_loads(login, page):
 def test_create_leitura(login, page, supabase_admin, test_user_id,
                         cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-TCL", "data_compra": "2025-01-01",
+        "numero": 810, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -59,7 +59,7 @@ def test_bulk_delete_button_not_required(login, page):
 def test_leitura_edit_modal_preenche_campos(login, page, supabase_admin, test_user_id,
                                              cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-LT", "data_compra": "2025-01-01",
+        "numero": 811, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -91,7 +91,7 @@ def test_leitura_edit_modal_preenche_campos(login, page, supabase_admin, test_us
 def test_leitura_delete_modal_exclui(login, page, supabase_admin, test_user_id,
                                       cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-LD", "data_compra": "2025-01-01",
+        "numero": 812, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -127,7 +127,7 @@ def test_leitura_delete_modal_exclui(login, page, supabase_admin, test_user_id,
 def test_leitura_bulk_delete(login, page, supabase_admin, test_user_id,
                               cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-LB", "data_compra": "2025-01-01",
+        "numero": 813, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -164,3 +164,80 @@ def test_leitura_bulk_delete(login, page, supabase_admin, test_user_id,
     bulk.locator("button[type='submit']").click()
     page.wait_for_timeout(3000)
     assert "/leituras" in page.url
+
+
+def test_leitura_filter_por_numero_cilindro(login, page, supabase_admin, test_user_id,
+                                            cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
+    cil = supabase_admin.table("cilindro").insert({
+        "numero": 815, "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    el = supabase_admin.table("elemento").insert({
+        "nome": "FiltroNumero", "consumo_lpm": 2.0, "user_id": test_user_id,
+    }).execute()
+    el_id = el.data[0]["id"]
+    lei = supabase_admin.table("leitura").insert({
+        "data": "2025-06-01", "tempo_chama": "00:20:00",
+        "cilindro_id": cil_id, "elemento_id": el_id,
+        "quantidade": 2, "user_id": test_user_id,
+    }).execute()
+    lei_id = lei.data[0]["id"]
+
+    page.goto("http://localhost:5000/leituras?q=815&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{lei_id}']").count() == 1
+
+
+def test_leitura_filter_por_nome_elemento(login, page, supabase_admin, test_user_id,
+                                          cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
+    cil = supabase_admin.table("cilindro").insert({
+        "numero": 816, "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    el = supabase_admin.table("elemento").insert({
+        "nome": "FiltroNome", "consumo_lpm": 2.0, "user_id": test_user_id,
+    }).execute()
+    el_id = el.data[0]["id"]
+    lei = supabase_admin.table("leitura").insert({
+        "data": "2025-06-02", "tempo_chama": "00:25:00",
+        "cilindro_id": cil_id, "elemento_id": el_id,
+        "quantidade": 4, "user_id": test_user_id,
+    }).execute()
+    lei_id = lei.data[0]["id"]
+
+    page.goto("http://localhost:5000/leituras?q=FiltroNome&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{lei_id}']").count() == 1
+
+
+def test_leitura_filter_por_intervalo_data(login, page, supabase_admin, test_user_id,
+                                           cleanup_leituras, cleanup_cilindros, cleanup_elementos, cleanup_historico):
+    cil = supabase_admin.table("cilindro").insert({
+        "numero": 817, "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    el = supabase_admin.table("elemento").insert({
+        "nome": "FiltroData", "consumo_lpm": 2.0, "user_id": test_user_id,
+    }).execute()
+    el_id = el.data[0]["id"]
+    dentro = supabase_admin.table("leitura").insert({
+        "data": "2025-06-10", "tempo_chama": "00:25:00",
+        "cilindro_id": cil_id, "elemento_id": el_id,
+        "quantidade": 4, "user_id": test_user_id,
+    }).execute().data[0]["id"]
+    fora = supabase_admin.table("leitura").insert({
+        "data": "2025-06-20", "tempo_chama": "00:25:00",
+        "cilindro_id": cil_id, "elemento_id": el_id,
+        "quantidade": 4, "user_id": test_user_id,
+    }).execute().data[0]["id"]
+
+    page.goto("http://localhost:5000/leituras?data_inicio=2025-06-01&data_fim=2025-06-15&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{dentro}']").count() == 1
+    assert page.locator(f"button[data-bs-target='#editModal{fora}']").count() == 0

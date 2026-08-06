@@ -22,10 +22,14 @@ def safe_float(value, default=None):
         return default
 
 
-def validar_codigo_cilindro(codigo):
-    """Valida se o código segue o formato CIL-XXX."""
-    from utils.constants import CILINDRO_CODIGO_REGEX
-    return bool(re.match(CILINDRO_CODIGO_REGEX, codigo.upper()))
+def validar_numero_cilindro(numero):
+    """Valida se o numero do cilindro e um inteiro positivo."""
+    if numero is None or numero == "":
+        return False
+    try:
+        return int(numero) >= 1
+    except (ValueError, TypeError):
+        return False
 
 
 def formatar_tempo_chama(tempo_str):

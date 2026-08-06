@@ -9,8 +9,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env.local"))
 from app import _compute_kpis
 
 
-def _cilindro(id_, codigo, status="ativo", litros=956.0, custo=290.0):
-    return {"id": id_, "codigo": codigo, "status": status, "litros_equivalentes": litros, "custo": custo}
+def _cilindro(id_, numero, status="ativo", litros=956.0, custo=290.0):
+    return {"id": id_, "numero": numero, "status": status, "litros_equivalentes": litros, "custo": custo}
 
 
 def _elemento(id_, nome, consumo_lpm):
@@ -27,7 +27,7 @@ def _pressao(id_, cilindro_id, data, pressao):
 
 
 def test_compute_kpis_nao_estoura_valores_com_dados():
-    cilindro = [_cilindro(1, "CIL-001"), _cilindro(2, "CIL-002", status="esgotado")]
+    cilindro = [_cilindro(1, 1), _cilindro(2, 2, status="esgotado")]
     elementos = [_elemento(10, "Ar", 15.0)]
     leituras = [
         _leitura(1, 1, 10, "2026-07-01", tempo_chama="00:30"),
@@ -44,7 +44,7 @@ def test_compute_kpis_nao_estoura_valores_com_dados():
 
 
 def test_compute_kpis_labels_cilindro_usam_numero_nao_codigo():
-    cilindro = [_cilindro(1, "CIL-001"), _cilindro(2, "CIL-002")]
+    cilindro = [_cilindro(1, 1), _cilindro(2, 2)]
     elementos = [_elemento(10, "Ar", 15.0)]
     leituras = [
         _leitura(1, 1, 10, "2026-07-01"),
@@ -62,8 +62,8 @@ def test_compute_kpis_labels_cilindro_usam_numero_nao_codigo():
 
 def test_compute_kpis_gas_restante_somente_cilindros_ativos():
     cilindro = [
-        _cilindro(1, "CIL-001", status="ativo", litros=1000.0),
-        _cilindro(2, "CIL-002", status="esgotado", litros=1000.0),
+        _cilindro(1, 1, status="ativo", litros=1000.0),
+        _cilindro(2, 2, status="esgotado", litros=1000.0),
     ]
     elementos = [_elemento(10, "Ar", 60.0)]
     leituras = [_leitura(1, 1, 10, "2026-07-01", tempo_chama="00:30")]
@@ -86,7 +86,7 @@ def test_compute_kpis_sem_dados_nao_quebra():
 
 
 def test_compute_kpis_pressao_chart_agrupa_por_cilindro_numero():
-    cilindro = [_cilindro(1, "CIL-001")]
+    cilindro = [_cilindro(1, 1)]
     pressoes = [
         _pressao(1, 1, "2026-07-01", 150.0),
         _pressao(2, 1, "2026-07-02", 145.0),

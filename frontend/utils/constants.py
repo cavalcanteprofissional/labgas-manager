@@ -8,7 +8,6 @@ GAS_KG_DEFAULT = float(os.getenv("GAS_KG_DEFAULT", "1.0"))
 CUSTO_DEFAULT = float(os.getenv("CUSTO_DEFAULT", "290.00"))
 
 CILINDRO_STATUS = ["ativo", "esgotado"]
-CILINDRO_CODIGO_REGEX = r"^CIL-\d{3}$"
 PRESSAO_MAXIMA_BAR = 300
 
 # Sistema de cores - Rainbow por dependencia

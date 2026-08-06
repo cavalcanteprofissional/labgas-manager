@@ -8,14 +8,26 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPA
 
 
 def get_supabase_client():
-    """Retorna cliente Supabase (anon key) usando Flask g para thread safety."""
-    from flask import has_request_context, g, current_app
+    """Retorna cliente Supabase usando Flask g para thread safety.
+
+    Se o usuário da sessão possuir token JWT (supabase_token), o cliente é
+    autenticado com ele — exigência do RLS (as políticas de SELECT passam a
+    filtrar por auth.uid() = user_id). Sem token, retorna cliente anon.
+    """
+    from flask import has_request_context, g, session
     
     if not has_request_context():
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     
     if not hasattr(g, '_supabase_client'):
-        g._supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        token = session.get("supabase_token")
+        if token:
+            try:
+                client.auth.set_session(token, "")
+            except Exception:
+                pass
+        g._supabase_client = client
     return g._supabase_client
 
 

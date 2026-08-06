@@ -5,7 +5,6 @@ from utils.constants import ITEMS_PER_PAGE
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
-import re
 
 amostra_bp = Blueprint("amostra", __name__)
 
@@ -244,12 +243,20 @@ def list():
     q = request.args.get("q", "").strip()
     elemento_filtro = request.args.get("elemento_id", "").strip()
 
+    todas_query = supabase.table("amostra").select("id,numero_amostra,lote")
+    if not dev:
+        todas_query = todas_query.eq("user_id", user_id)
+    todas_amostras = todas_query.execute().data or []
+
     def montar(query):
         if q:
-            if re.fullmatch(r"\d+", q):
-                query = query.or_(f"numero_amostra.eq.{int(q)},lote.eq.{int(q)}")
-            else:
-                query = query.eq("id", 0)
+            q_lower = q.lower()
+            ids = [
+                a["id"] for a in todas_amostras
+                if q_lower in str(a.get("numero_amostra", "")).lower()
+                or q_lower in str(a.get("lote", "")).lower()
+            ]
+            query = query.eq("id", 0) if not ids else query.in_("id", ids)
 
         if elemento_filtro:
             try:

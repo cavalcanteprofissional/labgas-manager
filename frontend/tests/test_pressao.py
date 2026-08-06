@@ -44,7 +44,7 @@ def test_pressao_table_visible(login, page):
 def test_pressao_edit_modal_preenche_campos(login, page, supabase_admin, test_user_id,
                                              cleanup_pressoes, cleanup_cilindros, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-PR", "data_compra": "2025-01-01",
+        "numero": 801, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -72,7 +72,7 @@ def test_pressao_edit_modal_preenche_campos(login, page, supabase_admin, test_us
 def test_pressao_delete_modal_exclui(login, page, supabase_admin, test_user_id,
                                       cleanup_pressoes, cleanup_cilindros, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-PD", "data_compra": "2025-01-01",
+        "numero": 802, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -103,7 +103,7 @@ def test_pressao_delete_modal_exclui(login, page, supabase_admin, test_user_id,
 def test_pressao_bulk_delete(login, page, supabase_admin, test_user_id,
                               cleanup_pressoes, cleanup_cilindros, cleanup_historico):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-PB", "data_compra": "2025-01-01",
+        "numero": 803, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -138,9 +138,9 @@ def test_pressao_bulk_delete(login, page, supabase_admin, test_user_id,
     assert "/pressoes" in page.url
 
 
-def _criar_pressao_teste(supabase_admin, test_user_id, codigo="CIL-001", pressao=150.0, data="2025-06-01"):
+def _criar_pressao_teste(supabase_admin, test_user_id, numero=801, pressao=150.0, data="2025-06-01"):
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": codigo, "data_compra": "2025-01-01",
+        "numero": numero, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -164,13 +164,13 @@ def test_pressao_filter_q_por_pressao(login, page, supabase_admin, test_user_id,
     assert page.locator(f"button[data-bs-target='#editModal{pr_id}']").count() == 1
 
 
-def test_pressao_filter_q_codigo_normalizado(login, page, supabase_admin, test_user_id,
+def test_pressao_filter_q_numero_normalizado(login, page, supabase_admin, test_user_id,
                                              cleanup_pressoes, cleanup_cilindros, cleanup_historico):
     if not test_user_id:
         pytest.skip("No test user found")
-    pr_id = _criar_pressao_teste(supabase_admin, test_user_id, codigo="CIL-001")
+    pr_id = _criar_pressao_teste(supabase_admin, test_user_id, numero=801)
 
-    page.goto("http://localhost:5000/pressoes?q_codigo=001&per_page=1000")
+    page.goto("http://localhost:5000/pressoes?q_numero=801&per_page=1000")
     page.wait_for_selector("body")
     assert page.locator(f"button[data-bs-target='#editModal{pr_id}']").count() == 1
 
@@ -180,7 +180,7 @@ def test_pressao_filter_q_temperatura(login, page, supabase_admin, test_user_id,
     if not test_user_id:
         pytest.skip("No test user found")
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "numero": 801, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -215,7 +215,7 @@ def test_pressao_temperatura_cor(login, page, supabase_admin, test_user_id,
     if not test_user_id:
         pytest.skip("No test user found")
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "numero": 801, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()
@@ -241,7 +241,7 @@ def test_pressao_pressao_cor(login, page, supabase_admin, test_user_id,
     if not test_user_id:
         pytest.skip("No test user found")
     cil = supabase_admin.table("cilindro").insert({
-        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "numero": 801, "data_compra": "2025-01-01",
         "gas_kg": 10, "custo": 290, "status": "ativo",
         "user_id": test_user_id,
     }).execute()

@@ -6,6 +6,13 @@ from config import LITROS_EQUIVALENTES_KG, CUSTO_DEFAULT, GAS_KG_DEFAULT
 cilindro_bp = Blueprint("cilindro", __name__, url_prefix="/api/cilindros")
 
 
+def _numero_valido(numero):
+    try:
+        return int(numero) >= 1
+    except (ValueError, TypeError):
+        return False
+
+
 @cilindro_bp.route("", methods=["GET"])
 @token_required
 def get_cilindros():
@@ -24,28 +31,30 @@ def create_cilindro():
     user_id = request.user_id
     data = request.get_json()
 
-    if not data.get("codigo"):
-        return jsonify({"message": "Código é obrigatório"}), 400
+    if not data.get("numero") or not _numero_valido(data["numero"]):
+        return jsonify({"message": "Número é obrigatório"}), 400
 
     if not data.get("data_compra"):
         return jsonify({"message": "Data de compra é obrigatória"}), 400
 
+    numero = int(data["numero"])
+
     existing = (
         supabase.table("cilindro")
         .select("id")
-        .eq("codigo", data["codigo"])
+        .eq("numero", numero)
         .eq("user_id", user_id)
         .execute()
     )
     if existing.data:
-        return jsonify({"message": "Código já existe"}), 400
+        return jsonify({"message": "Número já existe"}), 400
 
     gas_kg = data.get("gas_kg", GAS_KG_DEFAULT)
     litros = gas_kg * LITROS_EQUIVALENTES_KG
     custo = data.get("custo", CUSTO_DEFAULT)
 
     new_data = {
-        "codigo": data["codigo"],
+        "numero": numero,
         "data_compra": data["data_compra"],
         "data_inicio_consumo": data.get("data_inicio_consumo"),
         "data_fim": data.get("data_fim"),
@@ -92,7 +101,7 @@ def update_cilindro(cilindro_id):
 
     existing = (
         supabase.table("cilindro")
-        .select("id")
+        .select("id,numero,gas_kg,data_compra,data_inicio_consumo,data_fim,custo,status")
         .eq("id", cilindro_id)
         .eq("user_id", user_id)
         .execute()
@@ -100,24 +109,26 @@ def update_cilindro(cilindro_id):
     if not existing.data:
         return jsonify({"message": "Cilindro não encontrado"}), 404
 
-    if data.get("codigo"):
+    if data.get("numero") is not None:
+        if not _numero_valido(data["numero"]):
+            return jsonify({"message": "Número inválido"}), 400
+        numero = int(data["numero"])
         duplicate = (
             supabase.table("cilindro")
             .select("id")
-            .eq("codigo", data["codigo"])
+            .eq("numero", numero)
             .eq("user_id", user_id)
             .neq("id", cilindro_id)
             .execute()
         )
         if duplicate.data:
-            return jsonify({"message": "Código já existe"}), 400
+            return jsonify({"message": "Número já existe"}), 400
 
     gas_kg = data.get("gas_kg", existing.data[0].get("gas_kg", GAS_KG_DEFAULT))
     litros = gas_kg * LITROS_EQUIVALENTES_KG
 
     update_data = {
-        "codigo": data.get("codigo", existing.data[0]["codigo"]),
-        "data_compra": data.get("data_compra", existing.data[0]["data_compra"]),
+        "numero": int(data["numero"]) if data.get("numero") is not None else existing.data[0]["numero"],        "data_compra": data.get("data_compra", existing.data[0]["data_compra"]),
         "data_inicio_consumo": data.get("data_inicio_consumo", existing.data[0].get("data_inicio_consumo")),
         "data_fim": data.get("data_fim", existing.data[0].get("data_fim")),
         "gas_kg": gas_kg,

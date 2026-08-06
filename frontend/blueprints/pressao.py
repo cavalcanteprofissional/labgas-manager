@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
 from utils.constants import ITEMS_PER_PAGE, PRESSAO_MAXIMA_BAR
-from utils.cilindro_utils import enriquecer_cilindros, codigo_corresponde
+from utils.cilindro_utils import enriquecer_cilindros, numero_corresponde
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
@@ -25,10 +25,12 @@ def pressao_list():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
     
-    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,codigo,status").eq("user_id", user_id).order("codigo").execute()
-    cilindro_list = cilindro_list_response.data or []
+    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,numero,status")
+    if not dev:
+        cilindro_list_response = cilindro_list_response.eq("user_id", user_id)
+    cilindro_list = cilindro_list_response.order("numero").execute().data or []
     cilindro_list = enriquecer_cilindros(cilindro_list)
-    cilindro_dict_lookup = {c["id"]: c["codigo"] for c in cilindro_list}
+    cilindro_dict_lookup = {c["id"]: c.get("numero") for c in cilindro_list}
     cilindro_numero_lookup = {c["id"]: c.get("numero_exibicao") for c in cilindro_list}
     
     if request.method == "POST":
@@ -192,8 +194,8 @@ def pressao_list():
                 pressao_val = pressao_info[0].get("pressao")
                 temp_val = pressao_info[0].get("temperatura")
                 
-                cilindro_info = get_supabase_client().table("cilindro").select("codigo").eq("id", cilindro_id).execute().data
-                cilindro_codigo = cilindro_info[0].get("codigo") if cilindro_info else str(cilindro_id)
+                cilindro_info = get_supabase_client().table("cilindro").select("numero").eq("id", cilindro_id).execute().data
+                cilindro_codigo = cilindro_info[0].get("numero") if cilindro_info else str(cilindro_id)
                 
                 (get_admin_client() if dev else get_authenticated_client()).table("pressao").delete().eq("id", pressao_id).execute()
                 
@@ -235,8 +237,8 @@ def pressao_list():
                     return redirect(url_for("pressao.pressao_list"))
 
                 cil_ids = sorted(set(r["cilindro_id"] for r in permitted))
-                cilindros = supabase.table("cilindro").select("id,codigo").in_("id", cil_ids).execute().data or []
-                cil_map = {c["id"]: c.get("codigo", str(c["id"])) for c in cilindros}
+                cilindros = supabase.table("cilindro").select("id,numero").in_("id", cil_ids).execute().data or []
+                cil_map = {c["id"]: c.get("numero", str(c["id"])) for c in cilindros}
 
                 (get_admin_client() if dev else get_authenticated_client()).table("pressao").delete().in_("id", [r["id"] for r in permitted]).execute()
 
@@ -255,7 +257,7 @@ def pressao_list():
 
             return redirect(url_for("pressao.pressao_list"))
     
-    q_codigo = request.args.get("q_codigo", "").strip()
+    q_numero = request.args.get("q_numero", "").strip()
     q_pressao = request.args.get("q_pressao", "").strip()
     q_temperatura = request.args.get("q_temperatura", "").strip()
     cilindro_filtro = request.args.get("cilindro_id", "").strip()
@@ -263,8 +265,8 @@ def pressao_list():
     data_fim = request.args.get("data_fim", "").strip()
 
     def montar(query):
-        if q_codigo:
-            ids = [c["id"] for c in cilindro_list if codigo_corresponde(c["codigo"], q_codigo)]
+        if q_numero:
+            ids = [c["id"] for c in cilindro_list if numero_corresponde(c.get("numero"), q_numero)]
             query = query.eq("cilindro_id", 0) if not ids else query.in_("cilindro_id", ids)
 
         if q_pressao:

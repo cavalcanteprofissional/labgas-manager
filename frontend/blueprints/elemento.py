@@ -23,6 +23,7 @@ def list():
     
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
+    q = request.args.get("q", "").strip()
     
     if request.method == "POST":
         action = request.form.get("action")
@@ -186,12 +187,17 @@ def list():
     query = get_supabase_client().table("elemento").select("*", count="exact")
     if not dev:
         query = query.eq("user_id", user_id)
+    if q:
+        query = query.eq("nome", q)
     response = query.order("nome", desc=False).range(offset, offset + per_page - 1).execute()
     elementos = response.data or []
     total = response.count or 0
-    
+
+    todos = get_supabase_client().table("elemento").select("id,nome").order("nome", desc=False).execute()
+    todos_elementos = todos.data or []
+
     pages = (total + per_page - 1) // per_page
     end = min(page * per_page, total)
     max_pages = min(pages, 10)
-    
-    return render_template("elemento.html", elementos=elementos, page=page, per_page=per_page, total=total, pages=pages, end=end, max_pages=max_pages)
+
+    return render_template("elemento.html", elementos=elementos, page=page, per_page=per_page, total=total, pages=pages, end=end, max_pages=max_pages, todos_elementos=todos_elementos, q=q)

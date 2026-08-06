@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int, safe_float, formatar_tempo_chama
 from utils.constants import ITEMS_PER_PAGE
-from utils.cilindro_utils import enriquecer_cilindros, codigo_corresponde
+from utils.cilindro_utils import enriquecer_cilindros, numero_corresponde
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
@@ -25,12 +25,18 @@ def leitura_list():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
     
-    cilindro = get_authenticated_client().table("cilindro").select("id,codigo,status").eq("user_id", user_id).order("codigo").execute().data or []
+    cilindro_query = get_authenticated_client().table("cilindro").select("id,numero,status")
+    if not dev:
+        cilindro_query = cilindro_query.eq("user_id", user_id)
+    cilindro = cilindro_query.order("numero").execute().data or []
     cilindro = enriquecer_cilindros(cilindro)
 
-    elementos = get_authenticated_client().table("elemento").select("id,nome").eq("user_id", user_id).order("nome").execute().data or []
+    elementos_query = get_authenticated_client().table("elemento").select("id,nome")
+    if not dev:
+        elementos_query = elementos_query.eq("user_id", user_id)
+    elementos = elementos_query.order("nome").execute().data or []
     
-    cilindro_dict = {c["id"]: c["codigo"] for c in cilindro}
+    cilindro_dict = {c["id"]: c.get("numero") for c in cilindro}
     cilindro_numero_dict = {c["id"]: c.get("numero_exibicao") for c in cilindro}
     elemento_dict = {e["id"]: e["nome"] for e in elementos}
     
@@ -179,9 +185,9 @@ def leitura_list():
                     return redirect(url_for("leitura.leitura_list"))
                 
                 nome_leitura = "N/A"
-                cilindro_nome = get_supabase_client().table("cilindro").select("codigo").eq("id", leitura_info[0]["cilindro_id"]).execute().data
+                cilindro_nome = get_supabase_client().table("cilindro").select("numero").eq("id", leitura_info[0]["cilindro_id"]).execute().data
                 elemento_nome = get_supabase_client().table("elemento").select("nome").eq("id", leitura_info[0]["elemento_id"]).execute().data
-                nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
+                nome_leitura = f"{cilindro_nome[0]['numero'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
 
                 (get_admin_client() if dev else get_authenticated_client()).table("leitura").delete().eq("id", leitura_id).execute()
                 registrar_historico("leitura", "excluido", nome_leitura, user_id,
@@ -224,8 +230,8 @@ def leitura_list():
                 cilindro_ids = sorted(set(l["cilindro_id"] for l in permitted))
                 elemento_ids = sorted(set(l["elemento_id"] for l in permitted))
 
-                cilindros = supabase.table("cilindro").select("id,codigo").in_("id", cilindro_ids).execute().data or []
-                cil_map = {c["id"]: c.get("codigo", "N/A") for c in cilindros}
+                cilindros = supabase.table("cilindro").select("id,numero").in_("id", cilindro_ids).execute().data or []
+                cil_map = {c["id"]: c.get("numero", "N/A") for c in cilindros}
                 elementos = supabase.table("elemento").select("id,nome").in_("id", elemento_ids).execute().data or []
                 elem_map = {e["id"]: e.get("nome", "N/A") for e in elementos}
 
@@ -253,7 +259,7 @@ def leitura_list():
 
     def montar(query):
         if q:
-            cil_ids = [c["id"] for c in cilindro if codigo_corresponde(c["codigo"], q)]
+            cil_ids = [c["id"] for c in cilindro if numero_corresponde(c.get("numero"), q)]
             elem_ids = [e["id"] for e in elementos if q.lower() in e["nome"].lower()]
             clauses = []
             if cil_ids:

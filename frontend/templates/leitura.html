@@ -64,10 +64,10 @@
     <div class="card-header bg-light">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-12 col-md-3">
-                <input type="text" name="q" class="form-control" placeholder="Busque por número do cilindro (ex: 1) ou nome do elemento..." value="{{ request.args.get('q', '') }}">
+                <input type="text" name="q" id="searchLeitura" class="form-control" placeholder="Busque por número do cilindro (ex: 1) ou nome do elemento..." value="{{ request.args.get('q', '') }}" autocomplete="off">
             </div>
             <div class="col-12 col-md-2">
-                <select name="cilindro_id" class="form-select">
+                <select name="cilindro_id" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos os Cilindros</option>
                     {% for c in cilindro %}
                     <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.numero_exibicao }}</option>
@@ -75,7 +75,7 @@
                 </select>
             </div>
             <div class="col-12 col-md-2">
-                <select name="elemento_id" class="form-select">
+                <select name="elemento_id" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos os Elementos</option>
                     {% for e in elementos %}
                     <option value="{{ e.id }}" {% if request.args.get('elemento_id')|string == e.id|string %}selected{% endif %}>{{ e.nome }}</option>
@@ -83,10 +83,10 @@
                 </select>
             </div>
             <div class="col-6 col-md-2">
-                <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial">
+                <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial" onchange="this.form.submit()">
             </div>
             <div class="col-6 col-md-2">
-                <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final">
+                <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final" onchange="this.form.submit()">
             </div>
             <div class="col-12 col-md-1 d-flex gap-2">
                 <button class="btn btn-outline-secondary w-100" type="submit">
@@ -293,6 +293,13 @@
 </div>
 
 <script>
+let debounceTimer;
+
+document.getElementById('searchLeitura').addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => this.form.submit(), 350);
+});
+
 function autoFormatTime(el, digits) {
     el.addEventListener('input', function () {
         var old = this.value;

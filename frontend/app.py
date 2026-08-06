@@ -12,7 +12,7 @@ from blueprints.helpers import get_authenticated_client
 from utils.limiter import limiter
 from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA
 from utils.erros_utils import formatar_erro_supabase
-from utils.cilindro_utils import normalizar_codigo_cilindro
+from utils.cilindro_utils import normalizar_numero_cilindro, numero_corresponde
 
 # Carrega .env.local para desenvolvimento local (se existir)
 # Na Vercel, as variáveis são injetadas automaticamente via Environment Variables
@@ -334,7 +334,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
 
     numero_cilindro = {}
     for cid, c in cilindro_dict.items():
-        numero_cilindro[cid] = normalizar_codigo_cilindro(c.get("codigo")) or c.get("codigo", str(cid))
+        numero_cilindro[cid] = c.get("numero") or str(cid)
 
     cilindros_ativos = sum(1 for c in cilindro if c.get("status") == "ativo")
 
@@ -477,7 +477,7 @@ def dashboard():
 
     if is_dev() and (not selected_user_id or selected_user_id == "all"):
         supabase = get_admin_client()
-        cilindro = supabase.table("cilindro").select("id,codigo,status,litros_equivalentes,custo").execute().data or []
+        cilindro = supabase.table("cilindro").select("id,numero,status,litros_equivalentes,custo").execute().data or []
         elementos = supabase.table("elemento").select("id,nome,consumo_lpm").order("nome").execute().data or []
         leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,data,quantidade,tempo_chama").order("data", desc=True).execute().data or []
         try:
@@ -491,7 +491,7 @@ def dashboard():
             amostras_data = []
     else:
         supabase = get_supabase_client()
-        cilindro = supabase.table("cilindro").select("id,codigo,status,litros_equivalentes,custo").eq("user_id", filter_user_id).execute().data or []
+        cilindro = supabase.table("cilindro").select("id,numero,status,litros_equivalentes,custo").eq("user_id", filter_user_id).execute().data or []
         elementos = supabase.table("elemento").select("id,nome,consumo_lpm").eq("user_id", filter_user_id).order("nome").execute().data or []
         leituras = supabase.table("leitura").select("id,cilindro_id,elemento_id,data,quantidade,tempo_chama").eq("user_id", filter_user_id).order("data", desc=True).execute().data or []
         try:
@@ -607,33 +607,33 @@ def perfil():
     return render_template("perfil.html", stats=stats, user_role=user_role, user_nome=user_nome, habilitar_abas=habilitar_abas)
 
 
-@app.route("/api/buscar-codigo", methods=["POST"])
+@app.route("/api/buscar-numero", methods=["POST"])
 @login_required
-def api_buscar_codigo():
-    """Retorna ID do cilindro pelo código"""
+def api_buscar_numero():
+    """Retorna ID do cilindro pelo número (aceita '1', '001' ou 'CIL-015')"""
     data = request.get_json()
-    codigo = data.get("codigo", "").strip()
+    numero = normalizar_numero_cilindro(data.get("numero", "").strip() if data else "")
     
-    if not codigo:
-        return {"error": "Código é obrigatório"}, 400
+    if numero is None:
+        return {"error": "Número é obrigatório"}, 400
     
     try:
         from blueprints.helpers import get_user_id, is_dev
         user_id = get_user_id()
         dev = is_dev()
         
-        # Buscar cilindro pelo código
+        # Buscar cilindro pelo número
         if dev:
-            response = supabase.table("cilindro").select("id,codigo").eq("codigo", codigo).execute()
+            response = supabase.table("cilindro").select("id,numero").eq("numero", numero).execute()
         else:
-            response = supabase.table("cilindro").select("id,codigo").eq("codigo", codigo).eq("user_id", user_id).execute()
+            response = supabase.table("cilindro").select("id,numero").eq("numero", numero).eq("user_id", user_id).execute()
         
         if response.data:
-            return {"id": response.data[0]["id"], "codigo": response.data[0]["codigo"]}
+            return {"id": response.data[0]["id"], "numero": response.data[0]["numero"]}
         else:
             return {"error": "Cilindro não encontrado"}, 404
     except Exception as e:
-        return {"error": formatar_erro_supabase(str(e), "buscar código")}, 500
+        return {"error": formatar_erro_supabase(str(e), "buscar número")}, 500
 
 
 @app.route("/api/buscar-elemento", methods=["POST"])
@@ -677,8 +677,8 @@ def api_dados_usuario():
         user_id = get_user_id()
         
         # Buscar cilindos
-        cilindro_response = supabase.table("cilindro").select("id,codigo").eq("user_id", user_id).order("codigo").execute()
-        cilindros = [{"id": c["id"], "codigo": c["codigo"]} for c in (cilindro_response.data or [])]
+        cilindro_response = supabase.table("cilindro").select("id,numero").eq("user_id", user_id).order("numero").execute()
+        cilindros = [{"id": c["id"], "numero": c.get("numero")} for c in (cilindro_response.data or [])]
         
         # Buscar elementos
         elemento_response = supabase.table("elemento").select("id,nome").eq("user_id", user_id).order("nome").execute()

@@ -73,10 +73,10 @@
     <div class="card-header bg-light">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-12 col-md-5">
-                <input type="text" name="q" class="form-control" placeholder="Busque pelo N° da amostra ou lote (ex: 12)" value="{{ request.args.get('q', '') }}">
+                <input type="text" name="q" id="searchAmostra" class="form-control" placeholder="Busque pelo N° da amostra ou lote (ex: 12)" value="{{ request.args.get('q', '') }}" autocomplete="off">
             </div>
             <div class="col-12 col-md-5">
-                <select name="elemento_id" class="form-select">
+                <select name="elemento_id" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos os Elementos</option>
                     {% for e in elementos %}
                     <option value="{{ e.id }}" {% if request.args.get('elemento_id')|string == e.id|string %}selected{% endif %}>{{ e.nome }}</option>
@@ -293,6 +293,13 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    let debounceTimer;
+
+    document.getElementById('searchAmostra').addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => this.form.submit(), 350);
+    });
+
     const selectAll = document.getElementById('selectAll');
     const checkboxes = document.querySelectorAll('.item-checkbox');
     const selectedActions = document.getElementById('selectedActions');

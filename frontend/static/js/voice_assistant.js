@@ -19,7 +19,7 @@
 
     // ==================== PERGUNTAS DO FORMULÁRIO ====================
     const cilindroSteps = [
-        { field: 'codigo', prompt: 'Diga o código. Exemplo: zero zero um.', verify: 'código' },
+        { field: 'numero', prompt: 'Diga o número do cilindro. Exemplo: um.', verify: 'número' },
         { field: 'data_compra', prompt: 'Diga a data de compra. Exemplo: quinze de janeiro.', verify: 'data' },
         { field: 'gas_kg', prompt: 'Quantos quilos de gás?', verify: 'quilos' },
         { field: 'custo', prompt: 'Qual o valor em reais?', verify: 'custo' },
@@ -27,7 +27,7 @@
     ];
 
     const pressaoSteps = [
-        { field: 'cilindro_id', prompt: 'Qual o código do cilindro?', verify: 'código' },
+        { field: 'cilindro_id', prompt: 'Qual o número do cilindro?', verify: 'número' },
         { field: 'pressao', prompt: 'Qual a pressão em bar?', verify: 'número' },
         { field: 'temperatura', prompt: 'Qual a temperatura em graus Celsius?', verify: 'número' },
         { field: 'data', prompt: 'Qual a data?', verify: 'data' },
@@ -340,10 +340,10 @@
 
         // Processar conforme campo
         switch (step.field) {
-            case 'codigo':
-                value = parseCodigo(text);
-                if (!value || !value.match(/^CIL-\d{3}$/)) {
-                    speak('Código inválido. Diga apenas os números, como zero zero um.');
+            case 'numero':
+                value = parseNumeroCilindro(text);
+                if (!value || !value.match(/^\d+$/) || parseInt(value, 10) < 1) {
+                    speak('Número inválido. Diga apenas o número, como um, dois ou quinze.');
                     isValid = false;
                 }
                 break;
@@ -390,9 +390,9 @@
 
             // Campos de Pressão
             case 'cilindro_id':
-                value = parseCodigo(text);
-                if (!value || !value.match(/^CIL-\d{3}$/)) {
-                    speak('Código inválido. Diga o código do cilindro, como zero zero um.');
+                value = parseNumeroCilindro(text);
+                if (!value || !value.match(/^\d+$/) || parseInt(value, 10) < 1) {
+                    speak('Número inválido. Diga o número do cilindro, como um ou quinze.');
                     isValid = false;
                 }
                 break;
@@ -513,12 +513,12 @@
     }
 
     // ==================== BUSCAR IDs ====================
-    async function buscarIdPorCodigo(codigo) {
+    async function buscarIdPorNumero(numero) {
         try {
-            const response = await fetch('/api/buscar-codigo', {
+            const response = await fetch('/api/buscar-numero', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigo: codigo })
+                body: JSON.stringify({ numero: numero })
             });
             const result = await response.json();
             if (result.id) {
@@ -559,7 +559,7 @@
         let successMessage = '';
 
         if (intent === 'cilindro') {
-            data.append('codigo', voiceState.data.codigo);
+            data.append('numero', voiceState.data.numero);
             data.append('data_compra', voiceState.data.data_compra);
             data.append('data_inicio_consumo', '');
             data.append('gas_kg', voiceState.data.gas_kg || '1.0');
@@ -567,12 +567,12 @@
             data.append('status', voiceState.data.status || 'ativo');
             data.append('action', 'create');
             endpoint = '/cilindros';
-            successMessage = 'Cilindro ' + voiceState.data.codigo + ' salvo com sucesso!';
+            successMessage = 'Cilindro ' + voiceState.data.numero + ' salvo com sucesso!';
         } else if (intent === 'pressao') {
-            // Buscar ID do cilindro pelo código via API
-            const cilindroId = await buscarIdPorCodigo(voiceState.data.cilindro_id);
+            // Buscar ID do cilindro pelo número via API
+            const cilindroId = await buscarIdPorNumero(voiceState.data.cilindro_id);
             if (!cilindroId) {
-                speak('Cilindro não encontrado. Verifique o código.', false);
+                speak('Cilindro não encontrado. Verifique o número.', false);
                 voiceState.state = 'CONFIRMING';
                 updateUI();
                 return;
@@ -593,10 +593,10 @@
             endpoint = '/elementos';
             successMessage = 'Elemento ' + voiceState.data.nome + ' salvo com sucesso!';
         } else if (intent === 'leitura') {
-            // Buscar ID do cilindro pelo código via API
-            const cilindroId = await buscarIdPorCodigo(voiceState.data.cilindro_id);
+            // Buscar ID do cilindro pelo número via API
+            const cilindroId = await buscarIdPorNumero(voiceState.data.cilindro_id);
             if (!cilindroId) {
-                speak('Cilindro não encontrado. Verifique o código.', false);
+                speak('Cilindro não encontrado. Verifique o número.', false);
                 voiceState.state = 'CONFIRMING';
                 updateUI();
                 return;
@@ -665,18 +665,17 @@
         return patterns.some(p => text.includes(p));
     }
 
-    function parseCodigo(text) {
+    function parseNumeroCilindro(text) {
         // Converter números escritos para número
         const num = parseNumero(text);
-        if (num) {
-            return 'CIL-' + String(num).padStart(3, '0');
+        if (num !== null && num !== undefined) {
+            return String(num);
         }
         
-        // Se já tem CIL-, usar direto
-        if (text.match(/cil-?\d/)) {
-            const nums = text.replace(/cil-?/g, '');
-            const n = parseInt(nums);
-            if (n) return 'CIL-' + String(n).padStart(3, '0');
+        // Aceitar "CIL-015" ou "015" legado — extrai o sufixo numérico
+        const m = String(text || '').trim().match(/(\d+)\s*$/);
+        if (m) {
+            return String(parseInt(m[1], 10));
         }
         
         return null;
@@ -860,7 +859,7 @@
         const intent = voiceState.intent;
 
         if (intent === 'cilindro') {
-            return 'Código ' + (data.codigo || '') + ', data ' + (data.data_compra || '') + ', ' + (data.gas_kg || '') + 'kg, ' + (data.custo || '') + 'reais, ' + (data.status || '');
+            return 'Número ' + (data.numero || '') + ', data ' + (data.data_compra || '') + ', ' + (data.gas_kg || '') + 'kg, ' + (data.custo || '') + 'reais, ' + (data.status || '');
         } else if (intent === 'pressao') {
             return 'Cilindro ' + (data.cilindro_id || '') + ', pressão ' + (data.pressao || '') + ' bar, temperatura ' + (data.temperatura || '') + ' graus';
         } else if (intent === 'elemento') {
@@ -880,7 +879,7 @@
         let preview = '';
 
         if (intent === 'cilindro') {
-            preview = 'Código: ' + (data.codigo || '-') + '<br>Data: ' + (data.data_compra || '-') +
+            preview = 'Número: ' + (data.numero || '-') + '<br>Data: ' + (data.data_compra || '-') +
                       '<br>Kg: ' + (data.gas_kg || '-') + '<br>Custo: R$' + (data.custo || '-') +
                       '<br>Status: ' + (data.status || '-');
         } else if (intent === 'pressao') {
@@ -1025,13 +1024,13 @@
         if (voiceState.state === 'COLLECTING' && currentSteps[voiceState.currentStep]) {
             const step = currentSteps[voiceState.currentStep];
             switch (step.field) {
-                case 'codigo':
+                case 'numero':
                 case 'cilindro_id':
                     // Mostrar primeiro cilindro do usuário como exemplo
                     if (userCilindros.length > 0) {
-                        return 'Exemplo: ' + userCilindros[0].codigo;
+                        return 'Exemplo: ' + (userCilindros[0].numero !== undefined ? userCilindros[0].numero : userCilindros[0].codigo);
                     }
-                    return 'Diga: zero zero um';
+                    return 'Diga: um';
                 case 'data_compra':
                 case 'data':
                     return 'Diga: quinze de janeiro';
@@ -1108,12 +1107,13 @@
         
         // Adicionar botões de cilindro
         userCilindros.forEach(cil => {
-            if (!container.querySelector(`.quick-select[data-value="cil-${cil.codigo}"]`)) {
+            const rotulo = (cil.numero !== undefined ? cil.numero : cil.codigo);
+            if (!container.querySelector(`.quick-select[data-value="cil-${rotulo}"]`)) {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-sm btn-outline-dark quick-select';
-                btn.setAttribute('data-value', 'cil-' + cil.codigo);
-                btn.textContent = cil.codigo;
-                btn.title = 'Código do cilindro';
+                btn.setAttribute('data-value', 'cil-' + rotulo);
+                btn.textContent = rotulo;
+                btn.title = 'Número do cilindro';
                 container.appendChild(btn);
                 
                 btn.addEventListener('click', function(e) {

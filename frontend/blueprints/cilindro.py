@@ -1,12 +1,11 @@
 # Cilindro blueprint - CRUD operations
-import re
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 
 from utils.supabase_utils import get_supabase_client, get_admin_client
-from utils.validators import safe_float
-from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS, CILINDRO_CODIGO_REGEX
-from utils.cilindro_utils import enriquecer_cilindros, normalizar_codigo_cilindro
+from utils.validators import safe_float, validar_numero_cilindro
+from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS
+from utils.cilindro_utils import enriquecer_cilindros, normalizar_numero_cilindro, numero_corresponde
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
@@ -15,12 +14,17 @@ cilindro_bp = Blueprint('cilindro', __name__)
 
 
 def _chave_ordenacao_cilindros(c):
-    """Ativos primeiro; dentro de cada grupo ordena pelo numero do cilindro."""
-    numero = normalizar_codigo_cilindro(c.get("codigo"))
-    numero = numero if numero is not None else float("inf")
-    if c.get("status") == "ativo":
-        return (0, numero)
-    return (1, numero)
+    """Ordena pelo numero do cilindro (registros sem numero vao para o fim)."""
+    numero = normalizar_numero_cilindro(c.get("numero"))
+    return numero if numero is not None else float("inf")
+
+
+def _ler_numero(form, campo="numero"):
+    """Le e valida o numero do cilindro do form. Retorna int ou None."""
+    raw = form.get(campo, "").strip()
+    if not validar_numero_cilindro(raw):
+        return None
+    return int(raw)
 
 
 @cilindro_bp.route("/cilindros", methods=["GET", "POST"])
@@ -40,7 +44,7 @@ def list():
         action = request.form.get("action")
         
         if action == "create":
-            codigo = request.form.get("codigo", "").strip()
+            numero = _ler_numero(request.form)
             data_compra = request.form.get("data_compra", "").strip()
             data_inicio_consumo = request.form.get("data_inicio_consumo", "").strip()
             data_fim = request.form.get("data_fim", "").strip()
@@ -51,12 +55,8 @@ def list():
             if status not in CILINDRO_STATUS:
                 status = "ativo"
             
-            if not codigo or not data_compra:
-                flash("Código e data de compra são obrigatórios", "danger")
-                return redirect(url_for("cilindro.list"))
-            
-            if not re.match(CILINDRO_CODIGO_REGEX, codigo):
-                flash("Código deve seguir o formato CIL-XXX (ex: CIL-001, CIL-002)", "danger")
+            if numero is None or not data_compra:
+                flash("Número e data de compra são obrigatórios", "danger")
                 return redirect(url_for("cilindro.list"))
             
             try:
@@ -76,17 +76,17 @@ def list():
             
             if not dev:
                 try:
-                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).execute()
+                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("numero", numero).execute()
                     if existing.data:
-                        flash("Código já existe para este usuário", "danger")
+                        flash("Número já existe para este usuário", "danger")
                         return redirect(url_for("cilindro.list"))
                 except Exception as e:
-                    flash(formatar_erro_supabase(str(e), "verificar código"), "danger")
+                    flash(formatar_erro_supabase(str(e), "verificar número"), "danger")
                     return redirect(url_for("cilindro.list"))
             
             try:
                 data = {
-                    "codigo": codigo,
+                    "numero": numero,
                     "data_compra": data_compra,
                     "data_inicio_consumo": data_inicio_consumo,
                     "data_fim": data_fim or None,
@@ -104,7 +104,7 @@ def list():
                 
                 resp = client.table("cilindro").insert(data).execute()
                 novo_id = resp.data[0]["id"] if resp.data else None
-                registrar_historico("cilindro", "criado", codigo, user_id, ref_id=novo_id)
+                registrar_historico("cilindro", "criado", str(numero), user_id, ref_id=novo_id)
                 invalidate_user_caches(user_id)
                 flash("Cilindro criado com sucesso!", "success")
             except Exception as e:
@@ -113,7 +113,7 @@ def list():
             
         elif action == "update":
             cilindro_id = request.form.get("cilindro_id", "").strip()
-            codigo = request.form.get("codigo", "").strip()
+            numero = _ler_numero(request.form)
             data_compra = request.form.get("data_compra", "").strip()
             data_inicio_consumo = request.form.get("data_inicio_consumo", "").strip()
             data_fim = request.form.get("data_fim", "").strip()
@@ -124,12 +124,8 @@ def list():
             if status not in CILINDRO_STATUS:
                 status = "ativo"
             
-            if not cilindro_id or not codigo or not data_compra:
-                flash("ID do cilindro, código e data de compra são obrigatórios", "danger")
-                return redirect(url_for("cilindro.list"))
-            
-            if not re.match(CILINDRO_CODIGO_REGEX, codigo):
-                flash("Código deve seguir o formato CIL-XXX (ex: CIL-001, CIL-002)", "danger")
+            if not cilindro_id or numero is None or not data_compra:
+                flash("ID do cilindro, número e data de compra são obrigatórios", "danger")
                 return redirect(url_for("cilindro.list"))
             
             try:
@@ -143,17 +139,17 @@ def list():
             
             try:
                 if not dev:
-                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("codigo", codigo).neq("id", cilindro_id).execute()
+                    existing = get_supabase_client().table("cilindro").select("id").eq("user_id", user_id).eq("numero", numero).neq("id", cilindro_id).execute()
                     if existing.data:
-                        flash("Código já existe para este usuário", "danger")
+                        flash("Número já existe para este usuário", "danger")
                         return redirect(url_for("cilindro.list"))
             except Exception as e:
-                flash(formatar_erro_supabase(str(e), "verificar código"), "danger")
+                flash(formatar_erro_supabase(str(e), "verificar número"), "danger")
                 return redirect(url_for("cilindro.list"))
             
             try:
                 data = {
-                    "codigo": codigo,
+                    "numero": numero,
                     "data_compra": data_compra,
                     "data_inicio_consumo": data_inicio_consumo or None,
                     "data_fim": data_fim or None,
@@ -168,7 +164,7 @@ def list():
                 else:
                     get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
                 
-                registrar_historico("cilindro", "atualizado", codigo, user_id, ref_id=int(cilindro_id))
+                registrar_historico("cilindro", "atualizado", str(numero), user_id, ref_id=int(cilindro_id))
                 invalidate_user_caches(user_id)
                 flash("Cilindro atualizado com sucesso!", "success")
             except Exception as e:
@@ -182,7 +178,7 @@ def list():
                 return redirect(url_for("cilindro.list"))
             
             try:
-                cilindro_info = get_supabase_client().table("cilindro").select("codigo,user_id").eq("id", cilindro_id).execute().data
+                cilindro_info = get_supabase_client().table("cilindro").select("numero,user_id").eq("id", cilindro_id).execute().data
                 if not cilindro_info:
                     flash("Cilindro não encontrado", "danger")
                     return redirect(url_for("cilindro.list"))
@@ -191,7 +187,7 @@ def list():
                     flash("Você não tem permissão para excluir este cilindro.", "danger")
                     return redirect(url_for("cilindro.list"))
                 
-                cilindro_codigo = cilindro_info[0].get("codigo")
+                cilindro_numero = str(cilindro_info[0].get("numero", cilindro_id))
                 
                 amostra_count = get_supabase_client().table("leitura").select("id", count="exact").eq("cilindro_id", cilindro_id).execute()
                 if amostra_count.count and amostra_count.count > 0:
@@ -200,7 +196,7 @@ def list():
                 
                 (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().eq("id", cilindro_id).execute()
                 
-                registrar_historico("cilindro", "excluido", cilindro_codigo, user_id, ref_id=int(cilindro_id))
+                registrar_historico("cilindro", "excluido", cilindro_numero, user_id, ref_id=int(cilindro_id))
                 invalidate_user_caches(user_id)
                 flash("Cilindro excluído com sucesso!", "success")
             except Exception as e:
@@ -226,7 +222,7 @@ def list():
 
             try:
                 supabase = get_supabase_client()
-                cilindros = supabase.table("cilindro").select("id,codigo,user_id").in_("id", ids).execute().data or []
+                cilindros = supabase.table("cilindro").select("id,numero,user_id").in_("id", ids).execute().data or []
 
                 tem_leitura = set()
                 leituras = supabase.table("leitura").select("cilindro_id").in_("cilindro_id", ids).execute().data or []
@@ -237,17 +233,18 @@ def list():
                 skipped = []
                 not_owned = []
                 for c in cilindros:
+                    rotulo = str(c.get("numero", c["id"]))
                     if not dev and c.get("user_id") != user_id:
-                        not_owned.append(c.get("codigo", str(c["id"])))
+                        not_owned.append(rotulo)
                     elif c["id"] in tem_leitura:
-                        skipped.append(c.get("codigo", str(c["id"])))
+                        skipped.append(rotulo)
                     else:
                         permitidos.append(c)
 
                 if permitidos:
                     (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
                     for c in permitidos:
-                        registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id, ref_id=c["id"])
+                        registrar_historico("cilindro", "excluido", str(c.get("numero", c["id"])), user_id, ref_id=c["id"])
                     invalidate_user_caches(user_id)
 
                 if permitidos:
@@ -267,7 +264,34 @@ def list():
     query = get_supabase_client().table("cilindro").select("*", count="exact")
     if not dev:
         query = query.eq("user_id", user_id)
-    response = query.order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
+
+    q = request.args.get("q", "").strip()
+    status_filtro = request.args.get("status", "").strip()
+    data_inicio = request.args.get("data_inicio", "").strip()
+    data_fim = request.args.get("data_fim", "").strip()
+    if q:
+        codes = get_supabase_client().table("cilindro").select("id,numero")
+        if not dev:
+            codes = codes.eq("user_id", user_id)
+        todos = (codes.execute().data or [])
+        ids = [c["id"] for c in todos if numero_corresponde(c.get("numero"), q)]
+        query = query.in_("id", ids) if ids else query.eq("id", 0)
+    if status_filtro in CILINDRO_STATUS:
+        query = query.eq("status", status_filtro)
+    if data_inicio:
+        try:
+            datetime.strptime(data_inicio, "%Y-%m-%d")
+            query = query.gte("data_compra", data_inicio)
+        except ValueError:
+            pass
+    if data_fim:
+        try:
+            datetime.strptime(data_fim, "%Y-%m-%d")
+            query = query.lte("data_compra", data_fim)
+        except ValueError:
+            pass
+
+    response = query.order("numero").range(offset, offset + per_page - 1).execute()
     cilindro = response.data or []
     total = response.count or 0
     

@@ -151,30 +151,40 @@
             <div class="col-md-6">
                 <h5 class="mb-0"><i class="bi bi-{{ ICON_TIPO["historico"] }} me-1"></i> Histórico de Atividades ({{ historico_total }})</h5>
             </div>
-            <div class="col-md-2">
-                <select id="filterType" class="form-select form-select-sm">
+        </div>
+    </div>
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <select name="tipo" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">Todos os Tipos</option>
-                    <option value="cilindro">Cilindros</option>
-                    <option value="pressao">Pressões</option>
-                    <option value="elemento">Elementos</option>
-                    <option value="leitura">Leitura</option>
-                    <option value="amostra">Amostra</option>
+                    <option value="cilindro" {{ 'selected' if request.args.get('tipo') == 'cilindro' }}>Cilindros</option>
+                    <option value="pressao" {{ 'selected' if request.args.get('tipo') == 'pressao' }}>Pressões</option>
+                    <option value="elemento" {{ 'selected' if request.args.get('tipo') == 'elemento' }}>Elementos</option>
+                    <option value="leitura" {{ 'selected' if request.args.get('tipo') == 'leitura' }}>Leitura</option>
+                    <option value="amostra" {{ 'selected' if request.args.get('tipo') == 'amostra' }}>Amostra</option>
+                    <option value="perfil" {{ 'selected' if request.args.get('tipo') == 'perfil' }}>Perfil</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <select id="filterAction" class="form-select form-select-sm">
+            <div class="col-md-4">
+                <select name="acao" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">Todas as Ações</option>
-                    <option value="criado">Criado</option>
-                    <option value="atualizado">Atualizado</option>
-                    <option value="excluido">Excluído</option>
+                    <option value="criado" {{ 'selected' if request.args.get('acao') == 'criado' }}>Criado</option>
+                    <option value="atualizado" {{ 'selected' if request.args.get('acao') == 'atualizado' }}>Atualizado</option>
+                    <option value="excluido" {{ 'selected' if request.args.get('acao') == 'excluido' }}>Excluído</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-sm btn-outline-light w-100" onclick="filterHistory()">
+            <div class="col-md-4 d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light w-100" type="submit">
                     <i class="bi bi-funnel"></i> Filtrar
                 </button>
+                {% if request.args %}
+                <a href="{{ url_for('admin.user_data', target_user_id=target_user.id) }}" class="btn btn-sm btn-outline-light" title="Limpar filtros">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
             </div>
-        </div>
+        </form>
     </div>
     <div class="card-body p-0">
         {% if history %}
@@ -205,15 +215,27 @@
             </table>
         </div>
         {% if historico_total > per_page %}
-        <div class="card-footer">
+        <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <small class="text-muted">Mostrando {{ (page-1)*per_page + 1 }}-{{ end }} de {{ historico_total }}</small>
+            </div>
             <ul class="pagination pagination-sm mb-0 justify-content-center">
-                <li class="page-item {{ 'disabled' if page == 1 }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=page-1) }}">Anterior</a></li>
-                {% set pages = ((historico_total / per_page)|round(method='ceil'))|int %}
+                <li class="page-item {{ 'disabled' if page == 1 }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=page-1, per_page=per_page) }}{{ qs() }}">Anterior</a></li>
                 {% for p in range(1, pages + 1) %}
-                <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=p) }}">{{ p }}</a></li>
+                    {% if p == 1 or p == pages or (p >= page - 2 and p <= page + 2) %}
+                    <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=p, per_page=per_page) }}{{ qs() }}">{{ p }}</a></li>
+                    {% elif p == page - 3 or p == page + 3 %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
                 {% endfor %}
-                <li class="page-item {{ 'disabled' if page == pages }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=page+1) }}">Próxima</a></li>
+                <li class="page-item {{ 'disabled' if page == pages }}"><a class="page-link" href="{{ url_for('admin.user_data', target_user_id=target_user.id, page=page+1, per_page=per_page) }}{{ qs() }}">Próxima</a></li>
             </ul>
+            <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='{{ url_for('admin.user_data', target_user_id=target_user.id) }}?page=1&per_page='+this.value+'{{ qs() }}'">
+                <option value="10" {{ 'selected' if per_page == 10 }}>10 por página</option>
+                <option value="20" {{ 'selected' if per_page == 20 }}>20 por página</option>
+                <option value="50" {{ 'selected' if per_page == 50 }}>50 por página</option>
+                <option value="100" {{ 'selected' if per_page == 100 }}>100 por página</option>
+            </select>
         </div>
         {% endif %}
         {% else %}
@@ -225,32 +247,4 @@
     </div>
 </div>
 
-<script>
-function filterHistory() {
-    const type = document.getElementById('filterType').value;
-    const action = document.getElementById('filterAction').value;
-    
-    const rows = document.querySelectorAll('#historyTable tbody tr');
-    rows.forEach(row => {
-        const cells = row.cells;
-        let rowType = cells[1].textContent.trim().toLowerCase();
-        let rowAction = cells[2].textContent.trim().toLowerCase();
-        
-        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'leitura': 'leitura', 'amostra': 'amostra' };
-        rowType = typeMap[rowType] || rowType;
-        
-        const actionMap = { 'criado': 'criado', 'atualizado': 'atualizado', 'excluído': 'excluido' };
-        rowAction = actionMap[rowAction] || rowAction;
-        
-        let show = true;
-        if (type && !rowType.includes(type)) show = false;
-        if (action && !rowAction.includes(action)) show = false;
-        
-        row.style.display = show ? '' : 'none';
-    });
-}
-
-document.getElementById('filterType').addEventListener('change', filterHistory);
-document.getElementById('filterAction').addEventListener('change', filterHistory);
-</script>
 {% endblock %}

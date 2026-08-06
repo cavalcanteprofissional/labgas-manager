@@ -6,7 +6,7 @@
 -- Tabela: perfil (criar primeiro - dependencias de outras tabelas)
 CREATE TABLE perfil (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    role VARCHAR(20) DEFAULT 'usuario' CHECK (role IN ('admin', 'usuario')),
+    role VARCHAR(20) DEFAULT 'usuario' CHECK (role IN ('dev', 'admin', 'usuario')),
     ativo BOOLEAN DEFAULT true,
     nome VARCHAR(100),
     email VARCHAR(255),
@@ -17,7 +17,7 @@ CREATE TABLE perfil (
 -- Tabela: cilindro
 CREATE TABLE cilindro (
     id SERIAL PRIMARY KEY,
-    codigo VARCHAR(50) NOT NULL,
+    numero INTEGER NOT NULL,
     data_compra DATE NOT NULL,
     data_inicio_consumo DATE,
     data_fim DATE,
@@ -26,7 +26,8 @@ CREATE TABLE cilindro (
     custo NUMERIC(10,2) DEFAULT 290.00,
     status VARCHAR(20) DEFAULT 'ativo',
     user_id UUID REFERENCES auth.users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(numero, user_id)
 );
 
 -- Tabela: elemento
@@ -35,7 +36,8 @@ CREATE TABLE elemento (
     nome VARCHAR(100) NOT NULL,
     consumo_lpm NUMERIC(5,2) NOT NULL,
     user_id UUID REFERENCES auth.users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(nome, user_id)
 );
 
 -- Tabela: pressao
@@ -68,11 +70,12 @@ CREATE TABLE historico_auditoria (
     tipo VARCHAR(20) NOT NULL,
     acao VARCHAR(20) NOT NULL,
     ref_id INTEGER,
-    label VARCHAR(150) NOT NULL,
+    label VARCHAR(150),
     detalhe JSONB,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT chk_historico_acao CHECK (acao IN ('criado', 'atualizado', 'excluido'))
+    CONSTRAINT chk_historico_acao CHECK (acao IN ('criado', 'atualizado', 'excluido')),
+    CONSTRAINT chk_historico_tipo CHECK (tipo IN ('cilindro', 'pressao', 'elemento', 'leitura', 'amostra', 'perfil'))
 );
 
 -- Tabela: amostra
@@ -98,7 +101,7 @@ CREATE TABLE amostra_elemento (
 -- =====================================================
 
 CREATE INDEX idx_cilindro_user_id ON cilindro(user_id);
-CREATE INDEX idx_cilindro_codigo ON cilindro(codigo);
+CREATE INDEX idx_cilindro_numero ON cilindro(numero);
 CREATE INDEX idx_elemento_user_id ON elemento(user_id);
 CREATE INDEX idx_elemento_nome ON elemento(nome);
 CREATE INDEX idx_leitura_user_id ON leitura(user_id);

@@ -1,14 +1,18 @@
 -- =====================================================
 -- POLÍTICAS RLS (Row Level Security) - LabGas Manager
 -- =====================================================
+-- As policies SELECT restringem leitura ao dono do registro
+-- (auth.uid() = user_id); usuários com role 'dev' enxergam tudo
+-- via public.is_dev() (SECURITY DEFINER, ver migration
+-- 20260806_cilindro_numero.sql).
 
 -- =====================================================
 -- Tabela: cilindro
 -- =====================================================
 
--- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Anyone can view cilindro" ON cilindro
-    FOR SELECT USING (true);
+-- SELECT: próprio usuário ou dev
+CREATE POLICY "Users can view own cilindro" ON cilindro
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 -- INSERT: Apenas próprio usuário pode inserir
 CREATE POLICY "Users can insert cilindro" ON cilindro
@@ -26,9 +30,9 @@ CREATE POLICY "Users can delete cilindro" ON cilindro
 -- Tabela: elemento
 -- =====================================================
 
--- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Anyone can view elemento" ON elemento
-    FOR SELECT USING (true);
+-- SELECT: próprio usuário ou dev
+CREATE POLICY "Users can view own elemento" ON elemento
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 -- INSERT: Apenas próprio usuário pode inserir
 CREATE POLICY "Users can insert elemento" ON elemento
@@ -46,9 +50,9 @@ CREATE POLICY "Users can delete elemento" ON elemento
 -- Tabela: leitura
 -- =====================================================
 
--- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Anyone can view leitura" ON leitura
-    FOR SELECT USING (true);
+-- SELECT: próprio usuário ou dev
+CREATE POLICY "Users can view own leitura" ON leitura
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 -- INSERT: Apenas próprio usuário pode inserir
 CREATE POLICY "Users can insert leitura" ON leitura
@@ -66,9 +70,9 @@ CREATE POLICY "Users can delete leitura" ON leitura
 -- Tabela: perfil
 -- =====================================================
 
--- SELECT: Apenas próprio usuário pode visualizar
+-- SELECT: Apenas próprio usuário ou dev
 CREATE POLICY "Users can view own perfil" ON perfil
-    FOR SELECT USING (auth.uid() = id);
+    FOR SELECT USING (auth.uid() = id OR public.is_dev());
 
 -- INSERT: Apenas próprio usuário pode inserir (seu próprio perfil)
 CREATE POLICY "Users can insert own perfil" ON perfil
@@ -82,9 +86,9 @@ CREATE POLICY "Users can update own perfil" ON perfil
 -- Tabela: pressao
 -- =====================================================
 
--- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Anyone can view pressao" ON pressao
-    FOR SELECT USING (true);
+-- SELECT: próprio usuário ou dev
+CREATE POLICY "Users can view own pressao" ON pressao
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 -- INSERT: Apenas próprio usuário pode inserir
 CREATE POLICY "Users can insert pressao" ON pressao
@@ -99,12 +103,12 @@ CREATE POLICY "Users can delete pressao" ON pressao
     FOR DELETE USING (auth.uid() = user_id);
 
 -- =====================================================
--- Tabela: historico_auditoria (substitui historico_log)
+-- Tabela: historico_auditoria
 -- =====================================================
 
--- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Anyone can view historico_auditoria" ON historico_auditoria
-    FOR SELECT USING (true);
+-- SELECT: próprio usuário ou dev
+CREATE POLICY "Users can view own historico_auditoria" ON historico_auditoria
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 -- Nota: INSERT/UPDATE/DELETE são feitos via service_role (admin)
 -- para permitir registro de histórico de qualquer usuário
@@ -113,8 +117,8 @@ CREATE POLICY "Anyone can view historico_auditoria" ON historico_auditoria
 -- Tabela: amostra
 -- =====================================================
 
-CREATE POLICY "Anyone can view amostra" ON amostra
-    FOR SELECT USING (true);
+CREATE POLICY "Users can view own amostra" ON amostra
+    FOR SELECT USING (auth.uid() = user_id OR public.is_dev());
 
 CREATE POLICY "Users can insert amostra" ON amostra
     FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -129,8 +133,11 @@ CREATE POLICY "Users can delete amostra" ON amostra
 -- Tabela: amostra_elemento
 -- =====================================================
 
-CREATE POLICY "Anyone can view amostra_elemento" ON amostra_elemento
-    FOR SELECT USING (true);
+CREATE POLICY "Users can view own amostra_elemento" ON amostra_elemento
+    FOR SELECT USING (
+        auth.uid() IN (SELECT user_id FROM amostra WHERE id = amostra_elemento.amostra_id)
+        OR public.is_dev()
+    );
 
 CREATE POLICY "Users can insert amostra_elemento" ON amostra_elemento
     FOR INSERT WITH CHECK (auth.uid() IN (
