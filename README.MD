@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.20.0** (Branch: master)
+**Versão: 2.20.3** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -113,7 +113,7 @@ O dashboard é o coração do sistema — uma visão geral do laboratório com *
 
 **Leituras por Mês** — gráfico de barras que agrupa as leituras por mês (últimos 12 meses). O eixo X são os meses, o eixo Y é a soma das quantidades. Ideal para enxergar sazonalidade: "em abril o laboratório trabalhou mais que em janeiro".
 
-**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra quantas leituras foram feitas em cada cilindro. As cores variam por intensidade: cilindro com mais leituras ganha a cor mais escura. Útil para saber qual cilindro está sendo mais usado.
+**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra quantas leituras foram feitas em cada cilindro. A legenda é um **grid customizado** com ponto de cor + número do cilindro + quantidade total de leituras (empilha abaixo do gráfico no mobile). O header do card tem um filtro de **"Por Número"** (padrão) e **"Por Leituras"**, que reordena fatias e legenda juntas e recalcula a cor pela base escolhida. A cor usa **escala vermelha pura claro→escuro** (`#ffc2c2 → #780000`): menor valor = vermelho mais claro, maior = vermelho mais escuro. Útil para saber qual cilindro está sendo mais usado.
 
 **Elementos por Amostra** — gráfico de barras que mostra a distribuição de quantos elementos cada amostra tem: amostras com 1, 2, 3 ou 4+ elementos. Se 10 amostras têm 1 elemento cada e 5 amostras têm 3 elementos cada, o gráfico mostra essa proporção. Ajuda a entender a complexidade média das amostras.
 
@@ -693,9 +693,10 @@ Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.e
 - Sistema de autenticação (login/register/logout)
 - Dashboard com cards de estatísticas
 - Paginação em todas as listas (10/25/50/100 itens por página)
-- Filtros em listas de cilindro, elemento e amostra
+- Filtros server-side em todas as abas (cilindro, pressão, leitura, elemento, amostra, histórico) com busca com debounce, selects/datas com `onchange`, paginação preservando filtros via `qs()` e seletor de itens por página
 - Sistema de cache (5 minutos, KPIs 30s)
 - Loading overlay com animação SVG e delay de 300ms (sem flash em navegações rápidas)
+- Favicon e logo (loading/login) com a gota **`bi-moisture`** em `#0070b8`, mesmo ícone da marca na sidebar e no registro
 - Toast notifications
 - Design responsivo com Bootstrap 5
 

@@ -392,7 +392,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     cilindro_leituras_labels = []
     cilindro_leituras_values = []
     for cid, qtd in sorted(leituras_por_cilindro.items(), key=lambda x: (0, numero_cilindro.get(x[0])) if isinstance(numero_cilindro.get(x[0]), int) else (1, 0)):
-        cilindro_leituras_labels.append(numero_cilindro.get(cid, str(cid)))
+        cilindro_leituras_labels.append(str(numero_cilindro.get(cid, str(cid))))
         cilindro_leituras_values.append(qtd)
 
     # Curva de Pressão (últimas 10 por cilindro)

@@ -2,6 +2,27 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.20.3] — 2026-08-06
+
+### Logo TSA removido e ícone LabGas (gota) padronizado em todo o projeto (Fase 83) 🎨
+
+- **Descoberta**: o "logo LabGas" do overlay de loading (`base.html`) e do login (`login.html`) era o **mesmo path SVG do TSA** (`M825.57...`) usado no favicon — o favicon foi introduzido como "Favicon com ícone TSA" (v2.0.0-beta) e os SVG inline replicaram esse path
+- **Favicon**: `frontend/static/favicon.svg` substituído pela **gota `bi-moisture`** (Bootstrap Icons 1.11.0) em `#0070b8` (mesma cor primária da marca); nome do arquivo mantido, então a referência em `base.html` continua válida
+- **Loading e login**: SVG inline do overlay de loading e do logo do login trocados pelo mesmo path da gota (`viewBox` 16×16), preservando `class="logo-fill"` e a animação `fillUp` com `var(--primary)`
+- **Consistência**: o ícone agora é o mesmo já usado na sidebar de abas ao lado do texto "LabGas" (`bi-moisture`) e no `register.html`
+- **Verificação**: `grep` por `M825.57|TSA|Camada_1|cls-1` → 0 resultados; testes do dashboard seguem verdes
+
+## [2.20.2] — 2026-08-06
+
+### Dashboard — gráficos vazios corrigidos + novo ícone "Leituras por Cilindro" (Fase 82) 🐛📊
+
+- **Causa raiz**: o doughnut "Leituras por Cilindro" passava labels **numéricos** (`[1..13]`) ao Chart.js. Com legenda visível, o layout da legenda (`_fitCols`) chamava `.reduce()` no texto do item, lançando `TypeError: n.reduce is not a function`. Como os 4 `new Chart(...)` ficam num único bloco `<script>`, o erro do primeiro abortava o bloco inteiro — os 4 gráficos do dashboard (Curva de Pressão, Leituras por Mês, Leituras por Cilindro e Elementos por Amostra) nunca eram criados, aparecendo vazios mesmo com dados corretos no servidor
+- **Correção**: `cilindro_leituras_labels` agora são strings (`str(numero_cilindro.get(cid, str(cid)))` em `app.py`) — legenda renderiza normalmente; verificado em navegador headless (doughnut/line/bar/bar criados, zero pageerrors) e com `test_compute_kpis`/`test_dashboard` verdes
+- **Ícone**: "Leituras por Cilindro" (header + empty-state) troca `bi-pie-chart` por `bi-thermometer-half` — decisão do usuário
+- **Legenda do doughnut**: substituída a legenda nativa do Chart.js (à direita, espremida) por uma **legenda customizada em grid** ao lado do gráfico — 13 itens em células de tamanho igual (2 colunas), cada uma com ponto de cor + número do cilindro + **quantidade total de leituras** (ex.: `1 · 531`); responsiva (empilha abaixo do gráfico no mobile); `PALETA_CILINDRO` virou **escala vermelha pura claro→escuro** (`#ffc2c2 → #780000`) — menor quantidade = vermelho mais claro, maior = vermelho mais escuro (mesma escala das fatias do gráfico); `test_dashboard` 8/8 passando
+- **Filtro de ordenação/cores do doughnut**: `btn-group` no header do card com **"Por Número"** (default) e **"Por Leituras"** — o JS foi refatorado em `renderCilindro(modo)`, que reordena fatias **e** legenda juntas e recalcula as cores pela base escolhida: **Por Número** ordena 1→13 e colore pelo número do cilindro (1 = `#ffc2c2`, 13 = `#780000`); **Por Leituras** ordena crescente por quantidade e colore pela quantidade (143 = claro, 689 = escuro)
+- **Registrado (fora do escopo)**: widget de voz loga `[VOICE] Erro ao carregar dados do usuário: ..."<!DOCTYPE"... is not valid JSON` — um endpoint devolve HTML em vez de JSON; investigar em fase futura
+
 ## [2.20.1] — 2026-08-06
 
 ### Dashboard — cache da visão "Todos os usuários" invalidado no CRUD 🔄

@@ -9,6 +9,11 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .cilindro-filtro-btn.active {
+        box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
     }
     .dash-header-cilindro { background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); }
     .dash-header-pressao  { background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); }
@@ -46,6 +51,64 @@
     .chart-container {
         position: relative;
         height: 250px;
+    }
+    .doughnut-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .doughnut-wrap .chart-container {
+        flex: 0 0 56%;
+        min-width: 0;
+    }
+    .cilindro-legend {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem 0.6rem;
+        align-content: center;
+        max-height: 250px;
+    }
+    .cilindro-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+        padding: 0.3rem 0.45rem;
+        font-size: 0.8rem;
+        line-height: 1.2;
+        background: rgba(0, 0, 0, 0.028);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 6px;
+    }
+    .cilindro-legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+    }
+    .cilindro-legend-num {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+    .cilindro-legend-qtd {
+        margin-left: auto;
+        color: var(--bs-secondary-color);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    @media (max-width: 991.98px) {
+        .doughnut-wrap {
+            flex-direction: column;
+        }
+        .doughnut-wrap .chart-container {
+            flex: none;
+            width: 100%;
+        }
+        .cilindro-legend {
+            width: 100%;
+        }
     }
     .empty-state {
         text-align: center;
@@ -226,16 +289,23 @@
     <div class="col-12 col-lg-6">
         <div class="card h-100">
             <div class="card-header dash-header dash-header-cilindro">
-                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Leituras por Cilindro</h5>
+                <h5 class="mb-0"><i class="bi bi-thermometer-half"></i> Leituras por Cilindro</h5>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar legenda">
+                    <button type="button" class="btn btn-light cilindro-filtro-btn active" data-cilindro-ordem="numero">Por Número</button>
+                    <button type="button" class="btn btn-light cilindro-filtro-btn" data-cilindro-ordem="leitura">Por Leituras</button>
+                </div>
             </div>
             <div class="card-body">
                 {% if cilindro_leituras_values %}
-                <div class="chart-container">
-                    <canvas id="cilindroChart"></canvas>
+                <div class="doughnut-wrap">
+                    <div class="chart-container">
+                        <canvas id="cilindroChart"></canvas>
+                    </div>
+                    <div id="cilindroLegend" class="cilindro-legend"></div>
                 </div>
                 {% else %}
                 <div class="empty-state">
-                    <i class="bi bi-pie-chart"></i>
+                    <i class="bi bi-thermometer-half"></i>
                     <p class="mb-0">Nenhuma leitura cadastrada.</p>
                 </div>
                 {% endif %}
@@ -373,22 +443,73 @@ function getColorByIntensity(values, palette) {
 }
 
 {% if cilindro_leituras_values %}
-new Chart(document.getElementById('cilindroChart'), {
+var cilindroLabels = {{ cilindro_leituras_labels|tojson }};
+var cilindroValues = {{ cilindro_leituras_values|tojson }};
+var paletaCilindro = {{ paleta_cilindro|tojson }};
+var cilindroChart = null;
+
+function renderCilindro(modo) {
+    var items = [];
+    for (var i = 0; i < cilindroLabels.length; i++) {
+        items.push({ num: cilindroLabels[i], qtd: cilindroValues[i] });
+    }
+    if (modo === 'leitura') {
+        items.sort(function (a, b) { return a.qtd - b.qtd; });
+    } else {
+        items.sort(function (a, b) { return Number(a.num) - Number(b.num); });
+    }
+    var base = modo === 'leitura'
+        ? items.map(function (it) { return it.qtd; })
+        : items.map(function (it) { return Number(it.num); });
+    var cores = getColorByIntensity(base, paletaCilindro);
+
+    if (cilindroChart) {
+        cilindroChart.data.labels = items.map(function (it) { return it.num; });
+        cilindroChart.data.datasets[0].data = items.map(function (it) { return it.qtd; });
+        cilindroChart.data.datasets[0].backgroundColor = cores;
+        cilindroChart.update();
+    }
+
+    var wrap = document.getElementById('cilindroLegend');
+    if (!wrap) return;
+    var html = '';
+    for (var j = 0; j < items.length; j++) {
+        html += '<div class="cilindro-legend-item">' +
+            '<span class="cilindro-legend-dot" style="background:' + cores[j] + '"></span>' +
+            '<span class="cilindro-legend-num">' + items[j].num + '</span>' +
+            '<span class="cilindro-legend-qtd">' + items[j].qtd + '</span>' +
+            '</div>';
+    }
+    wrap.innerHTML = html;
+}
+
+cilindroChart = new Chart(document.getElementById('cilindroChart'), {
     type: 'doughnut',
     data: {
-        labels: {{ cilindro_leituras_labels|tojson }},
+        labels: cilindroLabels,
         datasets: [{
-            data: {{ cilindro_leituras_values|tojson }},
-            backgroundColor: getColorByIntensity({{ cilindro_leituras_values|tojson }}, {{ paleta_cilindro|tojson }})
+            data: cilindroValues,
+            backgroundColor: getColorByIntensity(cilindroLabels.map(Number), paletaCilindro),
+            borderColor: '#ffffff',
+            borderWidth: 2
         }]
     },
     options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
             tooltip: tooltipStyle,
-            legend: { position: 'right', labels: { padding: 15, usePointStyle: true } }
+            legend: { display: false }
         }
     }
+});
+renderCilindro('numero');
+
+document.querySelectorAll('.cilindro-filtro-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('.cilindro-filtro-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        renderCilindro(btn.getAttribute('data-cilindro-ordem'));
+    });
 });
 {% endif %}
 

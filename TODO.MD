@@ -2183,3 +2183,70 @@ Padronizar os filtros de todas as abas pelo padrão da aba Cilindro (Fases 78-79
 - [x] `frontend/templates/admin.html` — input `q` (debounce) para buscar usuários
 - [x] Testes: `test_leitura` (filtros), `test_pressao` (`q_numero`), `test_amostra` (substring + elemento), `test_historico` (novo), `test_admin` (busca + user_data)
 - [x] `CHANGELOG.md`
+
+## Fase 82: Dashboard — gráficos vazios (bug Chart.js) + ícone "Leituras por Cilindro" 🐛📊 (v2.20.2)
+
+### Bug reportado
+Com o usuário Thiago, os 4 gráficos centrais do dashboard ("Curva de Pressão por Cilindro", "Leituras por Mês", "Leituras por Cilindro", "Elementos por Amostra") apareciam **vazios**, embora os cards de KPI computassem valores corretos.
+
+### Diagnóstico (causa raiz)
+- O servidor envia **todos** os dados dos gráficos corretamente (13 labels/valores de cilindro; pressão do cilindro 12 com 10 pontos; 11 meses; elementos [5,1,0,22]).
+- Chart.js carrega (CDN), mas o **1º gráfico** (doughnut "Leituras por Cilindro") lança `TypeError: n.reduce is not a function` no layout da legenda (`_fitCols`).
+- **Trigger isolado empiricamente (Playwright):** labels **numéricos** + legenda visível. `cilindro_leituras_labels` eram inteiros `[1..13]` (de `numero_cilindro.get(cid, str(cid))`). Probes: numérico+legenda → ERRO; numérico sem legenda → OK; string+legenda → OK.
+- Os 4 `new Chart(...)` estão num **único bloco `<script>`** — o erro no primeiro aborta o bloco inteiro, impedindo a criação dos outros 3 (por isso os 4 aparecem vazios).
+
+### Correções
+- [x] `frontend/app.py` — `cilindro_leituras_labels.append(str(numero_cilindro.get(cid, str(cid))))` (labels viram strings, elimina o crash da legenda)
+- [x] `frontend/templates/dashboard.html` — ícone de "Leituras por Cilindro" (header + empty-state) `bi-pie-chart` → `bi-thermometer-half` (decisão do usuário)
+- [x] `frontend/templates/dashboard.html` — legenda do doughnut "Leituras por Cilindro" substituída por **grid customizado** (`#cilindroLegend`): 13 itens em células de tamanho igual (2 colunas), cada uma com ponto de cor + número do cilindro + **quantidade total de leituras**; chart à esquerda (56%), legenda à direita, empilha no mobile
+- [x] `frontend/utils/constants.py` — `PALETA_CILINDRO` virou **escala vermelha pura claro→escuro** (`#ffc2c2 → #f9706a → #e63946 → #c1121f → #780000`); com `getColorByIntensity`, menor quantidade = vermelho mais claro e maior = vermelho mais escuro (verificado: cilindro 5/143 → `#ffc2c2`, cilindro 6/689 → `#780000`)
+- [x] `frontend/templates/dashboard.html` — **filtro de ordenação/cores** do doughnut "Leituras por Cilindro": `btn-group` no header com **"Por Número"** (default) e **"Por Leituras"**; JS refatorado em `renderCilindro(modo)` — "Por Número" ordena 1→13 e colore por número (1 = `#ffc2c2`, 13 = `#780000`); "Por Leituras" ordena crescente por quantidade e colore por quantidade (143 = claro, 689 = escuro); fatias do doughnut **e** legenda reordenam juntas (`chart.update()` + reconstrução de `#cilindroLegend`)
+- [x] Testes: `test_compute_kpis.py` + `test_dashboard.py` passando (o teste existente de labels continua válido — `str(str)` é idempotente)
+- [x] Verificação Playwright: 4 charts criados (`Chart.instances` — doughnut/line/bar/bar, canvas 506x250), **zero** pageerrors, screenshot conferido
+- [x] `CHANGELOG.md`
+
+### Achado secundário (fora do escopo — registrado)
+Console do navegador mostra `[VOICE] Erro ao carregar dados do usuário: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON` — o widget de voz busca um endpoint que devolve HTML em vez de JSON (pré-existente, não relacionado aos gráficos). Investigar em fase futura.
+
+## Fase 83: Remover logo TSA e padronizar ícone LabGas (gota) 🎨 (v2.20.3)
+
+### Objetivo
+Remover por completo o logo **TSA** do projeto (favicon + overlay de loading + logo do login usavam o mesmo path SVG do TSA, `M825.57...` — inclusive o "logo LabGas" do login/loading era o próprio TSA) e substituir pelo ícone LabGas da sidebar: **`bi-moisture`** (gota, Bootstrap Icons 1.11.0) em `#0070b8`. Decisão do usuário: usar o mesmo ícone que aparece na sidebar de abas ao lado do texto "LabGas".
+
+### Correções
+- [x] `frontend/static/favicon.svg` — conteúdo substituído: sai o SVG TSA (`id="Camada_1"`, classes `cls-1`, 3 paths/polygon); entra a gota `bi-moisture` em `#0070b8` (`viewBox="0 0 16 16"`); nome do arquivo mantido para não quebrar a referência em `base.html`
+- [x] `frontend/templates/base.html` — overlay de loading: `viewBox="0 0 1080 1080"` → `"0 0 16 16"` e path TSA → gota (mantém `class="logo-fill"` e animação `fillUp` com `var(--primary)`)
+- [x] `frontend/templates/login.html` — logo do login: mesma troca (gota 36×36, `class="logo-fill"`)
+- [x] `CHANGELOG.md`
+- [x] Verificação: `grep` por `M825.57|TSA|Camada_1|cls-1` → 0 resultados; favicon servido com conteúdo novo; testes do dashboard passando
+
+### Observação
+- `register.html:33` e a sidebar (`base.html:514,520`) já usavam a gota `bi-moisture` — agora o favicon, o loading e o login ficam consistentes com eles.
+
+## Fase 84: Corrigir filtros das abas — bugs identificados (planejado) 🔍
+
+### Objetivo
+Corrigir os problemas reais encontrados nos filtros das abas após a padronização da Fase 81. Todos os itens foram **verificados** com análise de código (arquivo:linha) — nenhum foi implementado ainda, este é o plano.
+
+### Segurança (fazer primeiro)
+- [ ] `frontend/blueprints/elemento.py:196-197` — dropdown de elementos não filtra por `user_id` (vaza elementos de todos os usuários); aplicar o padrão `if not dev:` usado nos demais blueprints
+- [ ] `frontend/blueprints/historico.py:82` — query do Histórico sem `.eq("user_id")` para não-dev: usuário comum enxerga o log de auditoria completo; filtrar por `user_id` mantendo o branch dev
+- [ ] `frontend/blueprints/historico.py:57` — `q` cru (sem escapar `%`/`_`) no branch de `ilike` simples, inconsistente com a sanitização da L51; padronizar
+
+### Admin
+- [ ] `frontend/blueprints/admin.py:61-79` — contagem de usuários sempre 0: `r.get("count", 0)` lê de linhas que não possuem campo `count` (o total real está no envelope `response.count` da resposta)
+- [ ] `frontend/blueprints/admin.py:93,342` + `frontend/blueprints/helpers.py:155-164` — `get_habilitar_abas()` nunca consulta o banco (só lê `session['cached_user_info']` do admin logado): as "Permissões de Acesso" do usuário alvo aparecem todas habilitadas; ler a coluna real `habilitar_abas` do usuário
+
+### Datas e paginação
+- [ ] `frontend/blueprints/historico.py:75` / `admin.py:310-311` — `lte("created_at", "YYYY-MM-DD")` sobre timestamp exclui os registros do último dia após 00:00; usar `lt(data_fim + 1 dia)` ou normalizar
+- [ ] `frontend/blueprints/helpers.py:136` — `(total + per_page - 1) // per_page` → `ZeroDivisionError` com `?per_page=0`
+- [ ] `frontend/blueprints/cilindro.py:263-294` — sem clamp de `page`/`per_page`: `page=0` → offset negativo; `per_page=0` → `range(0,-1)`; padronizar com `consultar_paginado` ou clamp explícito em todas as abas
+
+### Consistência / UX
+- [ ] `frontend/blueprints/pressao.py:334-340` — `montar(query_stats)` reaplica os filtros às estatísticas de cor (média/desvio mudam com o filtro ativo → badges de cor inconsistentes com a linha); decidir se as stats refletem o filtro ou o total
+- [ ] `frontend/app.py:205-214` — `qs()` concatena `{k}={v}` cru sem URL-encoding (valores com `&`/espaço quebram a query string); usar `urlencode`
+- [ ] `frontend/blueprints/cilindro.py:272-278` — scan completo `(id, numero)` de todos os cilindros a cada tecla para busca substring; avaliar busca SQL server-side
+
+### Verificação
+- [ ] Testes por aba (segurança de dados + filtros) + `test_dashboard` 8/8
+- [ ] `CHANGELOG.md` + `README.MD`

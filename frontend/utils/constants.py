@@ -102,7 +102,7 @@ COR_TIPO = {
 
 # Paletas ordenadas do mais CLARO (valor baixo) → mais ESCURO (valor alto)
 # para uso em graficos Chart.js com getColorByIntensity()
-PALETA_CILINDRO = ["#f4a261", "#e76f51", "#d62828", "#c1121f", "#780000"]
+PALETA_CILINDRO = ["#ffc2c2", "#f9706a", "#e63946", "#c1121f", "#780000"]
 PALETA_PRESSAO  = ["#ffd166", "#fca311", "#f77f00", "#e85d04", "#9d0208"]
 PALETA_ELEMENTO = ["#b7e4c7", "#52b788", "#2d6a4f", "#1b4332", "#081c15"]
 PALETA_LEITURA  = ["#a8dadc", "#457b9d", "#1d3557", "#0b1a2a", "#050d14"]
