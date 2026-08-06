@@ -58,7 +58,7 @@ DELETE_ORDER = [
     "amostra",
     "cilindro",
     "elemento",
-    "historico_log",
+    "historico_auditoria",
     "perfil",
 ]
 
@@ -71,7 +71,7 @@ INSERT_ORDER = [
     "public.amostra_elemento",
     "public.leitura",
     "public.pressao",
-    "public.historico_log",
+    "public.historico_auditoria",
 ]
 
 

@@ -5,12 +5,22 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
-from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS
+from utils.constants import ITEMS_PER_PAGE, LITROS_EQUIVALENTES_KG, GAS_KG_DEFAULT, CUSTO_DEFAULT, CILINDRO_STATUS, CILINDRO_CODIGO_REGEX
+from utils.cilindro_utils import enriquecer_cilindros, normalizar_codigo_cilindro
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client
 from utils.cache_utils import invalidate_user_caches
 
 cilindro_bp = Blueprint('cilindro', __name__)
+
+
+def _chave_ordenacao_cilindros(c):
+    """Ativos primeiro; dentro de cada grupo ordena pelo numero do cilindro."""
+    numero = normalizar_codigo_cilindro(c.get("codigo"))
+    numero = numero if numero is not None else float("inf")
+    if c.get("status") == "ativo":
+        return (0, numero)
+    return (1, numero)
 
 
 @cilindro_bp.route("/cilindros", methods=["GET", "POST"])
@@ -45,7 +55,7 @@ def list():
                 flash("Código e data de compra são obrigatórios", "danger")
                 return redirect(url_for("cilindro.list"))
             
-            if not re.match(r'^CIL-\d{3}$', codigo):
+            if not re.match(CILINDRO_CODIGO_REGEX, codigo):
                 flash("Código deve seguir o formato CIL-XXX (ex: CIL-001, CIL-002)", "danger")
                 return redirect(url_for("cilindro.list"))
             
@@ -92,8 +102,9 @@ def list():
                 else:
                     client = get_authenticated_client()
                 
-                client.table("cilindro").insert(data).execute()
-                registrar_historico("cilindro", "criado", codigo, user_id)
+                resp = client.table("cilindro").insert(data).execute()
+                novo_id = resp.data[0]["id"] if resp.data else None
+                registrar_historico("cilindro", "criado", codigo, user_id, ref_id=novo_id)
                 invalidate_user_caches(user_id)
                 flash("Cilindro criado com sucesso!", "success")
             except Exception as e:
@@ -117,7 +128,7 @@ def list():
                 flash("ID do cilindro, código e data de compra são obrigatórios", "danger")
                 return redirect(url_for("cilindro.list"))
             
-            if not re.match(r'^CIL-\d{3}$', codigo):
+            if not re.match(CILINDRO_CODIGO_REGEX, codigo):
                 flash("Código deve seguir o formato CIL-XXX (ex: CIL-001, CIL-002)", "danger")
                 return redirect(url_for("cilindro.list"))
             
@@ -157,7 +168,7 @@ def list():
                 else:
                     get_admin_client().table("cilindro").update(data).eq("id", cilindro_id).execute()
                 
-                registrar_historico("cilindro", "atualizado", codigo, user_id)
+                registrar_historico("cilindro", "atualizado", codigo, user_id, ref_id=int(cilindro_id))
                 invalidate_user_caches(user_id)
                 flash("Cilindro atualizado com sucesso!", "success")
             except Exception as e:
@@ -189,7 +200,7 @@ def list():
                 
                 (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().eq("id", cilindro_id).execute()
                 
-                registrar_historico("cilindro", "excluido", cilindro_codigo, user_id)
+                registrar_historico("cilindro", "excluido", cilindro_codigo, user_id, ref_id=int(cilindro_id))
                 invalidate_user_caches(user_id)
                 flash("Cilindro excluído com sucesso!", "success")
             except Exception as e:
@@ -236,7 +247,7 @@ def list():
                 if permitidos:
                     (get_admin_client() if dev else get_authenticated_client()).table("cilindro").delete().in_("id", [c["id"] for c in permitidos]).execute()
                     for c in permitidos:
-                        registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id)
+                        registrar_historico("cilindro", "excluido", c.get("codigo", str(c["id"])), user_id, ref_id=c["id"])
                     invalidate_user_caches(user_id)
 
                 if permitidos:
@@ -259,6 +270,9 @@ def list():
     response = query.order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
     cilindro = response.data or []
     total = response.count or 0
+    
+    cilindro = enriquecer_cilindros(cilindro)
+    cilindro.sort(key=_chave_ordenacao_cilindros)
     
     pages = (total + per_page - 1) // per_page
     end = min(page * per_page, total)

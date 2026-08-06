@@ -30,7 +30,7 @@
                         <select name="cilindro_id" class="form-select form-select-lg">
                             <option value="">Selecione...</option>
                             {% for c in cilindro %}
-                            <option value="{{ c.id }}">{{ c.codigo }}</option>
+                            <option value="{{ c.id }}">{{ c.numero_exibicao }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -64,13 +64,13 @@
     <div class="card-header bg-light">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-12 col-md-3">
-                <input type="text" name="q" class="form-control" placeholder="Busque por código do cilindro (ex: CIL-001) ou nome do elemento..." value="{{ request.args.get('q', '') }}">
+                <input type="text" name="q" class="form-control" placeholder="Busque por número do cilindro (ex: 1) ou nome do elemento..." value="{{ request.args.get('q', '') }}">
             </div>
             <div class="col-12 col-md-2">
                 <select name="cilindro_id" class="form-select">
                     <option value="">Todos os Cilindros</option>
                     {% for c in cilindro %}
-                    <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.codigo }}</option>
+                    <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.numero_exibicao }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -125,7 +125,7 @@
                         <td>{{ a.data|formatar_data }}</td>
                         <td>{{ a.tempo_chama }}</td>
                         <td>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ a.cilindro_nome or a.cilindro_id }}</span>
+                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ a.cilindro_numero or a.cilindro_id }}</span>
                         </td>
                         <td>
                             <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ a.elemento_nome or a.elemento_id }}</span>
@@ -174,7 +174,7 @@
                                             <label class="form-label">Cilindro</label>
                                             <select name="cilindro_id" class="form-select">
                                                 {% for c in cilindro %}
-                                                <option value="{{ c.id }}" {% if a.cilindro_id == c.id %}selected{% endif %}>{{ c.codigo }}</option>
+                                                <option value="{{ c.id }}" {% if a.cilindro_id == c.id %}selected{% endif %}>{{ c.numero_exibicao }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>

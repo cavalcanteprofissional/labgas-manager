@@ -19,6 +19,7 @@
                     <option value="elemento">Elementos</option>
                     <option value="leitura">Leitura</option>
                     <option value="amostra">Amostra</option>
+                    <option value="perfil">Perfil</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -68,7 +69,11 @@
                                 {{ h.acao|title }}
                             </span>
                         </td>
-                        <td><strong>{{ h.nome }}</strong></td>
+                        <td>
+                            <strong>{{ h.label }}</strong>
+                            {% if h.ref_id %}<small class="text-muted">(#{{ h.ref_id }})</small>{% endif %}
+                            {% if h.detalhe %}<div class="small text-muted">{{ h.detalhe }}</div>{% endif %}
+                        </td>
                         {% if is_admin %}<td><small>{{ h.usuario_nome }}</small></td>{% endif %}
                     </tr>
                     {% endfor %}
@@ -108,7 +113,7 @@ function filterHistory() {
         let rowType = cells[1].textContent.trim().toLowerCase();
         let rowAction = cells[2].textContent.trim().toLowerCase();
         
-        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'leitura': 'leitura', 'amostra': 'amostra' };
+        const typeMap = { 'cilindro': 'cilindro', 'pressão': 'pressao', 'elemento': 'elemento', 'leitura': 'leitura', 'amostra': 'amostra', 'perfil': 'perfil' };
         rowType = typeMap[rowType] || rowType;
         
         const actionMap = { 'criado': 'criado', 'atualizado': 'atualizado', 'excluído': 'excluido' };

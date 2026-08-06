@@ -73,18 +73,30 @@ def get_admin_client():
     return supabase_admin()
 
 
-def registrar_historico(tipo, acao, nome, user_id):
-    """Registra uma ação no histórico"""
+def registrar_historico(tipo, acao, label, user_id, ref_id=None, detalhe=None):
+    """Registra uma ação no histórico de auditoria.
+
+    tipo: tabela de origem (cilindro, pressao, elemento, leitura, amostra, perfil)
+    acao: criado | atualizado | excluido
+    label: texto legível (antiga coluna nome)
+    ref_id: id do registro de origem na tabela de `tipo` (None p/ perfil/auth/lote)
+    detalhe: payload estruturado JSONB opcional
+    """
     from utils.supabase_utils import get_admin_client
     try:
         client = get_admin_client()
-        client.table("historico_log").insert({
+        registro = {
             "tipo": tipo,
             "acao": acao,
-            "nome": nome,
-            "user_id": user_id
-        }).execute()
-        logger.info(f"Histórico registrado: {tipo} | {acao} | {nome} | User: {user_id}")
+            "label": label,
+            "user_id": user_id,
+        }
+        if ref_id is not None:
+            registro["ref_id"] = ref_id
+        if detalhe is not None:
+            registro["detalhe"] = detalhe
+        client.table("historico_auditoria").insert(registro).execute()
+        logger.info(f"Histórico registrado: {tipo} | {acao} | {label} | ref={ref_id} | User: {user_id}")
     except Exception as e:
         logger.error(f"Erro ao registrar histórico: {str(e)}")
 

@@ -227,7 +227,7 @@ class TestOrdemOperacoes:
             "leitura": ["cilindro", "elemento"],
             "pressao": ["cilindro"],
             "amostra": ["cilindro", "elemento"],
-            "historico_log": ["perfil"],
+            "historico_auditoria": ["perfil"],
         }
         for dependente, parents in dependencias.items():
             idx_dep = delete_order.index(dependente)
@@ -244,7 +244,7 @@ class TestOrdemOperacoes:
             "leitura": ["cilindro", "elemento"],
             "pressao": ["cilindro"],
             "amostra": ["cilindro", "elemento"],
-            "historico_log": ["perfil"],
+            "historico_auditoria": ["perfil"],
         }
         for dependente, parents in dependencias.items():
             idx_dep = insert_public.index(dependente)
@@ -339,7 +339,7 @@ class TestBackupIntegracao:
         assert "public.amostra_elemento" in dados["tables"]
         assert "public.leitura" in dados["tables"]
         assert "public.pressao" in dados["tables"]
-        assert "public.historico_log" in dados["tables"]
+        assert "public.historico_auditoria" in dados["tables"]
         assert isinstance(dados["tables"]["public.perfil"], list)
 
         backup_path.unlink()

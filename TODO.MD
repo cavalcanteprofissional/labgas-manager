@@ -890,7 +890,7 @@ Supabase PG ──(conexão direta psycopg2)──→ scripts/backup_db.py
 
 | Schema | Tabelas |
 |--------|---------|
-| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_log |
+| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_auditoria |
 | `auth` | users (UUIDs preservados, senhas hasheadas intactas) |
 
 ### Segurança
@@ -1960,3 +1960,164 @@ As implementações das Fases 66 (navegação), 67 (isolamento por usuário nas 
 - [x] Suíte global validada (isolada por arquivo; flake de rede/Supabase pré-existente reaproveitado com rerun):
   - `test_pressao` (5 com modais), `test_leitura` (7 com modais), `test_amostra` (8+1 flake, rerun OK), `test_cilindro`+`test_elemento` (12 com modais), `test_dashboard` (5), `test_session_footer` (4), `test_auth` (7), `test_admin` (2), `test_backup` (27), `test_export` (5 com `--run-export`)
 - [x] Smoke test HTTP das rotas com filtros Fase 68 (inclui `?page=999` → sem 416)
+
+## Fase 70: Filtros da aba Pressão + Nomenclatura dos cilindros 🧭
+
+### Decisões (confirmadas com o usuário)
+
+1. **Filtro de datas da aba Pressão** — seletor de coluna (`filtro_data`) com opções "Data" (padrão) e "Registrado em" (`created_at`) + os dois campos de intervalo (`data_inicio`/`data_fim`).
+2. **Busca `q`** — passa a aceitar pressão e temperatura (valor numérico exato) além de código do cilindro e data `dd/mm/aaaa`; placeholder atualizado.
+3. **Regex do código** — "001" deve identificar `CIL-001` (normalização de dígitos, não só substring).
+4. **Nomenclatura** — código `CIL-XXX` permanece estável (histórico/exports/busca intactos); exibição enriquecida com rótulos dinâmicos:
+   - Todos os cilindros com `status = 'ativo'` recebem destaque **"EM USO"** (pode haver vários simultâneos)
+   - Entre os ativos, ordenação e rótulo por **% de carga** (última pressão ÷ 300 bar) — o mais cheio aparece primeiro
+   - Esgotados mantêm o código com badge **"ESGOTADO"**
+
+### Mudanças Planejadas
+
+- [x] `frontend/utils/cilindro_utils.py` — 🆕 helpers: `enriquecer_cilindros()` (carga_pct, estado_rotulo, rotulo_exibicao), `normalizar_codigo_cilindro()`, `codigo_corresponde()`
+- [x] `frontend/utils/constants.py` — `PRESSAO_MAXIMA_BAR = 300` e regex de código compartilhada
+- [x] `frontend/blueprints/pressao.py` — filtro por coluna selecionável (data/created_at com normalização de datetime), `q` numérico (pressão/temperatura) e código normalizado
+- [x] `frontend/templates/pressao.html` — seletor `filtro_data`, placeholder novo, dropdown de cilindros com rótulo dinâmico
+- [x] `frontend/blueprints/cilindro.py` — enriquecer + ordenar lista (ativos por carga % desc, depois esgotados)
+- [x] `frontend/templates/cilindro.html` — badges de estado (EM USO / ESGOTADO) e % de carga
+- [x] `frontend/blueprints/leitura.py` — dropdown com rótulo + mesma normalização de código (consistência)
+- [x] `frontend/tests/test_pressao.py` + `test_cilindro.py` — novos testes de filtros e badges
+- [x] `CHANGELOG.md` — entrada v2.12.0
+- [x] Suíte validada isolada por arquivo (`test_pressao` + `test_cilindro` com `--run-modais`: 15 passed, 1 skipped)
+
+### Fora de escopo (follow-up)
+
+- Rótulos dinâmicos nos gráficos do dashboard e no histórico (mantêm `codigo` puro)
+- Campo `em_uso` BOOLEAN com migration (apenas se um único cilindro em uso for necessário no futuro)
+
+## Fase 71: Aba Pressão — paleta de temperatura, filtro de data por tipo e busca por campo 🎨
+
+### Objetivo
+Melhorar a aba Pressão com três mudanças visuais/funcionais:
+
+1. **Paleta de cores para temperatura** — baseada na média de todas as temperaturas (do conjunto filtrado): verde próximo à média, amarelo e vermelho em escala conforme o desvio (média ± desvio padrão). Gradiente contínuo verde → amarelo → vermelho, com cor de texto ajustada por luminância.
+2. **Novo seletor de data** — remover o seletor atual `filtro_data` ("Data" / "Registrado em") que fica sempre visível. Nova estratégia: um `select` opcional "Filtrar por data" com opções vazia (default, sem data) / "Data do registro" (`data`) / "Data de criação" (`created_at`); ao escolher um tipo, os campos De/Até são revelados; ao desmarcar, os campos somem e nenhum filtro de data é aplicado.
+3. **Busca de texto estilo cilindro com campo selecionável** — input de texto igual ao da aba Cilindro + `select` de campo que restringe a busca às colunas da tabela filtrada: Tudo (default) / Cilindro / Pressão / Temperatura / Data / Hora.
+
+### Decisões (interpretação confirmável)
+
+- Média/desvio padrão calculados **no conjunto filtrado** (mesmos filtros da listagem), não na página corrente — "média de todas as temperaturas". PostgREST do projeto tem agregados desabilitados (PGRST123), então calculamos em Python via fetch da coluna `temperatura` apenas (query leve, sem `*`).
+- O intervalo De/Até é mantido (não removido) — o usuário pediu para reorganizar o seletor, não para perder o intervalo da Fase 70.
+- "Registrado em" (`created_at`) permanece pesquisável apenas pelo filtro de data (item 2), não pela busca de texto (a busca textual por timestamp exato tem pouco uso).
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/pressao.py` — `_estatisticas_temperatura()` (média + desvio em Python), `_temperatura_cor()` (gradiente verde→amarelo→vermelho + luminância para cor do texto), `filtro_data` default vazio (sem filtro quando não selecionado), novo parâmetro `q_campo` restringindo a busca
+- [x] `frontend/templates/pressao.html` — remover select "Data/Registrado"; novo select "Filtrar por data" + campos De/Até com toggle (JS + estado inicial no server); input `q` + select de campo (Tudo/Cilindro/Pressão/Temperatura/Data/Hora); célula de temperatura com badge colorido inline
+- [x] `frontend/tests/test_pressao.py` — testes novos: `q_campo=pressao` restringe busca; `q_campo=temperatura`; badge de temperatura com cor inline (média)
+- [x] `CHANGELOG.md` — entrada v2.13.0
+- [x] Suíte validada isolada por arquivo (`test_pressao` com `--run-modais`: novos testes OK; flakes pré-existentes do harness reaproveitados com rerun, consistente com a Fase 69)
+
+> **Nota (Fase 72)**: a paleta de temperatura passou de verde→amarelo→vermelho para uma **escala de vermelho** (claro na média → profundo no desvio), por decisão do usuário. `q_campo` e `filtro_data` foram posteriormente removidos na Fase 72 (filtros padronizados).
+
+## Fase 72: Pressão — paleta de cor para pressão + filtros padronizados 🔄
+
+### Objetivo
+1. **Paleta de cor da pressão** — mesma lógica da paleta de temperatura (cor relativa ao desvio da média do conjunto filtrado), mas usando **somente laranja → vermelho** em escala (sem verde/amarelo).
+2. **Filtros refeitos no padrão das outras abas** (leitura/amostra): `q` único (busca código/data/pressão/temperatura) + dropdown `cilindro_id` + intervalo `data_inicio`/`data_fim` sempre visível (coluna `data`). **Removidos** `q_campo` (seletor de campo) e `filtro_data` (tipo de coluna de data + campos condicionais) da Fase 71 — decisão do usuário para padronizar com as demais abas.
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/pressao.py` — remover `q_campo` e `filtro_data`; `montar()` padronizado (igual leitura); helpers genéricos `_estatisticas_valores()` (média + desvio em Python, 1 query só para `pressao,temperatura`) e `_cor_escala()` (gradiente por pontos, retorna cor de fundo + cor de texto por luminância)
+- [x] `frontend/templates/pressao.html` — filtro no layout padrão (q col-3, cilindro col-2, data_inicio col-2, data_fim col-2, botões col-1); badge de pressão com gradiente laranja→vermelho; remover o JS `toggleDataFields`
+- [x] `frontend/tests/test_pressao.py` — `test_pressao_filter_por_data` (intervalo na coluna `data`, no padrão das outras abas), `test_pressao_pressao_cor` (badge laranja/vermelho); remover os testes de `q_campo`
+- [x] `CHANGELOG.md` — entrada v2.14.0
+- [x] Suíte validada isolada por arquivo (`test_pressao`: 10 passed + 1 skip; `test_cilindro`: 7 passed) — **causa dos flakes identificada**: um servidor Flask antigo na porta 5000 estava sendo reutilizado pelo conftest com código velho; encerrado o processo, os testes passam de forma consistente
+
+## Fase 73: Filtros da aba Pressão — busca por campo separado 🔍
+
+### Objetivo
+Corrigir o campo de texto do filtro da aba Pressão, separando a busca em **três inputs independentes** — um para cada campo: **código**, **pressão** e **temperatura**. Placeholders por campo ("Buscar por código", "Buscar por pressão", "Buscar por temperatura"), substituindo o `q` único (que misturava código + data `dd/mm/aaaa` + pressão/temperatura). Filtros combinados com AND (padrão das outras abas). A busca textual por data é removida — datas continuam no intervalo `data_inicio`/`data_fim`.
+
+### Mudanças Planejadas
+
+- [x] `frontend/blueprints/pressao.py` — remover `q`; novos params `q_codigo` (via `codigo_corresponde`), `q_pressao` e `q_temperatura` (numérico via `safe_float`); remover parsing de data do texto e o import `re` (fica sem uso)
+- [x] `frontend/templates/pressao.html` — três inputs separados com placeholders próprios, mantendo dropdown `cilindro_id` + intervalo de datas
+- [x] `frontend/tests/test_pressao.py` — ajustar `q` → `q_codigo`/`q_pressao`; novo teste `q_temperatura`
+- [x] `CHANGELOG.md` — entrada v2.15.0
+- [x] Suíte validada isolada por arquivo (`test_pressao` com `--run-modais`: 11 passed + 1 skip)
+
+## Fase 74: Nomenclatura dos cilindros — somente o número 🔢
+
+### Objetivo
+Reelaborar a refatoração de nomenclatura dos cilindros (Fase 70): **remover as tags `EM USO`/`ESGOTADO` e o badge de `%`** e **mostrar ao usuário somente o número do cilindro** (extraído do código, ex: `CIL-001` → `1`, `CIL-010` → `10`). O código `CIL-XXX` continua armazenado no banco (identidade estável) e **histórico + exportações (CSV/Markdown) preservam o código completo** (decisão do usuário). Mudança somente de exibição, sem migração de dados.
+
+### Mudanças Planejadas
+
+- [x] `frontend/utils/cilindro_utils.py` — remover `_buscar_ultima_pressao_por_cilindro` (query extra) e os campos `carga_pct`/`estado_rotulo`/`rotulo_exibicao`; `enriquecer_cilindros` passa a adicionar apenas `numero_exibicao` (`normalizar_codigo_cilindro(codigo) or codigo`)
+- [x] `frontend/blueprints/cilindro.py` — `_chave_ordenacao_cilindros`: ativos primeiro, tie-break numérico pelo número do cilindro (sem `carga_pct`)
+- [x] `frontend/templates/cilindro.html` — coluna Código exibe `numero_exibicao`; remover badge de `%`; coluna Status com badge neutro `Ativo`/`Esgotado` (sem ícone de raio); modal de exclusão e `#searchCilindro` com número; modal de edição mantém `c.codigo` completo
+- [x] `frontend/templates/pressao.html` + `leitura.html` — dropdowns usam `c.numero_exibicao`; badges das tabelas e modais de exclusão usam novo campo `cilindro_numero`; placeholder do filtro `q_codigo` → "Buscar por número"
+- [x] `frontend/blueprints/pressao.py` + `leitura.py` — manter `cilindro_dict`/`cilindro_dict_lookup` com código completo para `registrar_historico`; adicionar `cilindro_numero` na renderização da lista (mapa id → `numero_exibicao`)
+- [x] `frontend/app.py` — dashboard: rótulos dos gráficos de cilindro usam o número
+- [x] `frontend/tests/test_cilindro.py` — atualizar `test_cilindro_badge_estado_e_carga` → `test_cilindro_exibe_numero_sem_rotulos` (célula exibe `1`, status `Ativo`, ausência de `EM USO`/`ESGOTADO`/`50%`/`CIL-001` na tabela)
+- [x] `CHANGELOG.md` — entrada v2.16.0
+- [x] Suíte validada por arquivo (`test_cilindro` 7 passed; `test_pressao` 10 passed + 1 skip; `test_leitura` 7 passed — 3 testes isolados re-rodaram verdes após flakes de rede do Supabase)
+
+## Fase 75: Dashboard vazio/zerado — diagnóstico e correção 🐛
+
+### Objetivo
+Investigar por que o dashboard exibe dados vazios/zerados enquanto o banco tem dados válidos. Análise do código (`_compute_kpis` + fetch + RLS + cache) mostrou que **o working tree atual não zera os dados** (diff da Fase 73/74 só alterou rótulos; repro offline de `_compute_kpis` retornou valores corretos). Causas prováveis: processo servidor antigo (PID 18732 na porta 5000), cache em memória com resultado vazio, mismatch de `user_id` (dashboard filtra estrito por `user_id`), ou URL com `selected_user_id` de usuário sem dados. Usuário confirmou que ocorre no **localhost:5000**.
+
+### Mudanças Planejadas
+
+- [x] `frontend/app.py` — adicionar log diagnóstico temporário na rota `/dashboard` (len de cada fetch, `current_user_id` e resumo dos KPIs)
+- [x] Restart do servidor local com o working tree atual (limpa SimpleCache em memória) — PID antigo 18732 derrubado; relançado (PID 27124)
+- [x] Comparar log × banco para confirmar a causa — **reproduzido com código e banco reais**: o código computa corretamente; o vazio é dependente da sessão (isolamento por usuário)
+- [x] `frontend/tests/test_dashboard.py` — reforçar para assertar valores de KPI (não só seções/canvas); novo `test_compute_kpis.py` unitário (5 testes verdes); Playwright `test_dashboard.py` 8 testes (1 flake de login, re-rodou verde)
+- [x] Remover diagnóstico temporário após confirmação (ou manter gated por DEBUG) — **removido** (logs `[DIAG dashboard]` de app.py apagados)
+
+## Fase 76: Refatoração historico_log → historico_auditoria 🗄️ (Opção C)
+
+### Objetivo
+Substituir a coluna `nome` heterogênea de `historico_log` por uma tabela nova `historico_auditoria` com `label` (texto legível), `ref_id` (id do registro de origem, polimórfico conforme `tipo`) e `detalhe` (JSONB estruturado). Migrar os dados existentes (backfill de `ref_id` onde inequívoco) e **descartar a tabela legada** após verificação. Documentar toda a migração no `schema.sql`, `rls.sql` e migration nova.
+
+### Novo esquema
+```sql
+CREATE TABLE historico_auditoria (
+    id SERIAL PRIMARY KEY,
+    tipo VARCHAR(20) NOT NULL,
+    acao VARCHAR(20) NOT NULL CHECK (acao IN ('criado','atualizado','excluido')),
+    ref_id INTEGER,
+    label VARCHAR(150),
+    detalhe JSONB,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+-- Índices: idx_historico_aud_tipo, idx_historico_aud_user_id, idx_historico_aud_created_at, idx_historico_aud_ref (tipo, ref_id)
+```
+
+### Mudanças Planejadas
+
+- [x] `database/migrations/20260805_historico_auditoria.sql` — CREATE TABLE + índices + INSERT...SELECT com backfill (cilindro por codigo+user_id; elemento por nome+user_id; amostra por `A/N Lx`; pressao/leitura/perfil com ref_id NULL documentado) + verificação de contagem + DROP TABLE historico_log
+- [x] Executar a migration no Supabase real — **351/351 registros migrados** (`historico_log=351` → `historico_auditoria=351`); `ref_id` preenchido em 89 (cilindro/elemento/amostra), 262 sem ref (pressao/leitura/perfil, esperado); `detalhe`=0 (dados antigos não tinham); escrita/leitura de ponta a ponta OK (`registrar_historico` → `historico_auditoria` com `ref_id`+`detalhe`); **DROP da legada fica comentado** (decisão pendente)
+- [x] `frontend/blueprints/helpers.py` — `registrar_historico(tipo, acao, label, user_id, ref_id=None, detalhe=None)` → insere em `historico_auditoria`
+- [x] Call sites (32): `cilindro.py` (4), `pressao.py` (4, `detalhe={pressao,temperatura}`), `elemento.py` (4), `leitura.py` (4, `detalhe={cilindro_id,elemento_id}`), `amostra.py` (4), `admin.py` (3, `detalhe={alvo,role,aba}`), `auth.py` (1) — capturar `resp.data[0]["id"]` nos inserts p/ `ref_id`; bulk → `detalhe={quantidade}`
+- [x] `frontend/blueprints/historico.py` + `templates/historico.html` — nova tabela; `h.nome` → `h.label`; renderizar `detalhe` e badge de `ref_id`
+- [x] `frontend/blueprints/admin.py` (204 purge + 277-288 detalhe usuário) → `historico_auditoria`
+- [x] `scripts/backup_db.py` (74) e `scripts/restore_db.py` (61, 74) → `historico_auditoria`
+- [x] `frontend/tests/conftest.py` (225 cleanup) e `test_backup.py` (230, 247, 342) → nova tabela; novo teste `registrar_historico` com `ref_id`/`detalhe`
+- [x] `database/schema.sql` e `database/rls.sql` — atualizar tabela + policy SELECT
+- [x] Docs: `README.MD`, `database/DIAGRAM.MD`, `latex/artigo.md`, `latex/figuras/arquitetura.mmd`, `CHANGELOG.md`, e `labgas-migracao-supabase-local.MD` (plano de migração local)
+- [x] Suíte validada por arquivo — `test_compute_kpis.py` (5) + novo `test_helpers_historico.py` (4) verdes; blueprint tests verdes (test_cilindro/pressao/elemento/leitura/amostra/admin/auth/export/session_footer); `test_backup.py --run-backup` 33 verdes (inclui backup real exportando `historico_auditoria` + restore dry-run); `test_dashboard.py` 8 (1 flake de login por rate-limit 429 — re-roda verde isolado). **Nota**: rodadas repetidas esgotam o rate-limit de login (5/min) e derrubam o fixture Playwright — reiniciar o servidor local para zerar
+
+## Fase 77: DROP TABLE historico_log (descarte da tabela legada) 🗑️
+
+### Objetivo
+Remover a tabela legada `historico_log` do Supabase real após a migração completa para `historico_auditoria` (Fase 76), com snapshot de segurança e validação pós-drop.
+
+### Itens
+
+- [x] Pré-verificação (read-only): `historico_log` = 351, `historico_auditoria` = 351; nenhuma FK aponta para `historico_log`; código ativo sem refs à tabela legada
+- [x] Snapshot de segurança `historico_log_bkp_20260805` (CREATE TABLE AS SELECT)
+- [x] `DROP TABLE historico_log;`
+- [x] Verificação pós-drop: `to_regclass('public.historico_log') IS NULL` e `historico_auditoria` intacta (351)
+- [x] Pós-validação: smoke no app local (`/historico` + insert/leitura/limpeza via `registrar_historico`) e `backup_db.py --no-upload`
+- [x] `DROP TABLE historico_log_bkp_20260805;` (após validação — decisão do usuário)
+- [x] `database/migrations/20260805_historico_auditoria.sql` — bloco 4 marcado como executado em 2026-08-05

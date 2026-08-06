@@ -12,6 +12,7 @@ from blueprints.helpers import get_authenticated_client
 from utils.limiter import limiter
 from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA
 from utils.erros_utils import formatar_erro_supabase
+from utils.cilindro_utils import normalizar_codigo_cilindro
 
 # Carrega .env.local para desenvolvimento local (se existir)
 # Na Vercel, as variáveis são injetadas automaticamente via Environment Variables
@@ -331,6 +332,10 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     cilindro_dict = {c["id"]: c for c in cilindro}
     elemento_dict = {e["id"]: e for e in elementos}
 
+    numero_cilindro = {}
+    for cid, c in cilindro_dict.items():
+        numero_cilindro[cid] = normalizar_codigo_cilindro(c.get("codigo")) or c.get("codigo", str(cid))
+
     cilindros_ativos = sum(1 for c in cilindro if c.get("status") == "ativo")
 
     # Single-pass sobre leituras: gas, total, cilindro, mes, top elementos
@@ -386,8 +391,8 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     # Leituras por Cilindro (doughnut)
     cilindro_leituras_labels = []
     cilindro_leituras_values = []
-    for cid, qtd in sorted(leituras_por_cilindro.items(), key=lambda x: cilindro_dict.get(x[0], {}).get("codigo", "")):
-        cilindro_leituras_labels.append(cilindro_dict.get(cid, {}).get("codigo", str(cid)))
+    for cid, qtd in sorted(leituras_por_cilindro.items(), key=lambda x: (0, numero_cilindro.get(x[0])) if isinstance(numero_cilindro.get(x[0]), int) else (1, 0)):
+        cilindro_leituras_labels.append(numero_cilindro.get(cid, str(cid)))
         cilindro_leituras_values.append(qtd)
 
     # Curva de Pressão (últimas 10 por cilindro)
@@ -399,7 +404,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
 
     pressao_chart = {}
     for cid, readings in pressao_series.items():
-        cod = cilindro_dict.get(cid, {}).get("codigo", str(cid))
+        cod = numero_cilindro.get(cid, str(cid))
         pressao_chart[cod] = {"labels": [r["data"] for r in readings], "values": [r["pressao"] for r in readings]}
     pressao_chart = {
         cod: {"labels": v.get("labels", []), "values": v.get("values", [])}
@@ -452,7 +457,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
         elementos_mais_analisados=elementos_mais_analisados,
         dist_labels=dist_labels,
         dist_values=dist_values,
-        cilindro_dict={k: v.get("codigo") for k, v in cilindro_dict.items()},
+        cilindro_dict={k: numero_cilindro.get(k, str(k)) for k in cilindro_dict},
         elemento_dict={k: v.get("nome") for k, v in elemento_dict.items()},
     )
 
@@ -514,6 +519,7 @@ def dashboard():
 
     kpi_cache_key = dashboard_cache_key("all") if is_dev() and (not selected_user_id or selected_user_id == "all") else dashboard_cache_key(filter_user_id)
     kpis = get_cached_or_fetch(kpi_cache_key, lambda: _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoes), timeout=30)
+
     leituras_recentes = leituras[:5]
     pressoes_recentes = pressoes[-5:] if pressoes else []
     amostras_recentes = amostras_data[:5]

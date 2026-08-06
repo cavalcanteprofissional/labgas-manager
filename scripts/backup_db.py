@@ -71,7 +71,7 @@ PUBLIC_TABLES = [
     "amostra_elemento",
     "leitura",
     "pressao",
-    "historico_log",
+    "historico_auditoria",
 ]
 
 

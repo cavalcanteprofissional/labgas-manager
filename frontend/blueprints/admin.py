@@ -120,7 +120,8 @@ def toggle_user():
     invalidate_user_caches(target_user_id)
     
     acao = "ativado" if ativo else "desativado"
-    registrar_historico("perfil", "atualizado", f"Usuário {acao}", get_user_id())
+    registrar_historico("perfil", "atualizado", f"Usuário {acao}", get_user_id(),
+                        ref_id=target_user_id, detalhe={"ativo": ativo})
     
     flash(f"Usuário {'ativado' if ativo else 'desativado'} com sucesso!", "success")
     
@@ -168,7 +169,8 @@ def set_role():
         session.pop("cached_user_info", None)
     invalidate_user_caches(target_user_id)
     
-    registrar_historico("perfil", "atualizado", f"Role alterada para {role}", get_user_id())
+    registrar_historico("perfil", "atualizado", f"Role alterada para {role}", get_user_id(),
+                        ref_id=target_user_id, detalhe={"role": role, "role_anterior": target_perfil.data[0].get("role")})
     
     flash(f"Função do usuário alterada para {role}!", "success")
     
@@ -201,7 +203,7 @@ def delete_user():
     client.table("elemento").delete().eq("user_id", target_user_id).execute()
     client.table("leitura").delete().eq("user_id", target_user_id).execute()
     client.table("pressao").delete().eq("user_id", target_user_id).execute()
-    client.table("historico_log").delete().eq("user_id", target_user_id).execute()
+    client.table("historico_auditoria").delete().eq("user_id", target_user_id).execute()
     client.table("perfil").delete().eq("id", target_user_id).execute()
     
     flash("Usuário e todos os seus dados foram excluídos!", "success")
@@ -245,7 +247,8 @@ def update_habilitar_abas():
     # Registrar alteração de permissões no histórico
     acao = "habilitada" if habilitar else "desabilitada"
     nome_aba = {"cilindro": "Cilindros", "pressao": "Pressão", "elemento": "Elementos", "leitura": "Leitura", "historico": "Histórico"}.get(aba, aba)
-    registrar_historico("perfil", "atualizado", f"Aba {nome_aba} {acao}", get_user_id())
+    registrar_historico("perfil", "atualizado", f"Aba {nome_aba} {acao}", get_user_id(),
+                        ref_id=target_user_id, detalhe={"aba": aba, "habilitar": habilitar})
     
     flash(f"Aba {nome_aba} {acao} com sucesso!", "success")
     
@@ -274,18 +277,20 @@ def user_data(target_user_id):
     amostras_total = client.table("amostra").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     
     historico_offset = (page - 1) * per_page
-    historico_log = client.table("historico_log").select(
-        "tipo, acao, nome, created_at"
+    historico_aud = client.table("historico_auditoria").select(
+        "tipo, acao, label, ref_id, detalhe, created_at"
     ).eq("user_id", target_user_id).order("created_at", desc=True).range(historico_offset, historico_offset + per_page - 1).execute().data or []
     
-    historico_total = client.table("historico_log").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
+    historico_total = client.table("historico_auditoria").select("*", count="exact").eq("user_id", target_user_id).execute().count or 0
     
     history = [{
         "tipo": h.get("tipo"),
         "acao": h.get("acao"),
-        "nome": h.get("nome"),
+        "label": h.get("label"),
+        "ref_id": h.get("ref_id"),
+        "detalhe": h.get("detalhe"),
         "data": h.get("created_at")
-    } for h in historico_log]
+    } for h in historico_aud]
     
     perfil = client.table("perfil").select("*").eq("id", target_user_id).execute().data
     target_user = perfil[0] if perfil else {"id": target_user_id, "role": "unknown"}

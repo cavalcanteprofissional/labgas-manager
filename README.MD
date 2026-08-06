@@ -187,7 +187,7 @@ graph TB
             ElementoTB["elemento"]
             AmostraTB["amostra"]
             PressaoTB["pressao"]
-            HistoricoTB["historico_log"]
+            HistoricoTB["historico_auditoria"]
         end
         
         subgraph "RLS Policies"
@@ -285,7 +285,7 @@ sequenceDiagram
 | elemento | Cadastro de elementos químicos | 1:N com amostra |
 | amostra | Registros de análises realizadas | N:1 com cilindro, elemento |
 | pressao | Medições de pressão | N:1 com cilindro |
-| historico_log | Log de todas as operações | N:1 com perfil |
+| historico_auditoria | Auditoria de todas as operações | N:1 com perfil |
 
 ### Tecnologias
 
@@ -407,7 +407,7 @@ erDiagram
 | amostra.elemento_id | elemento.id | N:1 | Cada amostra usa um elemento |
 | pressao.user_id | perfil.id | N:1 | Cada medição pertence a um usuário |
 | pressao.cilindro_id | cilindro.id | N:1 | Cada medição é de um cilindro |
-| historico_log.user_id | perfil.id | N:1 | Cada registro é de um usuário |
+| historico_auditoria.user_id | perfil.id | N:1 | Cada registro é de um usuário |
 
 ### Índices
 
@@ -429,9 +429,10 @@ O banco de dados possui índices otimizados para as operações mais frequentes:
 | leitura | idx_leitura_cilindro_id | cilindro_id | Vincular cilindro |
 | leitura | idx_leitura_elemento_id | elemento_id | Vincular elemento |
 | leitura | idx_leitura_data | data | Filtrar por data |
-| historico_log | idx_historico_log_user_id | user_id | Filtrar por usuário |
-| historico_log | idx_historico_log_tipo | tipo | Filtrar por tipo |
-| historico_log | idx_historico_log_created_at | created_at | Ordenação temporal |
+| historico_auditoria | idx_historico_aud_tipo | tipo | Filtrar por tipo |
+| historico_auditoria | idx_historico_aud_user_id | user_id | Filtrar por usuário |
+| historico_auditoria | idx_historico_aud_created_at | created_at | Ordenação temporal |
+| historico_auditoria | idx_historico_aud_ref | tipo, ref_id | Vincular registro de origem |
 | amostra_elemento | idx_amostra_elemento_amostra_id | amostra_id | Vincular amostra |
 | amostra_elemento | idx_amostra_elemento_elemento_id | elemento_id | Vincular elemento |
 
@@ -446,7 +447,7 @@ O banco de dados utiliza **Row Level Security** para proteger escritas (cada usu
 | amostra | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
 | pressao | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
-| historico_log | Público (todos) | Admin (service_role) | - | - |
+| historico_auditoria | Público (todos) | Admin (service_role) | - | - |
 
 ### Fluxo de Dados do Banco
 
@@ -466,7 +467,7 @@ flowchart TB
             T3["elemento"]
             T4["amostra"]
             T5["pressao"]
-            T6["historico_log"]
+            T6["historico_auditoria"]
         end
         
         subgraph "Políticas"
@@ -916,7 +917,7 @@ flowchart LR
 1. **Trigger** — O workflow é executado automaticamente todos os dias às 06:00 UTC (cron), ou manualmente via aba **Actions → Daily Database Backup → Run workflow**
 2. **Runner** — Um ambiente `ubuntu-latest` é provisionado, instala Python e as dependências (`boto3`, `psycopg2-binary`, `python-dotenv`, `supabase`)
 3. **Conexão** — O script `scripts/backup_db.py` lê a `DATABASE_URL` do GitHub Secret ou constrói a URL dinamicamente via `SUPABASE_URL` + `BACKUP_DB_PASSWORD`. A conexão usa o **Supavisor pooler** (`aws-1-us-east-2.pooler.supabase.com`, porta 5432), que sempre resolve para **IPv4** — contornando a limitação de IPv6 do runner
-4. **Exportação** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`) e exporta todas as 9 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_log` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`)
+4. **Exportação** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`) e exporta todas as 9 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_auditoria` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`)
 5. **Compressão** — Os dados são serializados em JSON e compactados com `gzip`, gerando um arquivo de ~0.01 MB
 6. **Upload** — O `.json.gz` é enviado ao **Cloudflare R2** via API S3-compatible (`boto3`), armazenado no bucket `labgas-backups`
 7. **Detecção inteligente de mudanças** — O script computa um hash SHA256 do dump completo. Se o hash coincidir com o último backup no R2, o upload é pulado (`--check-hash`). Além disso, hashes individuais por tabela são armazenados em `last_backup_hashes.json` para detecção granular — mesmo que o hash total mude, se as tabelas estiverem individualmente inalteradas, o backup é pulado
@@ -932,7 +933,7 @@ flowchart LR
 | Schema | Tabela | Registros |
 |--------|--------|-----------|
 | `auth` | users | UUIDs e senhas hasheadas (bcrypt) preservados |
-| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_log | Todos os dados |
+| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_auditoria | Todos os dados |
 
 ### Segurança
 

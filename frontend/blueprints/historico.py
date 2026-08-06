@@ -21,7 +21,7 @@ def list():
     per_page = 20
 
     def construir():
-        return get_supabase_client().table("historico_log").select("*", count="exact")
+        return get_supabase_client().table("historico_auditoria").select("*", count="exact")
 
     total = (construir().execute().count) or 0
     pages = max(1, (total + per_page - 1) // per_page)
@@ -29,20 +29,22 @@ def list():
     offset = (page - 1) * per_page
     
     response = construir().order("created_at", desc=True).range(offset, offset + per_page - 1).execute()
-    historico_log = response.data or []
+    historico_aud = response.data or []
     
-    all_user_ids = {h.get("user_id") for h in historico_log if h.get("user_id")}
+    all_user_ids = {h.get("user_id") for h in historico_aud if h.get("user_id")}
     user_map = buscar_perfis_usuarios(all_user_ids)
     if not user_map:
         user_map = {uid: str(uid) for uid in all_user_ids}
     
     history = []
     
-    for h in historico_log:
+    for h in historico_aud:
         history.append({
             "tipo": h.get("tipo"),
             "acao": h.get("acao"),
-            "nome": h.get("nome"),
+            "label": h.get("label"),
+            "ref_id": h.get("ref_id"),
+            "detalhe": h.get("detalhe"),
             "data": h.get("created_at"),
             "user_id": h.get("user_id"),
             "usuario_nome": user_map.get(h.get("user_id"), '-')

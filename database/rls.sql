@@ -99,11 +99,11 @@ CREATE POLICY "Users can delete pressao" ON pressao
     FOR DELETE USING (auth.uid() = user_id);
 
 -- =====================================================
--- Tabela: historico_log
+-- Tabela: historico_auditoria (substitui historico_log)
 -- =====================================================
 
 -- SELECT: Qualquer usuário pode visualizar
-CREATE POLICY "Users can view historico_log" ON historico_log
+CREATE POLICY "Anyone can view historico_auditoria" ON historico_auditoria
     FOR SELECT USING (true);
 
 -- Nota: INSERT/UPDATE/DELETE são feitos via service_role (admin)

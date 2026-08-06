@@ -136,3 +136,127 @@ def test_pressao_bulk_delete(login, page, supabase_admin, test_user_id,
     bulk.locator("button[type='submit']").click()
     page.wait_for_timeout(3000)
     assert "/pressoes" in page.url
+
+
+def _criar_pressao_teste(supabase_admin, test_user_id, codigo="CIL-001", pressao=150.0, data="2025-06-01"):
+    cil = supabase_admin.table("cilindro").insert({
+        "codigo": codigo, "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    pr = supabase_admin.table("pressao").insert({
+        "cilindro_id": cil_id, "pressao": pressao,
+        "temperatura": 25.0, "data": data,
+        "hora": "14:30", "user_id": test_user_id,
+    }).execute()
+    return pr.data[0]["id"]
+
+
+def test_pressao_filter_q_por_pressao(login, page, supabase_admin, test_user_id,
+                                      cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    pr_id = _criar_pressao_teste(supabase_admin, test_user_id, pressao=150.0)
+
+    page.goto("http://localhost:5000/pressoes?q_pressao=150&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{pr_id}']").count() == 1
+
+
+def test_pressao_filter_q_codigo_normalizado(login, page, supabase_admin, test_user_id,
+                                             cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    pr_id = _criar_pressao_teste(supabase_admin, test_user_id, codigo="CIL-001")
+
+    page.goto("http://localhost:5000/pressoes?q_codigo=001&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{pr_id}']").count() == 1
+
+
+def test_pressao_filter_q_temperatura(login, page, supabase_admin, test_user_id,
+                                      cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    cil = supabase_admin.table("cilindro").insert({
+        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    rows = {}
+    for i, (pres, temp) in enumerate([(150.0, 25.0), (200.0, 30.0)]):
+        pr = supabase_admin.table("pressao").insert({
+            "cilindro_id": cil_id, "pressao": pres, "temperatura": temp,
+            "data": "2025-06-01", "hora": f"15:0{i}", "user_id": test_user_id,
+        }).execute()
+        rows[temp] = pr.data[0]["id"]
+
+    page.goto("http://localhost:5000/pressoes?q_temperatura=25&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{rows[25.0]}']").count() == 1
+    assert page.locator(f"button[data-bs-target='#editModal{rows[30.0]}']").count() == 0
+
+
+def test_pressao_filter_por_data(login, page, supabase_admin, test_user_id,
+                                 cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    pr_id = _criar_pressao_teste(supabase_admin, test_user_id, data="2025-06-01")
+
+    page.goto("http://localhost:5000/pressoes?data_inicio=2025-06-01&data_fim=2025-06-01&per_page=1000")
+    page.wait_for_selector("body")
+    assert page.locator(f"button[data-bs-target='#editModal{pr_id}']").count() == 1
+
+
+def test_pressao_temperatura_cor(login, page, supabase_admin, test_user_id,
+                                 cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    cil = supabase_admin.table("cilindro").insert({
+        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    for i, temp in enumerate([25.0, 25.0, 50.0]):
+        supabase_admin.table("pressao").insert({
+            "cilindro_id": cil_id, "pressao": 150.0 + i, "temperatura": temp,
+            "data": "2025-06-01", "hora": f"16:0{i}", "user_id": test_user_id,
+        }).execute()
+
+    page.goto("http://localhost:5000/pressoes?per_page=1000")
+    page.wait_for_selector("body")
+    fria = page.locator("td:has-text('25.0°C') span.badge")
+    quente = page.locator("td:has-text('50.0°C') span.badge")
+    assert fria.count() >= 1
+    assert quente.count() >= 1
+    assert "background" in (fria.first.get_attribute("style") or "")
+    assert fria.first.get_attribute("style") != quente.first.get_attribute("style")
+
+
+def test_pressao_pressao_cor(login, page, supabase_admin, test_user_id,
+                             cleanup_pressoes, cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    cil = supabase_admin.table("cilindro").insert({
+        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+    cil_id = cil.data[0]["id"]
+    for i, pres in enumerate([100.0, 250.0, 250.0]):
+        supabase_admin.table("pressao").insert({
+            "cilindro_id": cil_id, "pressao": pres, "temperatura": 25.0,
+            "data": "2025-06-01", "hora": f"17:0{i}", "user_id": test_user_id,
+        }).execute()
+
+    page.goto("http://localhost:5000/pressoes?per_page=1000")
+    page.wait_for_selector("body")
+    baixa = page.locator("td:has-text('100.0 bar') span.badge")
+    alta = page.locator("td:has-text('250.0 bar') span.badge")
+    assert baixa.count() >= 1
+    assert alta.count() >= 1
+    assert "background" in (baixa.first.get_attribute("style") or "")
+    assert baixa.first.get_attribute("style") != alta.first.get_attribute("style")

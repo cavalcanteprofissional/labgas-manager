@@ -198,7 +198,7 @@
                         <td>
                             <span class="badge" style="background-color: {{ 'var(--green)' if h.acao == 'criado' else 'var(--yellow)' if h.acao == 'atualizado' else 'var(--red)' if h.acao == 'excluido' else '#6c757d' }};">{{ h.acao|title }}</span>
                         </td>
-                        <td><strong>{{ h.nome }}</strong></td>
+                        <td><strong>{{ h.label }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>

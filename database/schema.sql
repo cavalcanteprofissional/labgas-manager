@@ -62,14 +62,17 @@ CREATE TABLE leitura (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Tabela: historico_log
-CREATE TABLE historico_log (
+-- Tabela: historico_auditoria (substitui historico_log — ver migration 20260805_historico_auditoria.sql)
+CREATE TABLE historico_auditoria (
     id SERIAL PRIMARY KEY,
     tipo VARCHAR(20) NOT NULL,
     acao VARCHAR(20) NOT NULL,
-    nome VARCHAR(100) NOT NULL,
+    ref_id INTEGER,
+    label VARCHAR(150) NOT NULL,
+    detalhe JSONB,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT chk_historico_acao CHECK (acao IN ('criado', 'atualizado', 'excluido'))
 );
 
 -- Tabela: amostra
@@ -108,9 +111,10 @@ CREATE INDEX idx_perfil_role_ativo ON perfil(role, ativo);
 CREATE INDEX idx_pressao_user_id ON pressao(user_id);
 CREATE INDEX idx_pressao_cilindro_id ON pressao(cilindro_id);
 CREATE INDEX idx_pressao_data ON pressao(data);
-CREATE INDEX idx_historico_log_user_id ON historico_log(user_id);
-CREATE INDEX idx_historico_log_tipo ON historico_log(tipo);
-CREATE INDEX idx_historico_log_created_at ON historico_log(created_at);
+CREATE INDEX idx_historico_aud_tipo ON historico_auditoria(tipo);
+CREATE INDEX idx_historico_aud_user_id ON historico_auditoria(user_id);
+CREATE INDEX idx_historico_aud_created_at ON historico_auditoria(created_at);
+CREATE INDEX idx_historico_aud_ref ON historico_auditoria(tipo, ref_id);
 CREATE INDEX idx_amostra_user_id ON amostra(user_id);
 CREATE INDEX idx_amostra_lote ON amostra(lote);
 CREATE INDEX idx_amostra_elemento_amostra_id ON amostra_elemento(amostra_id);

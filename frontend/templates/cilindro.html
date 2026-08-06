@@ -68,7 +68,7 @@
     <div class="card-header bg-light">
         <div class="row g-2 align-items-center">
             <div class="col-md-5">
-                <input type="text" id="searchCilindro" class="form-control" placeholder="Buscar por código...">
+                <input type="text" id="searchCilindro" class="form-control" placeholder="Buscar por número...">
             </div>
             <div class="col-md-5">
                 <select id="filterStatus" class="form-select">
@@ -110,7 +110,7 @@
                     <tr>
                         <td><input type="checkbox" name="cilindro_ids" value="{{ c.id }}" class="item-checkbox"></td>
                         <td>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ c.codigo }}</span>
+                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ c.numero_exibicao }}</span>
                             <div class="d-sm-none text-muted small">
                                 {{ "%.2f"|format(c.gas_kg) }}kg | R$ {{ "%.2f"|format(c.custo) }}
                             </div>
@@ -122,9 +122,7 @@
                         <td class="d-none d-lg-table-cell">{{ "%.2f"|format(c.litros_equivalentes) }}</td>
                         <td class="d-none d-lg-table-cell">R$ {{ "%.2f"|format(c.custo) }}</td>
                         <td>
-                            <span class="badge bg-{{ 'success' if c.status == 'ativo' else 'danger' if c.status == 'esgotado' else 'secondary' }}">
-                                {{ c.status|title }}
-                            </span>
+                            <span class="badge bg-{{ 'success' if c.status == 'ativo' else 'danger' if c.status == 'esgotado' else 'secondary' }}">{{ c.status|title }}</span>
                         </td>
                         <td>
                             <div class="d-flex gap-1">
@@ -203,7 +201,7 @@
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir o cilindro <strong>{{ c.codigo }}</strong>?</p>
+                                    <p>Tem certeza que deseja excluir o cilindro <strong>{{ c.numero_exibicao }}</strong>?</p>
                                     <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
                                 </div>
                                 <div class="modal-footer">

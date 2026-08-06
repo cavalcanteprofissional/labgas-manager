@@ -55,8 +55,9 @@ def list():
                 else:
                     client = get_authenticated_client()
                 
-                client.table("elemento").insert(data).execute()
-                registrar_historico("elemento", "criado", nome, user_id)
+                resp = client.table("elemento").insert(data).execute()
+                novo_id = resp.data[0]["id"] if resp.data else None
+                registrar_historico("elemento", "criado", nome, user_id, ref_id=novo_id)
                 invalidate_user_caches(user_id)
                 flash("Elemento criado com sucesso!", "success")
             except Exception as e:
@@ -88,7 +89,7 @@ def list():
             else:
                 get_admin_client().table("elemento").update(data).eq("id", elemento_id).execute()
             
-            registrar_historico("elemento", "atualizado", nome, user_id)
+            registrar_historico("elemento", "atualizado", nome, user_id, ref_id=int(elemento_id))
             invalidate_user_caches(user_id)
             flash("Elemento atualizado com sucesso!", "success")
             
@@ -118,7 +119,7 @@ def list():
             try:
                 (get_admin_client() if dev else get_authenticated_client()).table("elemento").delete().eq("id", elemento_id).execute()
                 
-                registrar_historico("elemento", "excluido", elemento_nome, user_id)
+                registrar_historico("elemento", "excluido", elemento_nome, user_id, ref_id=int(elemento_id))
                 invalidate_user_caches(user_id)
                 flash("Elemento excluído com sucesso!", "success")
             except Exception as e:
@@ -165,7 +166,7 @@ def list():
                 if permitidos:
                     (get_admin_client() if dev else get_authenticated_client()).table("elemento").delete().in_("id", [e["id"] for e in permitidos]).execute()
                     for e in permitidos:
-                        registrar_historico("elemento", "excluido", e.get("nome", str(e["id"])), user_id)
+                        registrar_historico("elemento", "excluido", e.get("nome", str(e["id"])), user_id, ref_id=e["id"])
                     invalidate_user_caches(user_id)
 
                 if permitidos:

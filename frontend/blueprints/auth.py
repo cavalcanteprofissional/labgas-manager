@@ -222,7 +222,8 @@ def register():
                     }).execute()
                     
                     # Registrar cadastro no histórico
-                    registrar_historico("perfil", "criado", email, response.user.id)
+                    registrar_historico("perfil", "criado", email, response.user.id,
+                                        ref_id=None, detalhe={"email": email})
                 except Exception as perfil_error:
                     error_str = str(perfil_error)
                     if "23503" in error_str or "foreign key" in error_str.lower():

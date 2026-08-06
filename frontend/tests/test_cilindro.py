@@ -82,6 +82,33 @@ def test_cilindro_delete_modal_exclui(login, page, supabase_admin, test_user_id,
 
 
 @pytest.mark.modais
+def test_cilindro_exibe_numero_sem_rotulos(login, page, supabase_admin, test_user_id,
+                                           cleanup_cilindros, cleanup_historico):
+    if not test_user_id:
+        pytest.skip("No test user found")
+    supabase_admin.table("cilindro").insert({
+        "codigo": "CIL-001", "data_compra": "2025-01-01",
+        "gas_kg": 10, "custo": 290, "status": "ativo",
+        "user_id": test_user_id,
+    }).execute()
+
+    page.goto("http://localhost:5000/cilindros?per_page=1000")
+    page.wait_for_selector("body")
+
+    badge = page.locator("table tbody tr td:nth-child(2) .badge").first
+    assert badge.text_content().strip() == "1"
+
+    status_badge = page.locator("table tbody tr td:nth-child(9) .badge").first
+    assert status_badge.text_content().strip() == "Ativo"
+
+    table_text = page.locator("table tbody").first.text_content()
+    assert "50%" not in table_text
+    assert "EM USO" not in table_text
+    assert "ESGOTADO" not in table_text
+    assert "CIL-001" not in table_text
+
+
+@pytest.mark.modais
 def test_cilindro_bulk_delete(login, page, supabase_admin, test_user_id,
                                cleanup_cilindros, cleanup_historico):
     ids = []

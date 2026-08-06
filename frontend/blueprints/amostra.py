@@ -79,7 +79,8 @@ def list():
                     except Exception:
                         flash("Erro ao associar elementos à amostra.", "warning")
 
-                registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id)
+                registrar_historico("amostra", "criado", f"A/{numero_val} L{lote_val}", user_id,
+                                    ref_id=amostra_id, detalhe={"numero_amostra": numero_val, "lote": lote_val})
                 invalidate_user_caches(user_id)
                 flash(f"Amostra #{numero_val} criada com sucesso!", "success")
             except Exception as e:
@@ -156,7 +157,8 @@ def list():
                         flash("Erro ao associar elementos à amostra.", "warning")
 
                 registro_nome = f"A/{numero_val} L{lote_val}"
-                registrar_historico("amostra", "atualizado", registro_nome, user_id)
+                registrar_historico("amostra", "atualizado", registro_nome, user_id,
+                                    ref_id=amostra_id, detalhe={"numero_amostra": numero_val, "lote": lote_val})
                 invalidate_user_caches(user_id)
                 flash("Amostra atualizada com sucesso!", "success")
             except Exception as e:
@@ -191,7 +193,8 @@ def list():
                 client = admin_client if dev else authenticated
                 client.table("amostra_elemento").delete().eq("amostra_id", amostra_id).execute()
                 client.table("amostra").delete().eq("id", amostra_id).execute()
-                registrar_historico("amostra", "excluido", f"A/{num} L{lote_val}", user_id)
+                registrar_historico("amostra", "excluido", f"A/{num} L{lote_val}", user_id,
+                                    ref_id=amostra_id, detalhe={"numero_amostra": num, "lote": lote_val})
                 invalidate_user_caches(user_id)
                 flash("Amostra excluída com sucesso!", "success")
             except Exception as e:
@@ -229,7 +232,8 @@ def list():
                 client = admin_client if dev else authenticated
                 client.table("amostra_elemento").delete().in_("amostra_id", permitted).execute()
                 client.table("amostra").delete().in_("id", permitted).execute()
-                registrar_historico("amostra", "excluido", f"{len(permitted)} amostras", user_id)
+                registrar_historico("amostra", "excluido", f"{len(permitted)} amostras", user_id,
+                                    detalhe={"quantidade": len(permitted), "ids": permitted})
                 invalidate_user_caches(user_id)
                 flash(f"{len(permitted)} amostra(s) excluída(s) com sucesso!", "success")
             except Exception as e:

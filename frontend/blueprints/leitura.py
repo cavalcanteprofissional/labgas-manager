@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_int, safe_float, formatar_tempo_chama
 from utils.constants import ITEMS_PER_PAGE
+from utils.cilindro_utils import enriquecer_cilindros, codigo_corresponde
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
@@ -25,10 +26,12 @@ def leitura_list():
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
     
     cilindro = get_authenticated_client().table("cilindro").select("id,codigo,status").eq("user_id", user_id).order("codigo").execute().data or []
-    
+    cilindro = enriquecer_cilindros(cilindro)
+
     elementos = get_authenticated_client().table("elemento").select("id,nome").eq("user_id", user_id).order("nome").execute().data or []
     
     cilindro_dict = {c["id"]: c["codigo"] for c in cilindro}
+    cilindro_numero_dict = {c["id"]: c.get("numero_exibicao") for c in cilindro}
     elemento_dict = {e["id"]: e["nome"] for e in elementos}
     
     if request.method == "POST":
@@ -92,9 +95,11 @@ def leitura_list():
                 else:
                     client = get_authenticated_client()
                 
-                client.table("leitura").insert(data_insert).execute()
+                resp = client.table("leitura").insert(data_insert).execute()
+                novo_id = resp.data[0]["id"] if resp.data else None
                 nome_leitura = f"{cilindro_dict.get(cilindro_id_int, 'N/A')} - {elemento_dict.get(elemento_id_int, 'N/A')}"
-                registrar_historico("leitura", "criado", nome_leitura, user_id)
+                registrar_historico("leitura", "criado", nome_leitura, user_id,
+                                    ref_id=novo_id, detalhe={"cilindro_id": cilindro_id_int, "elemento_id": elemento_id_int})
                 invalidate_user_caches(user_id)
                 flash("Leitura registrada com sucesso!", "success")
             except Exception as e:
@@ -149,7 +154,8 @@ def leitura_list():
                 else:
                     get_admin_client().table("leitura").update(data_update).eq("id", leitura_id).execute()
 
-                registrar_historico("leitura", "atualizado", nome_leitura, user_id)
+                registrar_historico("leitura", "atualizado", nome_leitura, user_id,
+                                    ref_id=int(leitura_id), detalhe={"cilindro_id": cilindro_id_int, "elemento_id": elemento_id_int})
                 invalidate_user_caches(user_id)
                 flash("Leitura atualizada com sucesso!", "success")
             except Exception as e:
@@ -178,7 +184,9 @@ def leitura_list():
                 nome_leitura = f"{cilindro_nome[0]['codigo'] if cilindro_nome else 'N/A'} - {elemento_nome[0]['nome'] if elemento_nome else 'N/A'}"
 
                 (get_admin_client() if dev else get_authenticated_client()).table("leitura").delete().eq("id", leitura_id).execute()
-                registrar_historico("leitura", "excluido", nome_leitura, user_id)
+                registrar_historico("leitura", "excluido", nome_leitura, user_id,
+                                    ref_id=int(leitura_id),
+                                    detalhe={"cilindro_id": leitura_info[0].get("cilindro_id"), "elemento_id": leitura_info[0].get("elemento_id")})
                 invalidate_user_caches(user_id)
                 flash("Leitura excluída com sucesso!", "success")
             except Exception as e:
@@ -225,7 +233,8 @@ def leitura_list():
 
                 for l in permitted:
                     nome = f"{cil_map.get(l['cilindro_id'], 'N/A')} - {elem_map.get(l['elemento_id'], 'N/A')}"
-                    registrar_historico("leitura", "excluido", nome, user_id)
+                    registrar_historico("leitura", "excluido", nome, user_id,
+                                        ref_id=l["id"], detalhe={"cilindro_id": l["cilindro_id"], "elemento_id": l["elemento_id"]})
                 invalidate_user_caches(user_id)
 
                 flash(f"{len(permitted)} leitura(s) excluída(s) com sucesso!", "success")
@@ -244,7 +253,7 @@ def leitura_list():
 
     def montar(query):
         if q:
-            cil_ids = [c["id"] for c in cilindro if q.lower() in c["codigo"].lower()]
+            cil_ids = [c["id"] for c in cilindro if codigo_corresponde(c["codigo"], q)]
             elem_ids = [e["id"] for e in elementos if q.lower() in e["nome"].lower()]
             clauses = []
             if cil_ids:
@@ -297,6 +306,7 @@ def leitura_list():
 
     for leitura in leituras:
         leitura["cilindro_nome"] = cilindro_dict.get(leitura.get("cilindro_id"), "")
+        leitura["cilindro_numero"] = cilindro_numero_dict.get(leitura.get("cilindro_id"), "")
         leitura["elemento_nome"] = elemento_dict.get(leitura.get("elemento_id"), "")
     
     end_page = min(page * per_page, total)

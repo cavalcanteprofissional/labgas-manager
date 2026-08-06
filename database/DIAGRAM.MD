@@ -115,7 +115,7 @@ flowchart TB
         amostra["amostra"]
         amostra_elemento["amostra_elemento"]
         pressao["pressao"]
-        historico["historico_log"]
+        historico["historico_auditoria"]
     end
     
     auth_users -->|FK| perfil
@@ -247,14 +247,16 @@ flowchart TB
 
 ---
 
-### 6. historico_log
+### 6. historico_auditoria
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | id | SERIAL | PK - ID automático |
 | tipo | VARCHAR(20) | Tipo: cilindro, elemento, leitura, amostra, pressao, perfil |
 | acao | VARCHAR(20) | Ação: criado, atualizado, excluido |
-| nome | VARCHAR(100) | Nome/identificação do item |
+| ref_id | INTEGER | Id do registro de origem (polimórfico, conforme `tipo`) |
+| label | VARCHAR(150) | Texto legível do item |
+| detalhe | JSONB | Payload estruturado (pressao, temperatura, quantidade, role, aba, etc.) |
 | user_id | UUID | FK - Usuário que executou |
 | created_at | TIMESTAMP | Data/hora da ação |
 
@@ -274,7 +276,7 @@ flowchart TB
 | amostra_elemento.elemento_id | elemento.id | N:1 |
 | pressao.user_id | perfil.id | N:1 |
 | pressao.cilindro_id | cilindro.id | N:1 |
-| historico_log.user_id | perfil.id | N:1 |
+| historico_auditoria.user_id | perfil.id | N:1 |
 
 ---
 
@@ -291,4 +293,4 @@ Todas as tabelas possuem Row Level Security (RLS) habilitado:
 | amostra_elemento | Público | Próprio usuário | Próprio usuário | Próprio usuário |
 | perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
 | pressao | Público | Próprio usuário | Próprio usuário | Próprio usuário |
-| historico_log | Público | Admin (service_role) | - | - |
+| historico_auditoria | Público | Admin (service_role) | - | - |

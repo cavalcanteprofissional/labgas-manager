@@ -128,7 +128,7 @@ flowchart TB
             ElementoTB["elemento"]
             AmostraTB["amostra"]
             PressaoTB["pressao"]
-            HistoricoTB["historico_log"]
+            HistoricoTB["historico_auditoria"]
         end
         
         subgraph Seguranca["Segurança"]
@@ -401,7 +401,7 @@ O modelo de dados foi implementado no PostgreSQL (via Supabase) com as seguintes
 | `amostra_elemento` | Tabela pivô da relação N:N entre amostras e elementos |
 | `pressao` | Medições de pressão e temperatura vinculadas a cilindro |
 | `perfil` | Perfis de usuários com role (dev/admin/usuario), status e permissões por módulo |
-| `historico_log` | Registro de todas as operações para fins de rastreabilidade |
+| `historico_auditoria` | Registro de todas as operações para fins de rastreabilidade |
 
 #### Schema do Banco de Dados (ER Diagram)
 
@@ -520,9 +520,10 @@ As tabelas `cilindro`, `elemento`, `leitura`, `amostra` e `pressao` contêm o ca
 | pressao | idx_pressao_user_id | user_id | Filtrar por usuário |
 | pressao | idx_pressao_cilindro_id | cilindro_id | Vincular cilindro |
 | pressao | idx_pressao_data | data | Filtrar por data |
-| historico_log | idx_historico_log_user_id | user_id | Filtrar por usuário |
-| historico_log | idx_historico_log_tipo | tipo | Filtrar por tipo |
-| historico_log | idx_historico_log_created_at | created_at | Ordenação temporal |
+| historico_auditoria | idx_historico_aud_tipo | tipo | Filtrar por tipo |
+| historico_auditoria | idx_historico_aud_user_id | user_id | Filtrar por usuário |
+| historico_auditoria | idx_historico_aud_created_at | created_at | Ordenação temporal |
+| historico_auditoria | idx_historico_aud_ref | tipo, ref_id | Vincular registro de origem |
 
 #### Políticas RLS (Row Level Security)
 
@@ -535,7 +536,7 @@ As tabelas `cilindro`, `elemento`, `leitura`, `amostra` e `pressao` contêm o ca
 | amostra_elemento | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
 | perfil | Próprio usuário | Próprio usuário | Próprio usuário | - |
 | pressao | Público (todos) | Próprio usuário | Próprio usuário | Próprio usuário |
-| historico_log | Público (todos) | Admin (service_role) | - | - |
+| historico_auditoria | Público (todos) | Admin (service_role) | - | - |
 
 ### 3.4 Controle de Segurança e Auditoria
 
@@ -551,13 +552,15 @@ O sistema implementa múltiplas camadas de segurança para proteção dos dados 
 
 #### 3.4.1 Sistema de Auditoria e Registro de Log
 
-O sistema possui um módulo completo de auditoria que registra todas as operações realizadas, garantindo a rastreabilidade exigida pelas Boas Práticas de Laboratório. A tabela `historico_log` armazena os seguintes campos:
+O sistema possui um módulo completo de auditoria que registra todas as operações realizadas, garantindo a rastreabilidade exigida pelas Boas Práticas de Laboratório. A tabela `historico_auditoria` armazena os seguintes campos:
 
 | Campo | Descrição |
 |-------|-----------|
 | tipo | Tipo de registro (cilindro, elemento, amostra, pressao, perfil) |
 | ação | Operação realizada (criado, atualizado, excluido) |
-| nome | Identificação do registro afetado |
+| label | Texto legível identificando o registro afetado |
+| ref_id | Id do registro de origem (polimórfico, conforme o tipo) |
+| detalhe | Payload estruturado JSONB (pressao, temperatura, quantidade, role, aba, etc.) |
 | user_id | ID do usuário que realizou a operação |
 | created_at | Data e hora da operação |
 
@@ -720,7 +723,7 @@ A avaliação do sistema em relação aos requisitos das BPL demonstra conformid
 
 A implementação de políticas Row Level Security (RLS) no PostgreSQL garante que cada usuário visualize apenas os seus próprios registros, impedindo acesso não autorizado a informações de outros usuários. Esta funcionalidade é particularmente importante em ambientes compartilhados onde múltiplos pesquisadores utilizam o mesmo sistema.
 
-O sistema de log de histórico (`historico_log`) atende diretamente ao requisito de rastreabilidade das BPL, permitindo responder às perguntas: quem fez o quê, quando e em qual registro. Cada operação de criação, atualização ou exclusão gera um registro automático no histórico, com as informações necessárias para reconstrução da cadeia de custódia dos dados.
+O sistema de log de histórico (`historico_auditoria`) atende diretamente ao requisito de rastreabilidade das BPL, permitindo responder às perguntas: quem fez o quê, quando e em qual registro. Cada operação de criação, atualização ou exclusão gera um registro automático no histórico, com `ref_id` apontando para o registro de origem e `detalhe` estruturado (JSONB) com o contexto completo da operação, permitindo reconstrução da cadeia de custódia dos dados.
 
 A expiração de sessão após 10 minutos de inatividade adiciona uma camada de segurança, impedindo acesso não autorizado quando o usuário deixa a estação de trabalho sem realizar logout. Esta prática é recomendada em ambientes laboratoriais onde múltiplos pesquisadores compartilham equipamentos.
 

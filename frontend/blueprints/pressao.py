@@ -1,11 +1,11 @@
 # Pressao blueprint - CRUD operations
-import re
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from utils.supabase_utils import get_supabase_client, get_admin_client
 from utils.validators import safe_float
-from utils.constants import ITEMS_PER_PAGE
+from utils.constants import ITEMS_PER_PAGE, PRESSAO_MAXIMA_BAR
+from utils.cilindro_utils import enriquecer_cilindros, codigo_corresponde
 from utils.erros_utils import formatar_erro_supabase
 from blueprints.helpers import get_user_id, is_dev, registrar_historico, pode_acessar_aba, get_authenticated_client, consultar_paginado
 from utils.cache_utils import invalidate_user_caches
@@ -25,9 +25,11 @@ def pressao_list():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", ITEMS_PER_PAGE, type=int)
     
-    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,codigo").eq("user_id", user_id).order("codigo").execute()
+    cilindro_list_response = get_authenticated_client().table("cilindro").select("id,codigo,status").eq("user_id", user_id).order("codigo").execute()
     cilindro_list = cilindro_list_response.data or []
+    cilindro_list = enriquecer_cilindros(cilindro_list)
     cilindro_dict_lookup = {c["id"]: c["codigo"] for c in cilindro_list}
+    cilindro_numero_lookup = {c["id"]: c.get("numero_exibicao") for c in cilindro_list}
     
     if request.method == "POST":
         action = request.form.get("action")
@@ -45,8 +47,8 @@ def pressao_list():
             
             try:
                 pressao_val = safe_float(pressao, 1.0)
-                if pressao_val < 0 or pressao_val > 300:
-                    flash("Pressão deve estar entre 0 e 300 bar", "danger")
+                if pressao_val < 0 or pressao_val > PRESSAO_MAXIMA_BAR:
+                    flash(f"Pressão deve estar entre 0 e {PRESSAO_MAXIMA_BAR} bar", "danger")
                     return redirect(url_for("pressao.pressao_list"))
             except ValueError as e:
                 flash("Pressão inválida.", "danger")
@@ -97,9 +99,11 @@ def pressao_list():
                 else:
                     client = get_authenticated_client()
                 
-                client.table("pressao").insert(data_insert).execute()
+                resp = client.table("pressao").insert(data_insert).execute()
+                novo_id = resp.data[0]["id"] if resp.data else None
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
-                registrar_historico("pressao", "criado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                registrar_historico("pressao", "criado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id,
+                                    ref_id=novo_id, detalhe={"pressao": pressao_val, "temperatura": temp_val})
                 invalidate_user_caches(user_id)
                 flash("Pressão registrada com sucesso!", "success")
             except Exception as e:
@@ -120,8 +124,8 @@ def pressao_list():
             
             try:
                 pressao_val = safe_float(pressao, 1.0)
-                if pressao_val < 0 or pressao_val > 300:
-                    flash("Pressão deve estar entre 0 e 300 bar", "danger")
+                if pressao_val < 0 or pressao_val > PRESSAO_MAXIMA_BAR:
+                    flash(f"Pressão deve estar entre 0 e {PRESSAO_MAXIMA_BAR} bar", "danger")
                     return redirect(url_for("pressao.pressao_list"))
             except ValueError as e:
                 flash("Pressão inválida.", "danger")
@@ -160,7 +164,8 @@ def pressao_list():
                     get_admin_client().table("pressao").update(data_update).eq("id", pressao_id).execute()
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
-                registrar_historico("pressao", "atualizado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                registrar_historico("pressao", "atualizado", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id,
+                                    ref_id=int(pressao_id), detalhe={"pressao": pressao_val, "temperatura": temp_val})
                 invalidate_user_caches(user_id)
                 flash("Pressão atualizada com sucesso!", "success")
             except Exception as e:
@@ -193,7 +198,8 @@ def pressao_list():
                 (get_admin_client() if dev else get_authenticated_client()).table("pressao").delete().eq("id", pressao_id).execute()
                 
                 temp_str = f", {temp_val}°C" if temp_val is not None else ""
-                registrar_historico("pressao", "excluido", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id)
+                registrar_historico("pressao", "excluido", f"{cilindro_codigo} - {pressao_val} bar{temp_str}", user_id,
+                                    ref_id=int(pressao_id), detalhe={"pressao": pressao_val, "temperatura": temp_val})
                 invalidate_user_caches(user_id)
                 flash("Registro de pressão excluído com sucesso!", "success")
             except Exception as e:
@@ -237,7 +243,8 @@ def pressao_list():
                 for r in permitted:
                     cod = cil_map.get(r["cilindro_id"], str(r["cilindro_id"]))
                     temp_str = f", {r['temperatura']}°C" if r.get("temperatura") is not None else ""
-                    registrar_historico("pressao", "excluido", f"{cod} - {r['pressao']} bar{temp_str}", user_id)
+                    registrar_historico("pressao", "excluido", f"{cod} - {r['pressao']} bar{temp_str}", user_id,
+                                        ref_id=r["id"], detalhe={"pressao": r.get("pressao"), "temperatura": r.get("temperatura")})
                 invalidate_user_caches(user_id)
 
                 flash(f"{len(permitted)} registro(s) excluído(s) com sucesso!", "success")
@@ -248,29 +255,25 @@ def pressao_list():
 
             return redirect(url_for("pressao.pressao_list"))
     
-    q = request.args.get("q", "").strip()
+    q_codigo = request.args.get("q_codigo", "").strip()
+    q_pressao = request.args.get("q_pressao", "").strip()
+    q_temperatura = request.args.get("q_temperatura", "").strip()
     cilindro_filtro = request.args.get("cilindro_id", "").strip()
     data_inicio = request.args.get("data_inicio", "").strip()
     data_fim = request.args.get("data_fim", "").strip()
 
     def montar(query):
-        if q:
-            ids = [c["id"] for c in cilindro_list if q.lower() in c["codigo"].lower()]
-            clauses = []
-            if ids:
-                clauses.append(f"cilindro_id.in.({','.join(str(i) for i in ids)})")
-            data_normalizada = None
-            if re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", q):
-                try:
-                    data_normalizada = datetime.strptime(q, "%d/%m/%Y").strftime("%Y-%m-%d")
-                except ValueError:
-                    data_normalizada = None
-            if data_normalizada:
-                clauses.append(f"data.eq.{data_normalizada}")
-            if clauses:
-                query = query.or_(",".join(clauses))
-            else:
-                query = query.eq("id", 0)
+        if q_codigo:
+            ids = [c["id"] for c in cilindro_list if codigo_corresponde(c["codigo"], q_codigo)]
+            query = query.eq("cilindro_id", 0) if not ids else query.in_("cilindro_id", ids)
+
+        if q_pressao:
+            valor_num = safe_float(q_pressao)
+            query = query.eq("pressao", valor_num) if valor_num is not None else query.eq("id", 0)
+
+        if q_temperatura:
+            valor_num = safe_float(q_temperatura)
+            query = query.eq("temperatura", valor_num) if valor_num is not None else query.eq("id", 0)
 
         if cilindro_filtro:
             try:
@@ -292,6 +295,27 @@ def pressao_list():
             except ValueError:
                 pass
 
+    def _estatisticas_valores(rows, coluna):
+        valores = [float(r[coluna]) for r in rows if r.get(coluna) is not None]
+        if len(valores) < 2:
+            return None, None
+        media = sum(valores) / len(valores)
+        variancia = sum((v - media) ** 2 for v in valores) / len(valores)
+        return media, variancia ** 0.5
+
+    def _cor_escala(valor, media, desvio, pontos):
+        if valor is None or media is None:
+            return None
+        razao = min(abs(valor - media) / max(desvio, 0.5), 3.0) / 3.0
+        total = len(pontos) - 1
+        pos = razao * total
+        i = min(int(pos), total - 1)
+        t = pos - i
+        cor = tuple(int(a + (b - a) * t) for a, b in zip(pontos[i], pontos[i + 1]))
+        luminancia = 0.299 * cor[0] + 0.587 * cor[1] + 0.114 * cor[2]
+        texto = "#212529" if luminancia > 150 else "#ffffff"
+        return f"#{cor[0]:02x}{cor[1]:02x}{cor[2]:02x}", texto
+
     pressoes, total, page, pages = consultar_paginado(
         get_supabase_client(),
         "pressao",
@@ -305,8 +329,19 @@ def pressao_list():
         desc=True,
     )
 
+    query_stats = get_supabase_client().table("pressao").select("pressao,temperatura")
+    if not dev:
+        query_stats = query_stats.eq("user_id", user_id)
+    montar(query_stats)
+    linhas_stats = query_stats.execute().data or []
+    pressao_media, pressao_desvio = _estatisticas_valores(linhas_stats, "pressao")
+    temp_media, temp_desvio = _estatisticas_valores(linhas_stats, "temperatura")
+
     for p in pressoes:
         p["cilindro_codigo"] = cilindro_dict_lookup.get(p.get("cilindro_id"), "")
+        p["cilindro_numero"] = cilindro_numero_lookup.get(p.get("cilindro_id"), "")
+        p["pressao_cor"] = _cor_escala(p.get("pressao"), pressao_media, pressao_desvio, [(253, 126, 20), (220, 53, 69)])
+        p["temperatura_cor"] = _cor_escala(p.get("temperatura"), temp_media, temp_desvio, [(239, 154, 154), (229, 57, 53), (183, 28, 28)])
     
     end_page = min(page * per_page, total) if total > 0 else 0
     max_pages = min(pages, 10)

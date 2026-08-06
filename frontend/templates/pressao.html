@@ -27,7 +27,7 @@
                         <select name="cilindro_id" class="form-select form-select-lg">
                             <option value="">Selecione...</option>
                             {% for c in cilindro_list %}
-                            <option value="{{ c.id }}">{{ c.codigo }}</option>
+                            <option value="{{ c.id }}">{{ c.numero_exibicao }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -64,32 +64,42 @@
 <div class="card mb-4">
     <div class="card-header bg-light">
         <form method="GET" class="row g-2 align-items-center">
-            <div class="col-12 col-md-4">
-                <input type="text" name="q" class="form-control" placeholder="Busque por código do cilindro (ex: CIL-001) ou data (16/06/2025)" value="{{ request.args.get('q', '') }}">
+            <div class="col-12">
+                <div class="row g-2 align-items-center">
+                    <div class="col-12 col-md-3">
+                        <input type="text" name="q_codigo" class="form-control" placeholder="Buscar por número" value="{{ request.args.get('q_codigo', '') }}">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <input type="text" name="q_pressao" class="form-control" placeholder="Buscar por pressão" value="{{ request.args.get('q_pressao', '') }}">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <input type="text" name="q_temperatura" class="form-control" placeholder="Buscar por temperatura" value="{{ request.args.get('q_temperatura', '') }}">
+                    </div>
+                    <div class="col-12 col-md-3 d-flex gap-2">
+                        <button class="btn btn-outline-secondary w-100" type="submit">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                        {% if request.args %}
+                        <a href="?" class="btn btn-outline-secondary" title="Limpar filtros">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-4">
                 <select name="cilindro_id" class="form-select">
                     <option value="">Todos os Cilindros</option>
                     {% for c in cilindro_list %}
-                    <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.codigo }}</option>
+                    <option value="{{ c.id }}" {% if request.args.get('cilindro_id')|string == c.id|string %}selected{% endif %}>{{ c.numero_exibicao }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-6 col-md-4">
                 <input type="date" name="data_inicio" class="form-control" value="{{ request.args.get('data_inicio', '') }}" title="Data inicial">
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-6 col-md-4">
                 <input type="date" name="data_fim" class="form-control" value="{{ request.args.get('data_fim', '') }}" title="Data final">
-            </div>
-            <div class="col-12 col-md-1 d-flex gap-2">
-                <button class="btn btn-outline-secondary w-100" type="submit">
-                    <i class="bi bi-funnel"></i>
-                </button>
-                {% if request.args %}
-                <a href="?" class="btn btn-outline-secondary" title="Limpar filtros">
-                    <i class="bi bi-x-lg"></i>
-                </a>
-                {% endif %}
             </div>
         </form>
     </div>
@@ -117,18 +127,26 @@
                     <tr>
                         <td><input type="checkbox" name="pressao_ids" value="{{ p.id }}" class="item-checkbox"></td>
                         <td>
-                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ p.cilindro_codigo or '—' }}</span>
+                            <span class="badge" style="background: {{ COR_TIPO['cilindro']['var'] }};">{{ p.cilindro_numero or '—' }}</span>
                         </td>
                         <td>
-                            <span class="badge bg-{{ 'danger' if p.pressao > 2.5 else 'success' if p.pressao < 0.5 else 'warning' }}">
+                            {% if p.pressao_cor %}
+                            <span class="badge" style="background: {{ p.pressao_cor[0] }}; color: {{ p.pressao_cor[1] }};">
                                 {{ "%.1f"|format(p.pressao) }} bar
                             </span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ "%.1f"|format(p.pressao) }} bar</span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if p.temperatura %}
-                            <span class="badge bg-{{ 'danger' if p.temperatura > 30 else 'success' if p.temperatura < 20 else 'warning' }}">
+                            {% if p.temperatura_cor %}
+                            <span class="badge" style="background: {{ p.temperatura_cor[0] }}; color: {{ p.temperatura_cor[1] }};">
                                 {{ "%.1f"|format(p.temperatura) }}°C
                             </span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ "%.1f"|format(p.temperatura) }}°C</span>
+                            {% endif %}
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
@@ -168,7 +186,7 @@
                                             <label class="form-label">Cilindro</label>
                                             <select name="cilindro_id" class="form-select">
                                                 {% for c in cilindro_list %}
-                                                <option value="{{ c.id }}" {% if p.cilindro_id == c.id %}selected{% endif %}>{{ c.codigo }}</option>
+                                                <option value="{{ c.id }}" {% if p.cilindro_id == c.id %}selected{% endif %}>{{ c.numero_exibicao }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -205,7 +223,7 @@
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>Tem certeza que deseja excluir o registro de pressão do cilindro <strong>{{ p.cilindro_codigo or '—' }}</strong>?</p>
+                                    <p>Tem certeza que deseja excluir o registro de pressão do cilindro <strong>{{ p.cilindro_numero or '—' }}</strong>?</p>
                                     <p class="text-danger small"><i class="bi bi-info-circle"></i> Esta ação não pode ser desfeita.</p>
                                 </div>
                                 <div class="modal-footer">

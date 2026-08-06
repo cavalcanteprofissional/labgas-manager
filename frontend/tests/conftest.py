@@ -222,4 +222,4 @@ def cleanup_amostras(supabase_admin, test_user_id):
 def cleanup_historico(supabase_admin, test_user_id):
     yield
     if test_user_id:
-        supabase_admin.table("historico_log").delete().eq("user_id", test_user_id).execute()
+        supabase_admin.table("historico_auditoria").delete().eq("user_id", test_user_id).execute()

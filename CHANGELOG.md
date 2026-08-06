@@ -2,6 +2,71 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.17.0] — 2026-08-05
+
+### Auditoria refatorada: `historico_log` → `historico_auditoria` (Fase 76) 🗄️
+
+- **Nova tabela `historico_auditoria`** substitui a antiga `historico_log`: a coluna `nome` (texto heterogêneo, VARCHAR(100), risco de truncamento) foi substituída por `label` (texto legível, VARCHAR(150)), `ref_id` (id do registro de origem, polimórfico conforme `tipo`) e `detalhe` (payload estruturado JSONB)
+- **Backend**: `registrar_historico(tipo, acao, label, user_id, ref_id=None, detalhe=None)` insere na nova tabela; os 32 call sites foram atualizados — inserts capturam o id retornado para `ref_id`, updates/deletes passam o id da rota, e ações em lote gravam `detalhe={"quantidade", "ids"}`; pressões/leituras incluem `detalhe` com os valores gravados
+- **Admin**: rotas de gestão de usuário (ativar/desativar, role, abas) gravam `ref_id` (usuário alvo) + `detalhe`; o `user_data` e a purge do usuário passam a usar `historico_auditoria`
+- **UI**: `historico.html` e `admin_user_data.html` renderizam `label`, badge `#ref_id` e `detalhe`; filtro de tipo ganhou a opção `Perfil`
+- **Migration** `database/migrations/20260805_historico_auditoria.sql`: CREATE TABLE + índices (`idx_historico_aud_*`, incl. `(tipo, ref_id)`) + policy RLS de SELECT + backfill `INSERT ... SELECT` preservando `created_at`/`user_id`, resolvendo `ref_id` por join inequívoco (cilindro por `codigo+user_id`, elemento por `nome+user_id`, amostra por `A/N Lx`); `pressao`/`leitura`/`perfil` migram com `ref_id = NULL` (documentado); **`DROP TABLE historico_log` executado em 2026-08-05 (Fase 77)** após validação, com snapshot de segurança `historico_log_bkp_20260805` criado e descartado ao final
+- **Scripts**: `backup_db.py` e `restore_db.py` exportam/restauram `historico_auditoria`
+- **Schema/RLS**: `database/schema.sql` e `database/rls.sql` atualizados (tabela, índices e policy `Anyone can view historico_auditoria`)
+- **Testes**: `conftest.py` (cleanup) e `test_backup.py` (ordem de delete/insert + backup) atualizados para a nova tabela
+- **Fase 75 (diagnóstico)**: dashboard "zerado" investigado com logs temporários e reprodução com dados reais — confirmado que o código computa corretamente; o vazio era isolamento por sessão/`user_id` (usuários sem dados) e todos os cilindros `esgotado`; servidor local reiniciado; testes reforçados (`test_compute_kpis.py` + 5 unitários, `test_dashboard.py` com assertions de KPI)
+
+## [2.16.0] — 2026-08-05
+
+### Nomenclatura dos cilindros — somente o número (Fase 74) 🔢
+
+- **Cilindros exibidos pelo número** em toda a UI: o sufixo numérico do código (`CIL-001` → `1`, `CIL-010` → `10`) substitui o código completo nas tabelas, dropdowns, modais de exclusão, busca da tabela de cilindros, placeholders de filtro e nos rótulos dos gráficos do dashboard; códigos sem sufixo numérico (ex: `CIL-PR`) mantêm o código completo como fallback
+- **Removidas as tags** `EM USO`/`ESGOTADO` e o **badge de percentual de carga** (`%`) — decisão do usuário; a coluna Status agora exibe o texto simples `Ativo`/`Esgotado` (badge neutro, sem ícone de raio)
+- `cilindro_utils.enriquecer_cilindros` simplificado: adiciona apenas `numero_exibicao` e **remove a consulta extra** de última pressão por cilindro (ganho de performance); `carga_pct`/`estado_rotulo`/`rotulo_exibicao` deletados
+- Ordenação da lista de cilindros: ativos primeiro, tie-break **numérico** pelo número do cilindro (antes usava `carga_pct`)
+- **Histórico de atividades e exportações (CSV/Markdown) preservam o código completo** `CIL-001` (decisão do usuário); mudança é somente de exibição, sem migração de dados
+- **Testes**: `test_cilindro.py` — `test_cilindro_exibe_numero_sem_rotulos` (célula exibe `1`, status `Ativo`, ausência de `EM USO`/`ESGOTADO`/`50%`/`CIL-001`)
+
+## [2.15.0] — 2026-08-05
+
+### Pressão — busca por campo separado (Fase 73) 🔍
+
+- O campo de texto único `q` (que misturava código + data `dd/mm/aaaa` + pressão/temperatura) foi substituído por **três inputs independentes**, cada um com placeholder próprio: **"Buscar por código"** (`q_codigo`, via `codigo_corresponde`), **"Buscar por pressão"** (`q_pressao`, numérico) e **"Buscar por temperatura"** (`q_temperatura`, numérico)
+- Filtros combinados com AND e aplicados no backend (`montar()`), mantendo o padrão das outras abas; dropdown `cilindro_id` + intervalo `data_inicio`/`data_fim` inalterados
+- Removida a busca textual por data (agora exclusiva do intervalo de datas); import `re` removido de `pressao.py` (ficou sem uso)
+- **Testes**: `test_pressao.py` — `q` → `q_pressao`/`q_codigo`; novo `test_pressao_filter_q_temperatura`
+
+## [2.14.0] — 2026-08-05
+
+### Pressão — paleta da pressão e filtros padronizados (Fase 72) 🔄
+
+- **Paleta de cor da pressão** (`pressao.py` + `pressao.html`): mesma lógica da paleta de temperatura (cor relativa ao desvio da média do conjunto filtrado), mas com gradiente **laranja → vermelho** somente; cor do texto ajustada por luminância. Helpers refatorados em `_estatisticas_valores()` (média + desvio em Python, 1 query só para `pressao,temperatura`) e `_cor_escala()` (gradiente por pontos, reutilizado por pressão e temperatura)
+- **Paleta da temperatura corrigida**: o gradiente verde → amarelo → vermelho foi substituído por uma **escala de vermelho** (vermelho claro próximo da média → vermelho profundo em desvios grandes), mantendo a mesma lógica de desvio relativo à média
+- **Filtros refeitos no padrão das outras abas** (leitura/amostra): `q` único (busca código/data `dd/mm/aaaa`/pressão/temperatura) + dropdown `cilindro_id` + intervalo `data_inicio`/`data_fim` sempre visível, filtrando a coluna `data`
+- **Removidos** (decisão do usuário, para padronizar): seletor de campo `q_campo` e seletor de tipo de data `filtro_data` (com campos condicionais) criados na Fase 71; o JS `toggleDataFields` correspondente também foi removido
+- **Testes**: `test_pressao.py` — `test_pressao_filter_por_data` (intervalo na coluna `data`, padrão das outras abas), `test_pressao_pressao_cor` (badges laranja/vermelho com cores diferentes); testes de `q_campo` removidos
+
+## [2.13.0] — 2026-08-05
+
+### Aba Pressão — paleta de temperatura, filtro de data por tipo e busca por campo (Fase 71) 🎨
+
+- **Paleta de cores da temperatura** (`pressao.py` + `pressao.html`): cores relativas à **média de todas as temperaturas** do conjunto filtrado — verde próximo da média, amarelo e vermelho em escala contínua (gradiente verde → amarelo → vermelho) conforme o desvio em relação à média (média ± desvio padrão); cor do texto ajustada por luminância. PostgREST do projeto tem agregados desabilitados (PGRST123), então média/desvio são calculados em Python numa query leve (só a coluna `temperatura`, mesmos filtros da listagem)
+- **Novo seletor de data**: removido o `select` "Data / Registrado em" sempre visível; agora um `select` opcional "Filtrar por data..." (vazio por default) com "Data do registro" (`data`) e "Data de criação" (`created_at`); ao escolher um tipo, os campos De/Até são revelados (toggle por JS + estado inicial no server); sem seleção = nenhum filtro de data aplicado
+- **Busca por campo**: input de texto estilo Cilindro + `select` de campo — Tudo (default) / Cilindro / Pressão / Temperatura / Data / Hora; a busca é restrita à coluna escolhida no backend (`q_campo`)
+- **Testes**: `test_pressao.py` — `q_campo=pressao`, `q_campo=temperatura` (restringem a busca) e badge de temperatura com cor inline (média) diferente do valor distante
+
+## [2.12.0] — 2026-08-05
+
+### Filtros da aba Pressão + Nomenclatura dos cilindros (Fase 70) 🧭
+
+- **`frontend/utils/cilindro_utils.py`** (novo): helpers centrais — `enriquecer_cilindros()` (calcula `carga_pct` = última pressão ÷ 300 bar, clamp 0–100; `estado_rotulo` = "EM USO"/"ESGOTADO"; `rotulo_exibicao` = código + rótulo dinâmico), `normalizar_codigo_cilindro()`, `codigo_corresponde()` (substring OU comparação de dígitos — `001` identifica `CIL-001`)
+- **`frontend/utils/constants.py`**: `PRESSAO_MAXIMA_BAR = 300` e regex `CILINDRO_CODIGO_REGEX = r"^CIL-\d{3}$"` compartilhada (agora usada em `validators.py`)
+- **Pressão** (`pressao.py` + `pressao.html`): seletor de coluna `filtro_data` ("Data" | "Registrado em"/`created_at`) + intervalo com normalização de datetime (`T00:00:00`/`T23:59:59`); busca `q` também aceita pressão/temperatura (numérico exato, via `or_` + `.eq.`) e código normalizado; validação de pressão usa `PRESSAO_MAXIMA_BAR`; dropdowns (form/filtro/modal de edição) com rótulo dinâmico
+- **Cilindros** (`cilindro.py` + `cilindro.html`): listagem enriquecida e ordenada (ativos por % de carga desc, depois esgotados); badges de estado (EM USO com ícone ⚡ / ESGOTADO) e % de carga (success ≥50 / warning ≥20 / danger); código `CIL-XXX` permanece estável (histórico/exports/busca intactos)
+- **Leitura** (`leitura.py` + `leitura.html`): dropdowns com rótulo dinâmico + mesma normalização de código na busca (`q`), por consistência
+- **Decisões de escopo**: vários cilindros "EM USO" simultâneos permitidos (todos com `status='ativo'`); rótulos dinâmicos fora dos gráficos do dashboard e do histórico (mantêm `codigo` puro)
+- **Testes**: `test_pressao.py` — `q=150` (por pressão), `q=001` (código normalizado) e filtro por `created_at`; `test_cilindro.py` — badge EM USO + 50% de carga
+
 ## [2.11.0] — 2026-08-05
 
 ### Verificação do isolamento por usuário (Fase 67) ✅
