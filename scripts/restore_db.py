@@ -59,12 +59,14 @@ DELETE_ORDER = [
     "cilindro",
     "elemento",
     "historico_auditoria",
+    "historico_login",
     "perfil",
 ]
 
 INSERT_ORDER = [
     "auth.users",
     "public.perfil",
+    "public.historico_login",
     "public.elemento",
     "public.cilindro",
     "public.amostra",
@@ -284,6 +286,17 @@ def main():
     backup = carregar_backup(local_path)
     print(f"\nBackup criado em: {backup['created_at']}")
     print(f"Tabelas no backup: {len(backup['tables'])}\n")
+
+    schema = backup.get("schema")
+    if schema:
+        hash_curto = (schema.get("hash") or "")[:12]
+        print(f"Schema incluído: fonte={schema.get('source')} sha256={hash_curto} "
+              f"({len(schema.get('sql') or '')} chars de DDL)")
+    else:
+        print("Schema incluído: NÃO (backup gerado por versão antiga do script)")
+
+    if backup.get("missing_tables"):
+        print(f"AVISO: tabelas ausentes no momento do backup: {', '.join(backup['missing_tables'])}")
 
     for tbl_key, rows in backup["tables"].items():
         print(f"  {tbl_key}: {len(rows)} registros")

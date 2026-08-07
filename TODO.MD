@@ -2250,3 +2250,45 @@ Corrigir os problemas reais encontrados nos filtros das abas após a padronizaç
 ### Verificação
 - [ ] Testes por aba (segurança de dados + filtros) + `test_dashboard` 8/8
 - [ ] `CHANGELOG.md` + `README.MD`
+
+## Fase 85: Backup preserva schema + RLS (pg_dump schema-only) 💾🔒
+
+**Motivo (auditoria 2026-08-06):** o backup atual (`scripts/backup_db.py`) exporta **apenas dados** (JSON → `.json.gz` → R2). O campo `_schema` é só um SHA256 das colunas (`name, data_type, is_nullable, column_default`). Consequências:
+- Zero DDL no dump: sem `CREATE TABLE/INDEX/FUNCTION`, sem `CREATE POLICY`, sem `ENABLE ROW LEVEL SECURITY`.
+- `--check-hash` pode **pular backups** quando só schema/policies mudam (linhas inalteradas).
+- Restore (`restore_db.py`) só faz DELETE/INSERT — assume que o schema já existe.
+
+**Plano de alterações:**
+- [ ] `scripts/backup_db.py`: gerar dump de schema (`pg_dump --schema-only --no-owner --no-privileges -n public`); fallback via `pg_catalog` quando `pg_dump` não estiver instalado; gravar em `backup["schema"]` e incluir `__schema__` no hash por tabela (fecha a brecha do `--check-hash`)
+- [ ] `scripts/backup_db.py`: adicionar `historico_login` a `PUBLIC_TABLES` + guarda para tabela ausente (warn + `backup["missing_tables"]`, não falhar)
+- [ ] `scripts/restore_db.py`: adicionar `public.historico_login` a `DELETE_ORDER`/`INSERT_ORDER`
+- [ ] `database/rls.sql`: tornar fonte única executável e idempotente — `CREATE OR REPLACE FUNCTION public.is_dev()`, `ENABLE ROW LEVEL SECURITY` nas 8 tabelas, policy de `historico_login`, `DROP POLICY IF EXISTS` antes de cada `CREATE POLICY`
+- [ ] `.github/workflows/daily-backup.yml`: instalar `postgresql-client` (binário `pg_dump` no runner)
+- [ ] Testes (`frontend/tests/test_backup.py`) + docs (`README.MD` seção Backup/Restore)
+
+**Critérios de sucesso:**
+- Dump contém schema e policies RLS (artefato com `backup["schema"]`).
+- Nenhuma tabela com RLS fica sem policies exportadas.
+- Restore documentado: aplicar `schema.sql` + migrations + `rls.sql` **antes** de `restore_db.py`.
+
+## Fase 85b: Backup quebrado por RLS + policies stale em produção (correção) 🚨🔒
+
+**Motivo (verificação 2026-08-07):** ao auditar a Fase 85 contra o banco vivo descobriu-se que o backup de **dados** estava gerando **dumps vazios** e que o banco estava dessincronizado do `rls.sql`:
+
+- `scripts/backup_db.py` conecta como `backup_user`, criado com `NOBYPASSRLS` (`setup_backup_user.py`). Com as policies dev-aware (`auth.uid() = user_id OR is_dev()`), um role sem sessão vê **0 linhas** — os backups R2 (0.01 MB desde 2026-07-11) estavam vazios. O único backup com dados (2026-06-20) é anterior ao fechamento do RLS. O banco vivo **tem dados** (perfil 4, cilindro 14, elemento 23, leitura 216, pressao 22, amostra 28, amostra_elemento 159, historico_auditoria 351) — confirmado via `postgres` (superuser).
+- `_introspect_schema` dropa as policies: a linha `cur.execute("SELECT oid, rolname FROM pg_roles")` sobrescreve o result set das policies → `cur.fetchall()` posterior devolve vazio → fallback sem nenhum `CREATE POLICY`.
+- Banco vivo stale vs `rls.sql`: `perfil` UPDATE policy = `USING true WITH CHECK true` (furo: qualquer autenticado edita qualquer perfil); `leitura` com nomes antigos (`... amostra`); `historico_login` **não existe** (migration 20260620 nunca aplicada em produção).
+
+**Plano de alterações:**
+- [x] `ALTER ROLE backup_user BYPASSRLS` no banco vivo (via `DATABASE_URL_POSTGRES`) + `setup_backup_user.py` com `BYPASSRLS` (CREATE e ALTER idempotente)
+- [x] `scripts/backup_db.py`: corrigir `_introspect_schema` — `pg_roles` em cursor separado para não descartar as policies; teste unitário cobrindo o bug
+- [x] `scripts/apply_rls.py` (novo): aplica `20260620_add_login_history.sql` (se tabela ausente) + `database/rls.sql` (idempotente) via `DATABASE_URL_POSTGRES`
+- [x] Aplicar no banco vivo: migration 20260620 + `rls.sql` → perfil UPDATE seguro, leitura renomeada, `historico_login` + policy (28 → 29 policies)
+- [x] Rodar backup real e **comparar**: dados não-zero + 29 `CREATE POLICY` no schema
+- [x] Docs: CHANGELOG (entrada 85b + nota na 2.20.4), README (`setup_backup_user`/BYPASSRLS), TODO
+
+**Critérios de sucesso:**
+- Backup de dados volta a conter todas as linhas (contagem `backup_user` == `postgres`).
+- Dump de schema contém as 29 policies.
+- `perfil` UPDATE policy em produção = `USING (auth.uid() = id) WITH CHECK (auth.uid() = id)`.
+- `historico_login` presente em produção com policy `admins_select_historico_login`.

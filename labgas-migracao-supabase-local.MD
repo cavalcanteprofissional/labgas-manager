@@ -205,10 +205,11 @@ CREATE TABLE perfil (
 CREATE INDEX idx_perfil_role ON perfil(role);
 CREATE INDEX idx_perfil_role_ativo ON perfil(role, ativo);
 
--- Tabela: cilindro
+-- Tabela: cilindro (numero INTEGER — alinhado à migration 20260806_cilindro_numero.sql;
+-- antes o identificador era o texto 'CIL-XXX' na coluna codigo, já removida)
 CREATE TABLE cilindro (
     id SERIAL PRIMARY KEY,
-    codigo VARCHAR(50) NOT NULL,
+    numero INTEGER NOT NULL,
     data_compra DATE NOT NULL,
     data_inicio_consumo DATE,
     data_fim DATE,
@@ -217,11 +218,12 @@ CREATE TABLE cilindro (
     custo NUMERIC(10,2) DEFAULT 290.00,
     status VARCHAR(20) DEFAULT 'ativo',
     user_id UUID REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(numero, user_id)
 );
 
 CREATE INDEX idx_cilindro_user_id ON cilindro(user_id);
-CREATE INDEX idx_cilindro_codigo ON cilindro(codigo);
+CREATE INDEX idx_cilindro_numero ON cilindro(numero);
 
 -- Tabela: elemento
 CREATE TABLE elemento (
@@ -229,7 +231,8 @@ CREATE TABLE elemento (
     nome VARCHAR(100) NOT NULL,
     consumo_lpm NUMERIC(5,2) NOT NULL,
     user_id UUID REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(nome, user_id)  -- migration 20260806
 );
 
 CREATE INDEX idx_elemento_user_id ON elemento(user_id);
@@ -274,7 +277,7 @@ CREATE TABLE historico_auditoria (
     tipo VARCHAR(20) NOT NULL,
     acao VARCHAR(20) NOT NULL CHECK (acao IN ('criado', 'atualizado', 'excluido')),
     ref_id INTEGER,
-    label VARCHAR(150) NOT NULL,
+    label VARCHAR(150),  -- nullable (migration 20260805 — sem NOT NULL)
     detalhe JSONB,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW()
@@ -310,16 +313,25 @@ CREATE TABLE amostra_elemento (
 CREATE INDEX idx_amostra_elemento_amostra_id ON amostra_elemento(amostra_id);
 CREATE INDEX idx_amostra_elemento_elemento_id ON amostra_elemento(elemento_id);
 
--- Tabela: historico_login
+-- Índices compostos para as queries do dashboard (migration v6):
+-- filtram por user_id E ordenam por data
+CREATE INDEX idx_leitura_user_data ON leitura(user_id, data DESC);
+CREATE INDEX idx_pressao_user_data ON pressao(user_id, data);
+CREATE INDEX idx_amostra_user_created ON amostra(user_id, created_at DESC);
+
+-- Tabela: historico_login (alinhado à migration 20260620_add_login_history.sql)
 CREATE TABLE historico_login (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    ip VARCHAR(45),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    ip_address INET,
+    user_agent TEXT,
+    sucesso BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_historico_login_user_id ON historico_login(user_id);
-CREATE INDEX idx_historico_login_created_at ON historico_login(created_at);
+CREATE INDEX idx_historico_login_created_at ON historico_login(created_at DESC);
 ```
 
 ### 3.2 Migrar Dados do Supabase
@@ -399,8 +411,8 @@ def migrar(backup_path):
 
     # 2. Migrar tabelas public (na ordem correta)
     INSERT_ORDER = [
-        "public.perfil", "public.elemento", "public.cilindro",
-        "public.amostra", "public.amostra_elemento",
+        "public.perfil", "public.historico_login", "public.elemento",
+        "public.cilindro", "public.amostra", "public.amostra_elemento",
         "public.leitura", "public.pressao", "public.historico_auditoria"
     ]
 
@@ -981,3 +993,11 @@ python scripts/restore_db.py --latest         # restaurar
    - Monitorar uso de RAM/CPU
 
 4. **Rollback**: Mantenha o Supabase funcionando até a migração ser validada. Se algo der errado, só trocar as env vars de volta.
+
+5. **Auth é reconstrução, não portabilidade**: os hashes de senha do Supabase (bcrypt com formato próprio) **não podem ser migrados** para `werkzeug.security` (pbkdf2/scrypt) — por isso todos os usuários recebem senhas temporárias. Isso afeta `auth.users` do Supabase e o JWT (que deixa de usar `SUPABASE_JWT_SECRET` e passa a usar `SECRET_KEY`). O app **não usa Supabase Storage** (varrido o código: sem buckets/uploads), então não há lógica de storage a migrar — o único armazenamento externo é o Cloudflare R2 do backup, já independente.
+
+6. **RLS é desligado no local — reimplementar a segurança na aplicação**: as policies (`auth.uid() = user_id`, `public.is_dev()`, role `admin`/`dev`) deixam de existir. Todo acesso precisa filtrar por `user_id` no app, incluindo: rotas do backend (`backend/routes/*`), `buscar_perfis_usuarios`, histórico e o painel admin (que hoje vê tudo via `service_role`). Em especial, reimplementar o papel `dev` (enxerga tudo) e `admin` (restrito) como checagem de `role` lida do banco — o comportamento hoje garantido por `is_dev()`/RLS passa a depender do código. Sugestão: manter as colunas `role`/`ativo` de `perfil` como única fonte de autorização e criar um decorator/middleware comum em vez de espalhar `if dev` nos blueprints.
+
+7. **Usar um backup fresco**: o `migrate_to_local.py` depende do `.json.gz` do `backup_db.py`. O único backup local em `backups/` é de 2026-06-20 (anterior à migration historico_log → historico_auditoria e exporta a tabela antiga). Rodar `backup_db.py` **imediatamente antes** da migração (o script já inclui `historico_auditoria` e `historico_login` na lista de tabelas).
+
+8. **Schema local espelha o schema atual**: `schema_local.sql` acima foi alinhado em 2026-08-06 às migrations 20260806 (cilindro `numero`), 20260805 (historico_auditoria), 20260620 (historico_login) e v5/v6 (índices compostos). Ao aplicar, conferir que o volume de dados bate com o backup (contagens por tabela).

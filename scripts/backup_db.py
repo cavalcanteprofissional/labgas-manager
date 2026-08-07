@@ -1,8 +1,13 @@
 """backup_db.py — Backup lógico completo do banco LabGas Manager.
 
-Exporta todas as tabelas `public` via PostgreSQL (`backup_user`) e
-`auth.users` via Supabase Admin API (`SUPABASE_SERVICE_KEY`),
+Exporta todas as tabelas `public` via PostgreSQL (`backup_user`),
+`auth.users` via Supabase Admin API (`SUPABASE_SERVICE_KEY`) e o
+schema (`CREATE TABLE/INDEX/FUNCTION/POLICY`) do schema `public`,
 compacta em .json.gz e envia ao Cloudflare R2.
+
+O schema é exportado via `pg_dump --schema-only` quando o binário
+está disponível; caso contrário, um fallback via pg_catalog gera o DDL
+(mantendo RLS, policies, funções, constraints e índices).
 
 Uso:
     python scripts/backup_db.py                       # backup + upload R2
@@ -18,6 +23,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time as time_mod
@@ -36,7 +42,7 @@ from supabase import create_client
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / "frontend" / ".env.local")
 
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 MIN_DISK_MB = 50
 
 
@@ -72,6 +78,7 @@ PUBLIC_TABLES = [
     "leitura",
     "pressao",
     "historico_auditoria",
+    "historico_login",
 ]
 
 
@@ -118,6 +125,245 @@ def _get_table_schema_hash(conn, schema, tabela):
         cols = cur.fetchall()
     raw = json.dumps([dict(c) for c in cols], sort_keys=True, default=str)
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _tabela_existe(conn, schema, tabela):
+    """Retorna True se a tabela existe no banco (evita falha do backup
+    quando o banco ainda não recebeu alguma migration)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT to_regclass(%s)", (f'{schema}."{tabela}"',))
+        return cur.fetchone()[0] is not None
+
+
+def _pg_dump_schema(conn):
+    """Exporta o DDL do schema `public` via pg_dump (binário).
+
+    Retorna o texto SQL ou None se o binário não estiver disponível
+    ou o processo falhar (neste caso o chamador usa o fallback pg_catalog).
+    """
+    dump = shutil.which("pg_dump")
+    if not dump or not DB_URL:
+        return None
+    url, hostaddr = _resolver_ipv4(DB_URL)
+    if hostaddr:
+        conn_str = f"{url}&hostaddr={hostaddr}" if "?" in url else f"{url}?hostaddr={hostaddr}"
+    else:
+        conn_str = url
+    try:
+        proc = subprocess.run(
+            [dump, "--schema-only", "--no-owner", "--no-privileges",
+             "-n", "public", "-Fp", conn_str],
+            capture_output=True, text=True, timeout=120,
+        )
+        if proc.returncode != 0:
+            print(f"  [AVISO] pg_dump retornou erro: {proc.stderr.strip()[:200]}")
+            return None
+        return proc.stdout
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        print(f"  [AVISO] pg_dump falhou: {e}")
+        return None
+
+
+def _introspect_schema(conn):
+    """Gera DDL equivalente do schema `public` via pg_catalog.
+
+    Fallback portátil (sem depender do binário pg_dump). Cobre sequences,
+    tabelas/colunas, constraints, índices, funções, RLS (ENABLE/FORCE) e
+    CREATE POLICY. As policies são renderizadas com USING/WITH CHECK reais
+    via pg_get_expr.
+    """
+    lines = [
+        "-- =====================================================",
+        "-- SCHEMA public — exportado por introspect (pg_dump ausente)",
+        "-- =====================================================",
+        "",
+    ]
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT c.relname AS seq_name,
+                   t.relname AS table_name,
+                   a.attname AS column_name
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            LEFT JOIN pg_depend d
+                   ON d.classid = 'pg_class'::regclass
+                  AND d.objid = c.oid
+                  AND d.deptype = 'a'
+                  AND d.refclassid = 'pg_class'::regclass
+            LEFT JOIN pg_class t ON t.oid = d.refobjid
+            LEFT JOIN pg_attribute a
+                   ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+            WHERE c.relkind = 'S' AND n.nspname = 'public'
+            ORDER BY c.relname
+        """)
+        seqs = [dict(r) for r in cur.fetchall()]
+        for s in seqs:
+            lines.append(f'CREATE SEQUENCE IF NOT EXISTS public."{s["seq_name"]}" AS integer;')
+        lines.append("")
+
+        cur.execute("""
+            SELECT c.relname AS table_name
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+            ORDER BY c.relname
+        """)
+        tabelas = [r["table_name"] for r in cur.fetchall()]
+
+        for tabela in tabelas:
+            cur.execute("""
+                SELECT a.attname,
+                       format_type(a.atttypid, a.atttypmod) AS data_type,
+                       a.attnotnull,
+                       pg_get_expr(d.adbin, d.adrelid) AS default_expr
+                FROM pg_attribute a
+                JOIN pg_class c ON c.oid = a.attrelid
+                LEFT JOIN pg_attrdef d
+                       ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+                WHERE c.relname = %s
+                  AND a.attnum > 0 AND NOT a.attisdropped
+                ORDER BY a.attnum
+            """, (tabela,))
+            col_defs = []
+            for col in cur.fetchall():
+                col_defs.append(
+                    f'    "{col["attname"]}" {col["data_type"]}'
+                    + (" NOT NULL" if col["attnotnull"] else "")
+                    + (f" DEFAULT {col['default_expr']}" if col["default_expr"] else "")
+                )
+            lines.append(f'CREATE TABLE IF NOT EXISTS public."{tabela}" (')
+            lines.append(",\n".join(col_defs))
+            lines.append(");")
+            lines.append("")
+
+        for s in seqs:
+            if s["table_name"]:
+                lines.append(
+                    f'ALTER SEQUENCE public."{s["seq_name"]}" OWNED BY '
+                    f'public."{s["table_name"]}"."{s["column_name"]}";'
+                )
+        if seqs:
+            lines.append("")
+
+        for tabela in tabelas:
+            cur.execute("""
+                SELECT conname, pg_get_constraintdef(oid) AS condef
+                FROM pg_constraint
+                WHERE conrelid = %s::regclass
+                ORDER BY contype, conname
+            """, (f'public."{tabela}"',))
+            for r in cur.fetchall():
+                lines.append(
+                    f'ALTER TABLE ONLY public."{tabela}" ADD CONSTRAINT '
+                    f'"{r["conname"]}" {r["condef"]};'
+                )
+        if tabelas:
+            lines.append("")
+
+        for tabela in tabelas:
+            cur.execute("""
+                SELECT indexname, indexdef
+                FROM pg_indexes
+                WHERE schemaname = 'public' AND tablename = %s
+                ORDER BY indexname
+            """, (tabela,))
+            for r in cur.fetchall():
+                idx = r["indexdef"]
+                if idx.startswith("CREATE UNIQUE INDEX"):
+                    idx = idx.replace("CREATE UNIQUE INDEX", "CREATE UNIQUE INDEX IF NOT EXISTS", 1)
+                elif idx.startswith("CREATE INDEX"):
+                    idx = idx.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS", 1)
+                lines.append(idx + ";")
+        if tabelas:
+            lines.append("")
+
+        cur.execute("""
+            SELECT pg_get_functiondef(p.oid) AS funcdef
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.prokind = 'f'
+            ORDER BY p.proname
+        """)
+        for r in cur.fetchall():
+            lines.append(r["funcdef"])
+            lines.append("")
+
+        cur.execute("""
+            SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+            ORDER BY c.relname
+        """)
+        for r in cur.fetchall():
+            if r["relrowsecurity"]:
+                lines.append(f'ALTER TABLE public."{r["relname"]}" ENABLE ROW LEVEL SECURITY;')
+            if r["relforcerowsecurity"]:
+                lines.append(f'ALTER TABLE public."{r["relname"]}" FORCE ROW LEVEL SECURITY;')
+        if tabelas:
+            lines.append("")
+
+        cur.execute("""
+            SELECT p.polname,
+                   c.relname AS table_name,
+                   CASE p.polcmd
+                       WHEN 'r' THEN 'SELECT'
+                       WHEN 'a' THEN 'INSERT'
+                       WHEN 'w' THEN 'UPDATE'
+                       WHEN 'd' THEN 'DELETE'
+                       ELSE 'ALL'
+                   END AS cmd,
+                   CASE WHEN p.polpermissive THEN 'PERMISSIVE' ELSE 'RESTRICTIVE' END AS permissive,
+                   pg_get_expr(p.polqual, p.polrelid) AS using_expr,
+                   pg_get_expr(p.polwithcheck, p.polrelid) AS withcheck_expr,
+                   p.polroles
+            FROM pg_policy p
+            JOIN pg_class c ON c.oid = p.polrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+            ORDER BY c.relname, p.polname
+        """)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as roles_cur:
+            roles_cur.execute("SELECT oid, rolname FROM pg_roles")
+            roles = {0: "public"}
+            for r in roles_cur.fetchall():
+                roles[int(r["oid"])] = r["rolname"]
+
+        for p in cur.fetchall():
+            targets = [roles.get(oid, str(oid)) for oid in p["polroles"]]
+            to_clause = "PUBLIC" if "public" in targets else ", ".join(targets)
+            policy = (
+                f'CREATE POLICY "{p["polname"]}" ON public."{p["table_name"]}"\n'
+                f'    AS {p["permissive"]} FOR {p["cmd"]}\n'
+                f'    TO {to_clause}'
+            )
+            if p["using_expr"]:
+                policy += f'\n    USING ({p["using_expr"]})'
+            if p["withcheck_expr"]:
+                policy += f'\n    WITH CHECK ({p["withcheck_expr"]})'
+            lines.append(policy + ";")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def _export_schema_sql(conn):
+    """Exporta o DDL do schema `public`. Retorna (sql, fonte).
+
+    Fonte ∈ {'pg_dump', 'introspect', 'none'}. Preferência por pg_dump;
+    o fallback via pg_catalog garante que RLS/policies/funções sejam
+    preservadas mesmo sem o binário instalado.
+    """
+    sql = _pg_dump_schema(conn)
+    if sql is not None and sql.strip():
+        return sql, "pg_dump"
+    sql = _introspect_schema(conn)
+    if sql.strip():
+        return sql, "introspect"
+    print("  [AVISO] Não foi possível exportar o schema (pg_dump e fallback falharam).")
+    return "", "none"
 
 
 def pre_flight(output_dir):
@@ -363,12 +609,13 @@ def _prune_old_backups(bucket, prefix, max_keep=30):
 
 
 def _run_backup():
-    """Exporta todas as tabelas e retorna (backup_dict, total_rows, table_hashes, table_row_counts)."""
+    """Exporta todas as tabelas + schema e retorna (backup_dict, total_rows, table_hashes, table_row_counts)."""
     conn = conectar()
     backup = {
         "schema_version": SCHEMA_VERSION,
         "created_at": datetime.now(UTC).isoformat(),
         "_schema": {},
+        "missing_tables": [],
         "tables": {},
     }
     total = 0
@@ -378,6 +625,12 @@ def _run_backup():
     for tabela in PUBLIC_TABLES:
         key = f"public.{tabela}"
         print(f"  {key}...", end=" ")
+        if not _tabela_existe(conn, "public", tabela):
+            print("AUSENTE — tabela não encontrada (backup de dados pulado)")
+            backup["missing_tables"].append(key)
+            table_row_counts[key] = 0
+            table_hashes[key] = ""
+            continue
         backup["_schema"][key] = _get_table_schema_hash(conn, "public", tabela)
         rows = exportar_tabela(conn, "public", tabela)
         backup["tables"][key] = rows
@@ -385,6 +638,13 @@ def _run_backup():
         table_hashes[key] = hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()
         print(f"{len(rows)} registros")
         total += len(rows)
+
+    print("  public.schema...", end=" ")
+    schema_sql, schema_source = _export_schema_sql(conn)
+    schema_hash = hashlib.sha256(schema_sql.encode("utf-8")).hexdigest() if schema_sql else ""
+    backup["schema"] = {"source": schema_source, "hash": schema_hash, "sql": schema_sql}
+    table_hashes["__schema__"] = schema_hash
+    print(f"({schema_source}, {len(schema_sql)} chars, sha256={schema_hash[:12]}...)")
 
     conn.close()
 
@@ -513,10 +773,11 @@ def _run_backup_with_hash_check(args, output_dir):
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"labgas_backup_{timestamp}.json.gz"
         local_path = output_dir / filename
-        tmp_path.rename(local_path)
+        shutil.move(str(tmp_path), str(local_path))
         print(f"\nSalvo -> {local_path}")
         if changed_tables:
-            print(f"  Tabelas alteradas: {', '.join(changed_tables)}")
+            nomes = ["schema" if t == "__schema__" else t for t in changed_tables]
+            print(f"  Tabelas alteradas: {', '.join(nomes)}")
 
         if not args.no_upload:
             remote_key = f"labgas_backup_{timestamp}.json.gz"

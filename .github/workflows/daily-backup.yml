@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: pip install boto3 psycopg2-binary python-dotenv supabase
 
+      - name: Install PostgreSQL client (pg_dump)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Run backup
         id: backup
         env:

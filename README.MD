@@ -805,7 +805,7 @@ flowchart LR
     H -- Sim --> I["📝 Issue automática"]
 ```
 
-**Conexão via pooler Supavisor** (`aws-1-us-east-2.pooler.supabase.com:5432`) — sempre IPv4, contorna limitação de IPv6 no CI. O `backup_user` tem permissão **apenas SELECT** (readonly).
+**Conexão via pooler Supavisor** (`aws-1-us-east-2.pooler.supabase.com:5432`) — sempre IPv4, contorna limitação de IPv6 no CI. O `backup_user` tem permissão **apenas SELECT** (readonly) com atributo **`BYPASSRLS`** — necessário para ler todas as linhas apesar das policies RLS (`auth.uid() = user_id`); sem isso, um role sem sessão veria **0 linhas** em todas as tabelas.
 
 ### Setup Inicial
 
@@ -828,6 +828,7 @@ poetry run python scripts/setup_backup_user.py
 Isso:
 - Cria (ou atualiza) a role `backup_user` com a senha do `BACKUP_DB_PASSWORD`
 - Concede permissões `SELECT` nos schemas `public` e `auth`
+- Aplica o atributo `BYPASSRLS` (lê todas as linhas apesar das policies RLS)
 - Exibe a `DATABASE_URL` readonly pronta para copiar
 
 **Saída esperada:**
@@ -895,6 +896,8 @@ poetry run python scripts/restore_db.py --latest
 poetry run python scripts/restore_db.py --file backups/labgas_backup_2026-06-20_06-00-00.json.gz
 ```
 
+> **⚠️ Restore em banco novo/zerado:** o `restore_db.py` apenas apaga e reinsere dados — ele **assume que o schema já existe**. Em um banco recriado, aplique antes, nesta ordem: `database/schema.sql` → migrations (`database/migrations/*.sql`) → `database/rls.sql` (habilita RLS e recria as policies). No banco vivo, use `python scripts/apply_rls.py` para aplicar (idempotente) a migration de login + `rls.sql`. O `--dry-run` informa se o backup incluiu o schema (campo `schema`).
+
 ### Backup Automático
 
 O GitHub Action `.github/workflows/daily-backup.yml` gerencia todo o ciclo de backup.
@@ -903,7 +906,7 @@ O GitHub Action `.github/workflows/daily-backup.yml` gerencia todo o ciclo de ba
 flowchart LR
     A["🕐 Cron 06:00 UTC"] --> B["🐙 GitHub Actions<br/>ubuntu-latest"]
     B --> C["🔗 Conecta ao Pooler<br/>aws-1-us-east-2<br/>IPv4 sempre"]
-    C --> D["📦 Exporta 9 tabelas<br/>backup_user (SELECT only)<br/>+ auth.users via API"]
+    C --> D["📦 Exporta 10 tabelas<br/>backup_user (SELECT only)<br/>+ auth.users via API<br/>+ schema DDL (pg_dump)"]
     D --> E["🗜️ Compacta .json.gz<br/>~0.01 MB por backup"]
     E --> F["☁️ Upload Cloudflare R2<br/>s3://labgas-backups/"]
     F --> G["🧹 Lifecycle Policy<br/>deleta após 30 dias"]
@@ -915,29 +918,33 @@ flowchart LR
 **Passo a passo:**
 
 1. **Trigger** — O workflow é executado automaticamente todos os dias às 06:00 UTC (cron), ou manualmente via aba **Actions → Daily Database Backup → Run workflow**
-2. **Runner** — Um ambiente `ubuntu-latest` é provisionado, instala Python e as dependências (`boto3`, `psycopg2-binary`, `python-dotenv`, `supabase`)
+2. **Runner** — Um ambiente `ubuntu-latest` é provisionado, instala Python e as dependências (`boto3`, `psycopg2-binary`, `python-dotenv`, `supabase`) e o cliente PostgreSQL (`pg_dump`)
 3. **Conexão** — O script `scripts/backup_db.py` lê a `DATABASE_URL` do GitHub Secret ou constrói a URL dinamicamente via `SUPABASE_URL` + `BACKUP_DB_PASSWORD`. A conexão usa o **Supavisor pooler** (`aws-1-us-east-2.pooler.supabase.com`, porta 5432), que sempre resolve para **IPv4** — contornando a limitação de IPv6 do runner
-4. **Exportação** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`) e exporta todas as 9 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_auditoria` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`)
-5. **Compressão** — Os dados são serializados em JSON e compactados com `gzip`, gerando um arquivo de ~0.01 MB
-6. **Upload** — O `.json.gz` é enviado ao **Cloudflare R2** via API S3-compatible (`boto3`), armazenado no bucket `labgas-backups`
-7. **Detecção inteligente de mudanças** — O script computa um hash SHA256 do dump completo. Se o hash coincidir com o último backup no R2, o upload é pulado (`--check-hash`). Além disso, hashes individuais por tabela são armazenados em `last_backup_hashes.json` para detecção granular — mesmo que o hash total mude, se as tabelas estiverem individualmente inalteradas, o backup é pulado
-8. **Verificação de integridade** — Após o upload, o script baixa o arquivo do R2 e compara o SHA256 local vs remoto, garantindo que não houve corrupção em trânsito
-9. **Retenção programática** — O script aceita `--max-backups N` (default 30) para limpar backups antigos no R2. Complementa a Lifecycle Policy com controle mais granular
-10. **Pre-flight checks** — Antes de iniciar, valida conexão PostgreSQL, acesso ao bucket R2 e espaço em disco suficiente, falhando rápido em vez de no meio do backup
-11. **Métricas estruturadas** — O JSON de resultado inclui `duration_sec`, `total_rows`, `tables` (contagem por tabela) e `changed_tables` para monitoramento
-12. **Limpeza automática** — Uma **Lifecycle Policy** no R2 deleta automaticamente backups com mais de **30 dias**, sem necessidade de script ou manutenção
-8. **Notificação de falha** — Se qualquer passo falhar (conexão, exportação, upload), o workflow cria automaticamente uma **Issue** no repositório GitHub com o título `Falha no backup do banco de dados - YYYY-MM-DD` e o link para os logs da execução
+4. **Exportação de dados** — O script conecta como `backup_user` (role **readonly**, permissão apenas `SELECT`, com `BYPASSRLS` para ignorar as policies RLS na leitura) e exporta as 10 tabelas: `perfil`, `cilindro`, `elemento`, `leitura`, `amostra`, `amostra_elemento`, `pressao`, `historico_auditoria`, `historico_login` (via psycopg2) e `auth.users` (via Supabase Admin API com `SUPABASE_SERVICE_KEY`). Tabela ausente no banco é registrada em `missing_tables` (warn) sem derrubar o backup
+5. **Exportação de schema + RLS** — O DDL do schema `public` é capturado via `pg_dump --schema-only --no-owner --no-privileges -n public` (tabelas, constraints, índices, funções, `ENABLE ROW LEVEL SECURITY` e `CREATE POLICY`). Se `pg_dump` não estiver instalado, um fallback via `pg_catalog` regenera o mesmo DDL. O schema fica em `backup["schema"]` (com `source` e `hash`)
+6. **Compressão** — Os dados + schema são serializados em JSON e compactados com `gzip`, gerando um arquivo de ~0.01 MB
+7. **Upload** — O `.json.gz` é enviado ao **Cloudflare R2** via API S3-compatible (`boto3`), armazenado no bucket `labgas-backups`
+8. **Detecção inteligente de mudanças** — O script computa um hash SHA256 do dump completo (dados **+ schema**). Se o hash coincidir com o último backup no R2, o upload é pulado (`--check-hash`). Hashes individuais por tabela ficam em `last_backup_hashes.json`; o hash do schema (`__schema__`) garante que mudanças de tabela/índice/policy/função **sem alteração de dados** ainda gerem backup. O fallback via `pg_catalog` é **determinístico** (sem timestamp no DDL), então o skip funciona mesmo sem `pg_dump` instalado
+9. **Verificação de integridade** — Após o upload, o script baixa o arquivo do R2 e compara o SHA256 local vs remoto, garantindo que não houve corrupção em trânsito
+10. **Retenção programática** — O script aceita `--max-backups N` (default 30) para limpar backups antigos no R2. Complementa a Lifecycle Policy com controle mais granular
+11. **Pre-flight checks** — Antes de iniciar, valida conexão PostgreSQL, acesso ao bucket R2 e espaço em disco suficiente, falhando rápido em vez de no meio do backup
+12. **Métricas estruturadas** — O JSON de resultado inclui `duration_sec`, `total_rows`, `tables` (contagem por tabela) e `changed_tables` para monitoramento
+13. **Limpeza automática** — Uma **Lifecycle Policy** no R2 deleta automaticamente backups com mais de **30 dias**, sem necessidade de script ou manutenção
+14. **Notificação de falha** — Se qualquer passo falhar (conexão, exportação, upload), o workflow cria automaticamente uma **Issue** no repositório GitHub com o título `Falha no backup do banco de dados - YYYY-MM-DD` e o link para os logs da execução
 
 ### O que é incluído no backup
 
-| Schema | Tabela | Registros |
-|--------|--------|-----------|
-| `auth` | users | UUIDs e senhas hasheadas (bcrypt) preservados |
-| `public` | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_auditoria | Todos os dados |
+| Componente | Detalhe |
+|------------|---------|
+| `auth.users` | UUIDs e senhas hasheadas (bcrypt) preservados (via Admin API) |
+| `public` (dados) | perfil, cilindro, elemento, leitura, amostra, amostra_elemento, pressao, historico_auditoria, historico_login |
+| `public` (schema) | `CREATE TABLE/INDEX/FUNCTION`, constraints, `ENABLE ROW LEVEL SECURITY` e `CREATE POLICY` (campo `schema.sql` no JSON, fonte `pg_dump` ou `introspect`) |
+
+> **Schema/RLS como fonte única:** além do dump, o schema e as policies RLS estão versionados em `database/schema.sql` + `database/rls.sql` (+ migrations). O `rls.sql` é idempotente e habilita RLS em todas as tabelas — aplique-o antes de restaurar dados para manter a mesma lógica de segurança.
 
 ### Segurança
 
-- O usuário `backup_user` tem **apenas permissão de leitura** (`GRANT SELECT`)
+- O usuário `backup_user` tem **apenas permissão de leitura** (`GRANT SELECT`) com `BYPASSRLS` (lê todas as linhas apesar do RLS, sem poder escrever)
 - Conexão obrigatória com `sslmode=require`
 - Resolução automática para IPv4 — contorna problemas de IPv6 em runners CI (GitHub Actions)
 - `DATABASE_URL` nunca é versionada (apenas GitHub Secret)

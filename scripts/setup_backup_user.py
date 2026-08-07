@@ -2,7 +2,9 @@
 
 Lê BACKUP_DB_PASSWORD e DATABASE_URL (superuser) do frontend/.env.local.
 Cria (ou altera a senha de) `backup_user` com permissão SELECT nos schemas
-`public` e `auth`, depois exibe a DATABASE_URL readonly pronta para usar.
+`public` e `auth`, com atributo `BYPASSRLS` (necessário para ler todas as
+linhas apesar das policies `auth.uid() = user_id`), depois exibe a
+DATABASE_URL readonly pronta para usar.
 
 No Supabase, o schema `auth` é gerenciado pelo `supabase_admin` e pode não
 aceitar GRANT via `postgres`. Se o script falhar no schema `auth`, execute
@@ -52,9 +54,10 @@ def main():
                     "ALTER ROLE backup_user WITH PASSWORD %s",
                     (BACKUP_PASSWORD,)
                 )
+                cur.execute("ALTER ROLE backup_user BYPASSRLS")
             else:
                 cur.execute(
-                    "CREATE ROLE backup_user WITH LOGIN PASSWORD %s NOBYPASSRLS",
+                    "CREATE ROLE backup_user WITH LOGIN PASSWORD %s BYPASSRLS",
                     (BACKUP_PASSWORD,)
                 )
             cur.execute("GRANT CONNECT ON DATABASE postgres TO backup_user")

@@ -2,6 +2,33 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.20.5] — 2026-08-07
+
+### Backup quebrado por RLS corrigido + policies reaplicadas em produção (Fase 85b) 🚨🔒
+
+- **Causa raiz do backup vazio**: o `backup_user` era criado com `NOBYPASSRLS` (`setup_backup_user.py`). Com as policies dev-aware (`auth.uid() = user_id OR is_dev()`), um role sem sessão vê **0 linhas** — os backups diários R2 (~0.01 MB desde 2026-07-11) estavam **vazios**, enquanto o banco vivo tem dados (perfil 4, cilindro 14, elemento 23, leitura 216, pressao 22, amostra 28, amostra_elemento 159, historico_auditoria 351)
+- **Correção**: `ALTER ROLE backup_user BYPASSRLS` no banco vivo + `setup_backup_user.py` agora cria/atualiza a role com `BYPASSRLS` (idempotente). Contagens como `backup_user` passam a bater com as do `postgres`
+- **Bug no fallback de schema**: `_introspect_schema` sobrescrevia o result set das policies com o fetch de `pg_roles` (mesmo cursor) → o dump por fallback exportava **zero** `CREATE POLICY`. Corrigido usando cursor separado; o introspect agora exporta as **29 policies**. Testes de regressão novos (`TestIntrospectPolicies`) + assert de policies no `test_backup_json_valido`
+- **Produção dessincronizada do `rls.sql`**: `perfil` UPDATE era `USING true WITH CHECK true` (qualquer autenticado editava qualquer perfil), `leitura` tinha policies legadas `... amostra`, e `historico_login` (migration 20260620) **não existia**. Novo `scripts/apply_rls.py` (idempotente, via `DATABASE_URL_POSTGRES`) aplica a migration + `rls.sql` e remove as policies legadas → perfil UPDATE = `auth.uid() = id`, leitura com 4 policies corretas, `historico_login` criado com policy `admins_select_historico_login` (28 → **29 policies**)
+- **Verificação**: backup real `--no-upload` gerado com **821 registros**, schema por introspect com **29 `CREATE POLICY`**, 9 `ENABLE ROW LEVEL SECURITY`, `is_dev()` e `missing_tables: []` — antes: 0 registros nas tabelas `public` e 0 policies no dump
+- **`--check-hash` reparando a cadeia R2**: executado localmente — detectou as mudanças (dados + `__schema__` + `historico_login`), gerou e **fez upload** de `labgas_backup_2026-08-07_01-48-56.json.gz` (0.02 MB, 821 registros) ao R2, com integridade verificada pós-upload e hash atualizado; a 2ª execução retornou `status: skipped` (sem mudanças). A cadeia R2 voltou a ter backups com dados
+- **Fix Windows no `--check-hash`**: `tmp_path.rename(local_path)` (`os.rename`) falhava com `WinError 17` ao mover o temp de `C:` para `D:` — trocado por `shutil.move` (cross-device)
+- **Introspect determinístico**: removido o cabeçalho `-- Gerado em {timestamp}` do DDL gerado pelo fallback — o `__schema__` mudava a cada run e impedia o skip do `--check-hash` no ambiente sem `pg_dump` (CI usa `pg_dump`, já determinístico)
+- **Docs**: README (`setup_backup_user`/BYPASSRLS, passo a passo, segurança), `frontend/.env.example` (nota do `apply_rls.py`), TODO (Fase 85b)
+
+## [2.20.4] — 2026-08-06
+
+### Backup preserva schema + RLS (Fase 85) 💾🔒
+
+- **`scripts/backup_db.py`**: exporta o DDL do schema `public` via `pg_dump --schema-only --no-owner --no-privileges -n public` quando o binário está disponível (instalado no CI); se não, um **fallback via `pg_catalog`** regenera o mesmo DDL (tabelas/colunas, sequences, constraints via `pg_get_constraintdef`, índices via `pg_get_indexdef`, funções via `pg_get_functiondef`, `ENABLE/FORCE ROW LEVEL SECURITY` e `CREATE POLICY` via `pg_policy`/`pg_get_expr`). O schema fica em `backup["schema"]` (`source` + `hash` + SQL)
+- **Detecção de mudanças de schema**: hash `__schema__` entra em `last_backup_hashes.json` — o `--check-hash` agora gera backup quando só tabela/índice/policy/função mudaram (antes, linhas inalteradas = backup pulado mesmo com schema alterado)
+- **Tabelas ausentes**: `historico_login` adicionado a `PUBLIC_TABLES`; se a tabela não existe no banco, o backup registra em `missing_tables` e segue (não falha mais)
+- **`scripts/restore_db.py`**: `historico_login` nas ordens de DELETE/INSERT; `--dry-run` exibe a origem/hash do schema incluído e avisa sobre `missing_tables`
+- **`database/rls.sql`**: tornada fonte única e idempotente — adiciona `CREATE OR REPLACE FUNCTION public.is_dev()` (SECURITY DEFINER), `ENABLE ROW LEVEL SECURITY` nas 8 tabelas, policy de `historico_login` e `DROP POLICY IF EXISTS` antes de cada `CREATE POLICY`
+- **CI**: `.github/workflows/daily-backup.yml` instala `postgresql-client` (binário `pg_dump`) no runner
+- **Docs**: README (arquitetura, passo a passo, "O que é incluído no backup", nota de DR), TODO (Fase 85) e `labgas-migracao-supabase-local.MD` (schema local alinhado às migrations 20260806/20260805/20260620 + notas de auth/storage/RLS)
+- **Verificação**: 29 testes de unidade verdes; backup real `--no-upload` validado (schema exportado por introspect com 8 tabelas, 7 sequences, 27 constraints, 15 índices, `is_dev()`, RLS habilitado nas 8 tabelas). *Correção posterior em [2.20.5]: o introspect descartava as policies e os dados saíam vazios (backup_user filtrado por RLS).*
+
 ## [2.20.3] — 2026-08-06
 
 ### Logo TSA removido e ícone LabGas (gota) padronizado em todo o projeto (Fase 83) 🎨

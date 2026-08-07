@@ -261,6 +261,112 @@ class TestOrdemOperacoes:
         assert restore_module.INSERT_ORDER[1] == "public.perfil", \
             "perfil deve vir depois de auth.users (FK user_id)"
 
+    def test_historico_login_nas_ordens(self, restore_module):
+        assert "historico_login" in restore_module.DELETE_ORDER
+        assert "public.historico_login" in restore_module.INSERT_ORDER
+        assert restore_module.INSERT_ORDER.index("public.historico_login") > \
+            restore_module.INSERT_ORDER.index("auth.users"), \
+            "historico_login depende de auth.users (FK user_id)"
+        assert restore_module.DELETE_ORDER[-1] == "perfil", \
+            "perfil continua por último no DELETE_ORDER (sem dependentes depois)"
+
+    def test_public_tables_inclui_historico_login(self, backup_module):
+        assert "historico_login" in backup_module.PUBLIC_TABLES
+
+
+# ─── Testes de Introspect (regressão: pg_roles não pode descartar policies) ────
+
+
+class _FakeCursor:
+    """Cursor fake que devolve linhas por fragmento de SQL."""
+
+    def __init__(self, rows_by_fragment):
+        self.rows_by_fragment = rows_by_fragment
+        self.executed = []
+
+    def execute(self, sql, params=None):
+        self.executed.append(sql)
+        return self
+
+    def fetchall(self):
+        for fragment, rows in self.rows_by_fragment.items():
+            if fragment in self.executed[-1]:
+                return rows
+        return []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _FakeConn:
+    """Conexão fake: cada chamada de cursor() cria um cursor novo."""
+
+    def __init__(self, cursors):
+        self._cursors = list(cursors)
+        self._idx = 0
+
+    def cursor(self, cursor_factory=None):
+        cur = self._cursors[self._idx]
+        self._idx += 1
+        return cur
+
+
+@pytest.fixture
+def introspect_conn():
+    policy_row = {
+        "polname": "p1",
+        "table_name": "perfil",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "using_expr": "true",
+        "withcheck_expr": None,
+        "polroles": [0],
+    }
+    tabela_row = {"table_name": "perfil"}
+    seq_rows = []
+    rls_row = {"relname": "perfil", "relrowsecurity": True, "relforcerowsecurity": False}
+
+    main_cur = _FakeCursor({
+        "relrowsecurity": [rls_row],
+        "relkind = 'S'": seq_rows,
+        "relkind IN ('r', 'p')": [tabela_row],
+        "FROM pg_attribute": [],
+        "FROM pg_constraint": [],
+        "FROM pg_indexes": [],
+        "pg_get_functiondef": [],
+        "FROM pg_policy": [policy_row],
+    })
+    roles_cur = _FakeCursor({
+        "FROM pg_roles": [{"oid": 0, "rolname": "public"}],
+    })
+    return _FakeConn([main_cur, roles_cur])
+
+
+class TestIntrospectPolicies:
+    def test_pg_roles_nao_descarta_policies(self, backup_module, introspect_conn):
+        """O fetch de pg_roles deve usar cursor separado; policies sobrevivem.
+
+        Regressiona o bug onde `cur.execute(pg_roles)` sobrescrevia o result
+        set das policies, fazendo o fallback exportar zero CREATE POLICY.
+        """
+        out = backup_module._introspect_schema(introspect_conn)
+        assert "CREATE POLICY \"p1\" ON public.\"perfil\"" in out
+        assert "FOR SELECT" in out
+        assert "USING (true)" in out
+        assert "TO PUBLIC" in out
+        assert 'ENABLE ROW LEVEL SECURITY' in out
+
+    def test_roles_query_usada_em_cursor_separado(self, backup_module, introspect_conn):
+        """O SQL de pg_roles não pode aparecer no mesmo cursor das policies."""
+        main_cur = introspect_conn._cursors[0]
+        roles_cur = introspect_conn._cursors[1]
+        backup_module._introspect_schema(introspect_conn)
+        assert any("FROM pg_roles" in sql for sql in roles_cur.executed)
+        assert not any("FROM pg_roles" in sql for sql in main_cur.executed)
+
 
 # ─── Testes de Integração (subprocess, --run-backup) ────────────────────────────
 
@@ -332,6 +438,7 @@ class TestBackupIntegracao:
         assert "schema_version" in dados
         assert "created_at" in dados
         assert "tables" in dados
+        assert "schema" in dados
         assert "public.perfil" in dados["tables"]
         assert "public.elemento" in dados["tables"]
         assert "public.cilindro" in dados["tables"]
@@ -340,6 +447,7 @@ class TestBackupIntegracao:
         assert "public.leitura" in dados["tables"]
         assert "public.pressao" in dados["tables"]
         assert "public.historico_auditoria" in dados["tables"]
+        assert "public.historico_login" in dados["tables"]
         assert isinstance(dados["tables"]["public.perfil"], list)
 
         backup_path.unlink()
@@ -385,9 +493,19 @@ class TestBackupIntegracao:
         with gzip.open(backup_path, "rt", encoding="utf-8") as f:
             dados = json.load(f)
 
-        assert dados["schema_version"] == "1.1"
+        assert dados["schema_version"] == "1.2"
         assert "created_at" in dados
-        assert len(dados["tables"]) >= 8
+        assert len(dados["tables"]) >= 9
+
+        schema = dados.get("schema")
+        assert schema is not None
+        assert "hash" in schema
+        assert isinstance(schema.get("sql"), str)
+        assert schema.get("source") in ("pg_dump", "introspect", "none")
+
+        sql = schema["sql"]
+        assert "ENABLE ROW LEVEL SECURITY" in sql, "dump de schema sem RLS habilitado"
+        assert "CREATE POLICY" in sql, "dump de schema sem policies (bug do introspect?)"
 
         for tbl, registros in dados["tables"].items():
             assert isinstance(registros, list)
