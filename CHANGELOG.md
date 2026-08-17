@@ -2,6 +2,16 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.21.0] — 2026-08-07
+
+### Exportação de dados registrada no histórico + nomenclatura padronizada (Fase 87) 📊📋
+
+- **Nomenclatura de arquivos**: padrão unificado `labgas_export_YYYYMMDD_HHMMSS_User_Name.ext` (antes `YYYY-MM-DD_HHMMSS`) — mais compacto, mantém ordenação cronológica e legibilidade
+- **Registro no histórico**: todas as exportações (JSON/CSV/Excel/Markdown) agora são registradas na tabela `historico_auditoria` com `tipo="exportacao"`, `acao="exportado"` e `detalhe` contendo `formato` e `filename` para rastreabilidade completa
+- **Nova cor/ícone**: tipo `exportacao` usa ícone `download` (Bootstrap Icons) e cor teal `#0d9488` em badges e filtros
+- **Templates atualizados**: `historico.html` e `admin_user_data.html` incluem filtro "Exportação" no tipo e "Exportado" na ação, com badge teal para a nova ação
+- **Testes**: `test_export_registers_in_history` valida que a exportação aparece no histórico de atividades
+
 ## [2.20.5] — 2026-08-07
 
 ### Backup quebrado por RLS corrigido + policies reaplicadas em produção (Fase 85b) 🚨🔒

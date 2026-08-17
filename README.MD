@@ -1,6 +1,6 @@
 # LabGas Manager
 
-**Versão: 2.20.3** (Branch: master)
+**Versão: 2.21.0** (Branch: master)
 
 Dashboard para gestão de cilindro de gás e elementos analisados em laboratório de química, utilizando **Flask** com **Jinja2** para o frontend web e **Supabase** como banco de dados PostgreSQL.
 
@@ -714,11 +714,11 @@ Cria ou reseta o usuário `teste@labgas.com` (senha: configurada em `frontend/.e
 - Deletar usuário e todos os dados associados
 - Visualizar dados de qualquer usuário
 - Controle de acesso por abas
-- Exportação de dados (JSON/CSV/Excel/Markdown)
+- Exportação de dados (JSON/CSV/Excel/Markdown) com registro no histórico de auditoria
 
 ### Histórico
-- Registro de todas as operações CRUD
-- Filtros por tipo (cilindro/pressao/elemento/leitura/amostra/perfil), ação (criado/atualizado/excluido), busca por item/responsável e intervalo de datas
+- Registro de todas as operações CRUD e exportações
+- Filtros por tipo (cilindro/pressao/elemento/leitura/amostra/perfil/exportacao), ação (criado/atualizado/excluido/exportado), busca por item/responsável e intervalo de datas
 - Exibição do usuário que realizou a ação
 - **Log de usuários**: Cadastro, alteração de role, ativação/desativação, permissões de abas
 
