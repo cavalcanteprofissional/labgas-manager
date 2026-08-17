@@ -2228,9 +2228,14 @@ Remover por completo o logo **TSA** do projeto (favicon + overlay de loading + l
 ### Objetivo
 Corrigir os problemas reais encontrados nos filtros das abas após a padronização da Fase 81. Todos os itens foram **verificados** com análise de código (arquivo:linha) — nenhum foi implementado ainda, este é o plano.
 
+### Decisões do usuário (2026-08-07)
+1. **Histórico (item abaixo de Segurança):** não-dev (incluindo admin) vê somente as **próprias** ações via `.eq("user_id", ...)`; dev vê tudo (branch global mantido). Aprovado — substitui o design anterior (log global).
+2. **Pressão — stats (item Consistência/UX):** manter as estatísticas de cor (média/desvio) calculadas sobre o **conjunto filtrado** (decisão da Fase 71, confirmada). **Sem mudança de código** — apenas documentar no TODO.
+3. **Cilindro — busca server-side (item Consistência/UX):** **Migration + índice funcional** — coluna gerada `numero_txt` (`LPAD(numero::text, 3, '0')`) + índice GIN `pg_trgm`; busca via `or_("numero.eq.{num},numero_txt.ilike.%{q}%")`. **Redis foi avaliado e descartado** (ver Fase 86).
+
 ### Segurança (fazer primeiro)
 - [ ] `frontend/blueprints/elemento.py:196-197` — dropdown de elementos não filtra por `user_id` (vaza elementos de todos os usuários); aplicar o padrão `if not dev:` usado nos demais blueprints
-- [ ] `frontend/blueprints/historico.py:82` — query do Histórico sem `.eq("user_id")` para não-dev: usuário comum enxerga o log de auditoria completo; filtrar por `user_id` mantendo o branch dev
+- [ ] `frontend/blueprints/historico.py:82` — query do Histórico sem `.eq("user_id")` para não-dev: usuário comum enxerga o log de auditoria completo; filtrar por `user_id` mantendo o branch dev (**decisão**: não-dev vê só as próprias ações; dev vê tudo)
 - [ ] `frontend/blueprints/historico.py:57` — `q` cru (sem escapar `%`/`_`) no branch de `ilike` simples, inconsistente com a sanitização da L51; padronizar
 
 ### Admin
@@ -2243,9 +2248,9 @@ Corrigir os problemas reais encontrados nos filtros das abas após a padronizaç
 - [ ] `frontend/blueprints/cilindro.py:263-294` — sem clamp de `page`/`per_page`: `page=0` → offset negativo; `per_page=0` → `range(0,-1)`; padronizar com `consultar_paginado` ou clamp explícito em todas as abas
 
 ### Consistência / UX
-- [ ] `frontend/blueprints/pressao.py:334-340` — `montar(query_stats)` reaplica os filtros às estatísticas de cor (média/desvio mudam com o filtro ativo → badges de cor inconsistentes com a linha); decidir se as stats refletem o filtro ou o total
+- [ ] `frontend/blueprints/pressao.py:334-340` — `montar(query_stats)` reaplica os filtros às estatísticas de cor (média/desvio mudam com o filtro ativo → badges de cor inconsistentes com a linha); **decisão**: manter stats sobre o conjunto filtrado — **sem mudança de código**, só documentar
 - [ ] `frontend/app.py:205-214` — `qs()` concatena `{k}={v}` cru sem URL-encoding (valores com `&`/espaço quebram a query string); usar `urlencode`
-- [ ] `frontend/blueprints/cilindro.py:272-278` — scan completo `(id, numero)` de todos os cilindros a cada tecla para busca substring; avaliar busca SQL server-side
+- [ ] `frontend/blueprints/cilindro.py:272-278` — scan completo `(id, numero)` de todos os cilindros a cada tecla para busca substring; **decisão**: busca SQL server-side com coluna gerada `numero_txt` + índice GIN `pg_trgm` (migration `20260807`); detalhes na Fase 86
 
 ### Verificação
 - [ ] Testes por aba (segurança de dados + filtros) + `test_dashboard` 8/8
@@ -2292,3 +2297,84 @@ Corrigir os problemas reais encontrados nos filtros das abas após a padronizaç
 - Dump de schema contém as 29 policies.
 - `perfil` UPDATE policy em produção = `USING (auth.uid() = id) WITH CHECK (auth.uid() = id)`.
 - `historico_login` presente em produção com policy `admins_select_historico_login`.
+
+## Fase 86: Otimização de buscas e seletores de todas as abas (planejado) ⚡
+
+### Objetivo
+Eliminar os scans Python por tecla e os re-fetches de dropdowns nas buscas/seletores de **todas** as abas, integrado às decisões já fechadas da Fase 84. Nada foi implementado ainda — este é o plano.
+
+### Diagnóstico consolidado (2026-08-07, verificado no código)
+**Buscas com scan Python / re-fetch por tecla:**
+- `cilindro.py:272-278` — `q`: fetch de todos `(id, numero)` + `numero_corresponde` em Python
+- `pressao.py:269` — `q_numero`: scan Python do dropdown `cilindro_list` (L28-34) a cada tecla
+- `leitura.py:261-272` — `q`: scan Python dos arrays cilindro (numero) + elemento (nome substring)
+- `amostra.py:246-259` — `q`: fetch extra de TODAS as amostras (`todas_amostras`, L246-249) + substring Python; confirmado que `todas_amostras` **não vai ao template** → pode ser removido
+- `historico.py:44-57` — `label ilike` já é server-side; falta sanitização de `q` (Fase 84) e índice GIN
+
+**Seletores (dropdowns) sem cache — 1-2 queries DB por requisição, inclusive a cada tecla do debounce:**
+- pressao (`cilindro_list`), leitura (cilindro+elementos), amostra (`elementos_disponiveis`), elemento (`todos_elementos`)
+- `cache_utils.py` confirma: cache de listas **nunca foi implementado** (Fase 45) — só `dashboard:{user_id}`/`dashboard:all`; as chaves `{prefix}:{user_id}` estão livres e são exatamente as que `invalidate_user_caches`/`invalidate_cache` já apagam (cache_utils.py:40) → cache de seletores casa com a invalidação existente, sem mudança nela
+- Filtro da aba Elemento é um `<select>` (elemento.html:46), não uma busca → otimização = filtro `user_id` (Fase 84) + cache, sem mudança de comportamento
+
+**Índices já existentes (sem conflito):** `amostra_elemento(elemento_id)` em schema.sql:124; `historico_auditoria.label` **sem índice**; `amostra.numero_amostra`/`amostra.lote` são INTEGER (schema.sql:84-85) → colunas geradas válidas.
+
+### Decisões do usuário (2026-08-07)
+1. **Amostra — busca:** opção 1 (server-side com colunas geradas). **Análise de Redis solicitada e respondida:** Redis **não está provisionado** (`.env.example:28` — opcional; app roda em Vercel serverless, `vercel.json` → `@vercel/python`, SimpleCache por instância; `REDIS_URL` só é lido pelo flask-limiter com default `memory://`). Adotar Redis para busca = cachear a lista pesquisável e varrer em Python → continua O(N) por tecla, só troca a origem (DB→Redis). **Recomendação aceita:** manter colunas geradas + `pg_trgm` (server-side, mais rápido e correto); Redis ficaria como opt-in **apenas no cache** (`CACHE_TYPE=RedisCache` + `CACHE_REDIS_URL`) se um dia houver necessidade de consistência entre instâncias — sem tocar nas buscas.
+2. **Cache de seletores:** **aprovado** — cache por usuário com TTL 5 min, chave `{prefix}:{user_id}`, invalidação já coberta pelos CRUDs.
+
+### Migration (única): `database/migrations/20260807_otimizacao_buscas.sql` (aplicar no SQL Editor do Supabase)
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Decisão Fase 84 (cilindro): coluna gerada + índice funcional
+ALTER TABLE cilindro
+  ADD COLUMN IF NOT EXISTS numero_txt TEXT
+  GENERATED ALWAYS AS (LPAD(numero::text, 3, '0')) STORED;
+CREATE INDEX IF NOT EXISTS idx_cilindro_numero_txt_gin
+  ON cilindro USING gin (numero_txt gin_trgm_ops);
+
+-- Busca leitura/elemento por nome (substring)
+CREATE INDEX IF NOT EXISTS idx_elemento_nome_gin
+  ON elemento USING gin (nome gin_trgm_ops);
+
+-- Busca amostra por número/lote
+ALTER TABLE amostra
+  ADD COLUMN IF NOT EXISTS numero_amostra_txt TEXT
+    GENERATED ALWAYS AS (LPAD(numero_amostra::text, 3, '0')) STORED,
+  ADD COLUMN IF NOT EXISTS lote_txt TEXT
+    GENERATED ALWAYS AS (lote::text) STORED;
+CREATE INDEX IF NOT EXISTS idx_amostra_numero_amostra_txt_gin
+  ON amostra USING gin (numero_amostra_txt gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_amostra_lote_txt_gin
+  ON amostra USING gin (lote_txt gin_trgm_ops);
+
+-- Busca histórico por label (com sanitização da Fase 84)
+CREATE INDEX IF NOT EXISTS idx_historico_aud_label_gin
+  ON historico_auditoria USING gin (label gin_trgm_ops);
+```
+Schema change é **aditiva e segura** (colunas geradas + índices, sem reescrever dados; rollback = `DROP COLUMN/INDEX`). Aplicada muda o hash de schema → o próximo `daily-backup` detecta mudança e gera backup completo (comportamento esperado; `_pg_dump_schema`/restore já cobrem colunas geradas).
+
+### Buscas server-side (remover scans Python)
+- [ ] `cilindro_utils.py` — helper `_sanitizar_busca(q)`: remove `,()%_` (não quebra a gramática do `or_` do PostgREST)
+- [ ] `cilindro.py:272-278` — trocar scan por `or_("numero.eq.{num},numero_txt.ilike.%{q}%")` (via `normalizar_numero_cilindro`); q não-numérico → só `ilike`
+- [ ] `pressao.py:269` — `q_numero`: lookup de ids via `numero_txt` **hoisted antes do `montar`** (montar roda 2×: count+data); mantém `.in_`
+- [ ] `leitura.py:261-272` — `q`: 2 lookups hoisted (cilindro via `numero_txt`; elemento via `nome ilike`) → `montar` só monta o `or_` com os ids
+- [ ] `amostra.py:246-259` — `q`: `or_("numero_amostra_txt.ilike.%{q}%,lote_txt.ilike.%{q}%")`; **remover o fetch `todas_amostras`** (L246-249)
+- [ ] `historico.py:44-57` — sanitização de `q` (Fase 84) → passa a usar o GIN novo
+
+### Seletores com cache por usuário
+- [ ] `cache_utils.py` — helper `obter_selectores_cached(prefixo, user_id, fetch_func, timeout=300)` com chave `f"{prefixo}:{user_id}"`
+- [ ] Aplicar em: pressao (cilindro), leitura (cilindro+elementos), amostra (`elementos_disponiveis`), elemento (`todos_elementos`)
+- [ ] `elemento.py:196-197` — aplicar também o filtro `user_id` (`if not dev:`) junto com o cache (Fase 84 #1)
+- [ ] Invalidação: **sem mudanças** — `invalidate_user_caches`/`invalidate_cache` já apagam `{prefix}:{user_id}` a cada CRUD; TTL 5 min cobre edições externas
+
+### Fase 84 restante (ordem A→F já acordada)
+Itens de Segurança (1-3), Admin (4-5), Datas e paginação (6-8), Consistência/UX (10) e Verificação (testes + docs), conforme checklist acima. Pressão stats (item 9) fica documentado como decisão, sem código.
+
+### Verificação
+- [ ] Equivalência dos testes de cilindro com a busca server-side (`?q=5` → 5 e 15; `?q=CIL-015` → 15)
+- [ ] Testes novos: amostra `q` (número/lote), leitura `q`, pressao `q_numero`, invalidação do cache de seletores
+- [ ] Suíte por arquivo isolado em `frontend` (venv) permanece verde
+- [ ] `CHANGELOG.md` (v2.21.x) + `README.MD` + `schema.sql`/`DIAGRAM.MD` (colunas novas) + TODO
+- [ ] Docs: ressalva Vercel no cache de seletores (staleness ≤5 min por instância) + nota do backup full no próximo cron
+
