@@ -8,8 +8,8 @@ from blueprints.helpers import get_user_id, is_dev, is_admin, pode_acessar_aba
 
 historico_bp = Blueprint('historico', __name__)
 
-TIPOS_VALIDOS = {"cilindro", "pressao", "elemento", "leitura", "amostra", "perfil"}
-ACOES_VALIDAS = {"criado", "atualizado", "excluido"}
+TIPOS_VALIDOS = {"cilindro", "pressao", "elemento", "leitura", "amostra", "perfil", "exportacao"}
+ACOES_VALIDAS = {"criado", "atualizado", "excluido", "exportado"}
 PER_PAGE_VALIDOS = {10, 20, 50, 100}
 
 

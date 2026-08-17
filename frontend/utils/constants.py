@@ -25,6 +25,7 @@ ICON_TIPO = {
     "dashboard": "speedometer2",
     "disclaimer": "info-circle",
     "ativos": "check-circle",
+    "exportacao": "download",
 }
 
 COR_TIPO = {
@@ -97,6 +98,13 @@ COR_TIPO = {
         "var": "var(--primary-darkest)",
         "bg": "dark",
         "gradient": "linear-gradient(135deg, #001a2f, #004475)",
+    },
+    "exportacao": {
+        "class": "teal",
+        "hex": "#0d9488",
+        "var": "var(--exportacao)",
+        "bg": "success",
+        "gradient": "linear-gradient(135deg, #065f56, #14b8a6)",
     },
 }
 

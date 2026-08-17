@@ -68,3 +68,13 @@ def test_export_redirects_if_not_admin(page):
     page.goto(f"{BASE}/admin/export?formato=json")
     page.wait_for_timeout(2000)
     assert "/dashboard" in page.url or "/login" in page.url
+
+
+def test_export_registers_in_history(login, page):
+    token = _get_session_token(page)
+    cookies = {"session": token} if token else {}
+    resp = requests.get(f"{BASE}/admin/export?formato=json", cookies=cookies)
+    assert resp.ok
+    hist_resp = requests.get(f"{BASE}/historico?tipo=exportacao&acao=exportado", cookies=cookies)
+    assert hist_resp.ok
+    assert "Exportação" in hist_resp.text or "exportacao" in hist_resp.text

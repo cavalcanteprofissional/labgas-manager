@@ -164,6 +164,7 @@
                     <option value="leitura" {{ 'selected' if request.args.get('tipo') == 'leitura' }}>Leitura</option>
                     <option value="amostra" {{ 'selected' if request.args.get('tipo') == 'amostra' }}>Amostra</option>
                     <option value="perfil" {{ 'selected' if request.args.get('tipo') == 'perfil' }}>Perfil</option>
+                    <option value="exportacao" {{ 'selected' if request.args.get('tipo') == 'exportacao' }}>Exportação</option>
                 </select>
             </div>
             <div class="col-md-4">
@@ -172,6 +173,7 @@
                     <option value="criado" {{ 'selected' if request.args.get('acao') == 'criado' }}>Criado</option>
                     <option value="atualizado" {{ 'selected' if request.args.get('acao') == 'atualizado' }}>Atualizado</option>
                     <option value="excluido" {{ 'selected' if request.args.get('acao') == 'excluido' }}>Excluído</option>
+                    <option value="exportado" {{ 'selected' if request.args.get('acao') == 'exportado' }}>Exportado</option>
                 </select>
             </div>
             <div class="col-md-4 d-flex gap-2">
@@ -206,7 +208,7 @@
                             <span class="badge" style="background: {{ COR_TIPO[h.tipo]['var'] if h.tipo in COR_TIPO else 'var(--primary)' }};">{{ h.tipo|title }}</span>
                         </td>
                         <td>
-                            <span class="badge" style="background-color: {{ 'var(--green)' if h.acao == 'criado' else 'var(--yellow)' if h.acao == 'atualizado' else 'var(--red)' if h.acao == 'excluido' else '#6c757d' }};">{{ h.acao|title }}</span>
+                            <span class="badge" style="background-color: {{ 'var(--green)' if h.acao == 'criado' else 'var(--yellow)' if h.acao == 'atualizado' else 'var(--red)' if h.acao == 'excluido' else '#0d9488' if h.acao == 'exportado' else '#6c757d' }};">{{ h.acao|title }}</span>
                         </td>
                         <td><strong>{{ h.label }}</strong></td>
                     </tr>

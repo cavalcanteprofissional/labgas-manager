@@ -514,8 +514,14 @@ def export_data():
     
     cached = session.get('cached_user_info', {})
     user_name = (cached.get('user_name', '') or 'unknown').replace(' ', '_').replace('/', '_')
-    data_str = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    data_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename_base = f"labgas_export_{data_str}_{user_name}"
+    
+    export_label = f"{filename_base}.{formato}"
+    registrar_historico(
+        "exportacao", "exportado", export_label, user_id,
+        detalhe={"formato": formato, "filename": export_label}
+    )
     
     kpis = _compute_kpis_export(leituras_data, cilindro_data, elementos_data, pressoes_data, amostras_data)
     

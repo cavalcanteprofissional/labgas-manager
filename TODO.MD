@@ -2378,3 +2378,40 @@ Itens de Segurança (1-3), Admin (4-5), Datas e paginação (6-8), Consistência
 - [ ] `CHANGELOG.md` (v2.21.x) + `README.MD` + `schema.sql`/`DIAGRAM.MD` (colunas novas) + TODO
 - [ ] Docs: ressalva Vercel no cache de seletores (staleness ≤5 min por instância) + nota do backup full no próximo cron
 
+## Fase 87: Melhoria de exportação e registro no histórico (concluído) ✅
+
+### Objetivo
+Padronizar nomenclatura de arquivos exportados e registrar todas as exportações no histórico de auditoria, exibindo na aba Histórico.
+
+### Alterações implementadas
+
+#### 1. Padrão de nomenclatura de arquivos
+- **Antes:** `labgas_export_YYYY-MM-DD_HHMMSS_User_Name.ext`
+- **Depois:** `labgas_export_YYYYMMDD_HHMMSS_User_Name.ext`
+- Mais compacto, mantém legibilidade e ordenação cronológica
+
+#### 2. Registro no histórico de auditoria
+- Nova `tipo`: `"exportacao"` (com ícone `download` e cor teal `#0d9488`)
+- Nova `acao`: `"exportado"` (badge teal na aba Histórico)
+- `detalhe` JSONB contém `formato` e `filename` para rastreabilidade completa
+- Ação registrada **antes** da geração do arquivo (garante registro mesmo se a geração falhar)
+
+#### 3. Atualizações nos templates
+- `historico.html`: filtro de tipo inclui "Exportação", ação inclui "Exportado"
+- `admin_user_data.html`: mesmos filtros adicionados para consistência
+- Badges de ação: `exportado` usa cor teal `#0d9488`
+
+#### 4. Constantes
+- `constants.py`: `ICON_TIPO["exportacao"] = "download"` e `COR_TIPO["exportacao"]` com gradiente teal
+
+#### 5. Testes
+- `test_export.py`: novo teste `test_export_registers_in_history` verifica que a exportação aparece no histórico
+
+### Arquivos modificados
+- `frontend/blueprints/admin.py` — padrão de filename + `registrar_historico()`
+- `frontend/blueprints/historico.py` — `TIPOS_VALIDOS` e `ACOES_VALIDAS` expandidos
+- `frontend/utils/constants.py` — `ICON_TIPO` e `COR_TIPO` para `exportacao`
+- `frontend/templates/historico.html` — filtros de tipo/ação + badge teal
+- `frontend/templates/admin_user_data.html` — filtros de tipo/ação + badge teal
+- `frontend/tests/test_export.py` — teste de registro no histórico
+
