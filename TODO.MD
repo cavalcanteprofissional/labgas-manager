@@ -2461,3 +2461,94 @@ Corrigir o bug de loading infinito ao baixar exportações e padronizar a distri
 - `frontend/blueprints/admin.py` — reescrita do bloco CSV (módulo csv), correção header amostras, Excel com formatação, JSON com versão, Markdown com colunas consistentes
 - `frontend/tests/test_export.py` — asserts atualizados
 
+## Fase 89: Validação manual + suíte de testes + relatório roadmap (planejado) 🔍🧪
+
+### Objetivo
+Validar manualmente as atividades recentes (Fases 87-88), atualizar a suíte de testes unitários e globais, e criar um relatório/roadmap visual do estado atual dos testes seguindo boas práticas.
+
+### Parte 1: Validação manual das atividades recentes
+
+#### Exportação (Fases 87-88)
+- [ ] Testar download JSON → verificar campo `versao`, KPIs, todas as 5 tabelas
+- [ ] Testar download CSV → verificar com `csv.reader` que todos os campos preenchem (especialmente `elementos_nomes` nas amostras)
+- [ ] Testar download Excel → verificar largura de colunas, `auto_filter`, valores numéricos
+- [ ] Testar download Markdown → verificar colunas de cilindros (data_compra, litros, etc.), escape de `|`
+- [ ] Verificar que o loading NÃO aparece ao clicar em exportar
+- [ ] Verificar que a exportação aparece na aba Histórico com tipo "Exportação" e ação "Exportado"
+- [ ] Testar exportação filtrada por usuário (dev com `selected_user_id`)
+
+#### Histórico (Fase 87)
+- [ ] Filtrar por tipo "Exportação" → deve listar exportações
+- [ ] Filtrar por ação "Exportado" → deve listar exportações
+- [ ] Verificar badge teal no histórico
+
+### Parte 2: Atualizar suíte de testes
+
+#### Testes existentes para atualizar
+- [ ] `test_export.py` — validar cobertura dos 4 formatos + histórico + loading
+- [ ] `test_admin.py` — garantir que filtros de tipo/acao incluem `exportacao`/`exportado`
+- [ ] `test_historico.py` — adicionar testes para o tipo `exportacao` e ação `exportado`
+
+#### Testes novos para criar
+- [ ] `test_export_csv_integrity` — valida com `csv.reader` que colunas de amostras têm `elementos_nomes` preenchido
+- [ ] `test_export_json_version` — valida que `versao` está presente e correto
+- [ ] `test_export_excel_column_widths` — valida que colunas têm largura > 0
+- [ ] `test_export_md_consistency` — valida que todas as tabelas têm headers equivalentes ao CSV
+- [ ] `test_export_no_loading` — valida que links de exportação têm `data-no-loading` no HTML
+
+#### Testes de regressão
+- [ ] Rodar suíte completa (`pytest frontend/tests/ -v`) e registrar resultado
+- [ ] Rodar testes de export isolados (`pytest frontend/tests/test_export.py --run-export -v`)
+- [ ] Verificar que nenhum teste existente quebrou com as mudanças das Fases 87-88
+
+### Parte 3: Relatório Roadmap de Testes
+
+#### Conceito
+Criar um relatório visual/estruturado do estado dos testes, similar a um dashboard de roadmap:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LABGAS MANAGER — TEST ROADMAP                              │
+├──────────────────────┬──────┬──────┬──────┬─────────────────┤
+│  Módulo              │ Total│ ✅   │ ❌   │ Cobertura       │
+├──────────────────────┼──────┼──────┼──────┼─────────────────┤
+│  test_auth           │   7  │  7   │  0   │ ██████████ 100% │
+│  test_cilindro       │  12  │ 12   │  0   │ ██████████ 100% │
+│  test_pressao        │   5  │  5   │  0   │ ██████████ 100% │
+│  test_leitura        │   7  │  7   │  0   │ ██████████ 100% │
+│  test_amostra        │   9  │  9   │  0   │ ██████████ 100% │
+│  test_elemento       │  12  │ 12   │  0   │ ██████████ 100% │
+│  test_dashboard      │   8  │  8   │  0   │ ██████████ 100% │
+│  test_export         │   8  │  ?   │  ?   │ ████████░░  ??% │
+│  test_historico      │   7  │  7   │  0   │ ██████████ 100% │
+│  test_admin          │   2  │  2   │  0   │ ██████████ 100% │
+│  test_backup         │  33  │ 33   │  0   │ ██████████ 100% │
+│  test_session_footer │   4  │  4   │  0   │ ██████████ 100% │
+│  test_helpers        │   4  │  4   │  0   │ ██████████ 100% │
+├──────────────────────┼──────┼──────┼──────┼─────────────────┤
+│  TOTAL               │ 118  │  ??  │  ??  │ ████████░░  ??% │
+└──────────────────────┴──────┴──────┴──────┴─────────────────┘
+```
+
+#### Entregáveis
+- [ ] Criar `tests/TEST_REPORT.md` ou integrar no README — snapshot do estado dos testes
+- [ ] Listar cobertura por módulo (total, passando, falhando, pulado)
+- [ ] Marcar testes pendentes de implementação (Fase 89)
+- [ ] Incluir data/hora da última execução e versão do commit testado
+- [ ] Atualizar o relatório sempre que a suíte rodar (script ou CI)
+
+#### Formato do relatório
+- Markdown com tabelas (legível no GitHub)
+- Barra de progresso visual com Unicode (`█` / `░`)
+- Seções: Resumo Geral, Por Módulo, Testes Novos (Fase 89), Pendências, Histórico de Execuções
+- Metadata: commit hash, data, versão, runner (local/CI)
+
+### Arquivos a modificar/criar
+- `frontend/tests/test_export.py` — testes novos de integridade
+- `frontend/tests/test_historico.py` — testes de tipo/acao exportacao
+- `frontend/tests/test_admin.py` — validação de filtros expandidos
+- `tests/TEST_REPORT.md` — relatório roadmap (novo)
+- `scripts/run_tests.sh` ou `Makefile` — comando para gerar relatório
+- `CHANGELOG.md` — entrada v2.21.2
+- `TODO.MD` — marcar como concluído
+
