@@ -2,6 +2,17 @@
 
 Todas as alterações notáveis no LabGas Manager serão documentadas neste arquivo.
 
+## [2.21.1] — 2026-08-17
+
+### Loading infinito ao baixar exportação corrigido + CSV/Excel/Markdown com boas práticas (Fase 88) 🐛📊
+
+- **Loading infinito**: links de exportação (JSON/CSV/Excel/MD) agora têm `data-no-loading` para impedir que o overlay de loading global seja ativado durante downloads (o `Content-Disposition: attachment` não navega a página, então `pageshow` nunca disparava)
+- **CSV**: reescrito com módulo `csv` (RFC 4180) — vírgulas, aspas e quebras de linha nos valores agora são tratados corretamente; coluna `"elementos"` das amostras corrigida (chave `"elementos_nomes"`); `sanitize_csv` aplicado em todas as tabelas (antes só cilindros/elementos)
+- **Excel**: largura de colunas automáticas, `auto_filter` na aba Resumo, conversão numérica explícita (gas_kg, litros, custo como float)
+- **JSON**: campo `"versao": "2.21.0"` adicionado para compatibilidade futura
+- **Markdown**: colunas expandidas em Cilindros (data_compra, data_inicio, data_fim, litros) para consistência com CSV/Excel; escape de `|` em valores
+- **Testes**: `test_export_json` valida campo `versao`; `test_export_csv` valida com `csv.reader` (não substring)
+
 ## [2.21.0] — 2026-08-07
 
 ### Exportação de dados registrada no histórico + nomenclatura padronizada (Fase 87) 📊📋

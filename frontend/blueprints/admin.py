@@ -1,4 +1,5 @@
 # Admin blueprint - Administrative functions
+import csv
 import json
 import io
 from collections import defaultdict
@@ -527,6 +528,7 @@ def export_data():
     
     if formato == "json":
         data = {
+            "versao": "2.21.0",
             "exportado_em": datetime.now().isoformat(),
             "exportado_por": user_name,
             "kpis": kpis,
@@ -549,63 +551,54 @@ def export_data():
             return s
 
         output = io.StringIO()
-        output.write(f"# Exportado por: {user_name} em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
-        output.write(f"# KPIs: Cilindros Ativos={kpis['cilindros_ativos']}, Gas Restante={kpis['gas_restante_litros']}L, "
-                     f"Leituras={kpis['total_leituras_quantidade']}, Amostras={kpis['total_amostras']}, "
-                     f"Custo/Leitura=R${kpis['custo_medio_por_leitura']}, Gas Consumido={kpis['gas_consumido_litros']}L\n\n")
-        
-        output.write("# CILINDROS\n")
-        if cilindro_data:
-            headers = ["id", "numero", "data_compra", "data_inicio_consumo", "data_fim",
-                      "gas_kg", "litros_equivalentes", "custo", "status",
-                      "usuario_email", "usuario_nome", "created_at"]
-            output.write(",".join(headers) + "\n")
-            for row in cilindro_data:
-                values = [sanitize_csv(row.get(h, "")) for h in headers]
-                output.write(",".join(values) + "\n")
-        
-        output.write("\n# ELEMENTOS\n")
-        if elementos_data:
-            headers = ["id", "nome", "consumo_lpm", "usuario_email", "usuario_nome", "created_at"]
-            output.write(",".join(headers) + "\n")
-            for row in elementos_data:
-                values = [sanitize_csv(row.get(h, "")) for h in headers]
-                output.write(",".join(values) + "\n")
-        
-        output.write("\n# LEITURAS\n")
-        if leituras_data:
-            headers = ["id", "data", "tempo_chama", "cilindro_id", "cilindro_numero",
-                      "elemento_id", "elemento_nome", "quantidade",
-                      "usuario_email", "usuario_nome", "created_at"]
-            output.write(",".join(headers) + "\n")
-            for row in leituras_data:
-                values = [str(row.get(h, "")) for h in headers]
-                output.write(",".join(values) + "\n")
-        
-        output.write("\n# PRESSOES\n")
-        if pressoes_data:
-            headers = ["id", "cilindro_id", "cilindro_numero", "pressao", "temperatura", "data", "hora",
-                      "usuario_email", "usuario_nome", "created_at"]
-            output.write(",".join(headers) + "\n")
-            for row in pressoes_data:
-                values = [str(row.get(h, "")) for h in headers]
-                output.write(",".join(values) + "\n")
-        
-        output.write("\n# AMOSTRAS\n")
-        if amostras_data:
-            headers = ["id", "numero_amostra", "lote", "elementos", "qtd_elementos",
-                      "usuario_email", "usuario_nome", "created_at"]
-            output.write(",".join(headers) + "\n")
-            for row in amostras_data:
-                values = [str(row.get(h, "")) for h in headers]
-                output.write(",".join(values) + "\n")
-        
+        writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+
+        csv_sections = [
+            ("CILINDROS", cilindro_data,
+             ["id", "numero", "data_compra", "data_inicio_consumo", "data_fim",
+              "gas_kg", "litros_equivalentes", "custo", "status",
+              "usuario_email", "usuario_nome", "created_at"]),
+            ("ELEMENTOS", elementos_data,
+             ["id", "nome", "consumo_lpm", "usuario_email", "usuario_nome", "created_at"]),
+            ("LEITURAS", leituras_data,
+             ["id", "data", "tempo_chama", "cilindro_id", "cilindro_numero",
+              "elemento_id", "elemento_nome", "quantidade",
+              "usuario_email", "usuario_nome", "created_at"]),
+            ("PRESSOES", pressoes_data,
+             ["id", "cilindro_id", "cilindro_numero", "pressao", "temperatura",
+              "data", "hora", "usuario_email", "usuario_nome", "created_at"]),
+            ("AMOSTRAS", amostras_data,
+             ["id", "numero_amostra", "lote", "elementos_nomes", "qtd_elementos",
+              "usuario_email", "usuario_nome", "created_at"]),
+        ]
+
+        for section_name, section_data, headers in csv_sections:
+            writer.writerow([f"# {section_name}"])
+            if section_data:
+                writer.writerow(headers)
+                for row in section_data:
+                    writer.writerow([sanitize_csv(row.get(h, "")) for h in headers])
+            writer.writerow([])
+
         response = make_response(output.getvalue())
         response.headers["Content-Disposition"] = f"attachment; filename={filename_base}.csv"
         response.headers["Content-Type"] = "text/csv"
         return response
     
     elif formato == "excel":
+        def _auto_width(ws):
+            for col_cells in ws.columns:
+                max_len = 0
+                col_letter = col_cells[0].column_letter
+                for cell in col_cells:
+                    try:
+                        cell_len = len(str(cell.value or ""))
+                        if cell_len > max_len:
+                            max_len = cell_len
+                    except Exception:
+                        pass
+                ws.column_dimensions[col_letter].width = min(max_len + 2, 40)
+
         wb = Workbook()
         
         ws_resumo = wb.active
@@ -615,21 +608,24 @@ def export_data():
             ws_resumo.append([k.replace("_", " ").title(), v])
         ws_resumo.append(["Exportado por", user_name])
         ws_resumo.append(["Exportado em", datetime.now().strftime('%d/%m/%Y %H:%M:%S')])
+        ws_resumo.auto_filter.ref = "A1:B5"
+        _auto_width(ws_resumo)
         
         ws_cilindros = wb.create_sheet("Cilindros")
         if cilindro_data:
             headers = ["ID", "Número", "Data Compra", "Data Início", "Data Fim",
-                      "Gas (kg)", "Litros", "Custo", "Status",
+                      "Gas (kg)", "Litros", "Custo (R$)", "Status",
                       "Usuário Email", "Usuário Nome", "Criado em"]
             ws_cilindros.append(headers)
             for row in cilindro_data:
                 ws_cilindros.append([
                     row.get("id"), row.get("numero"), row.get("data_compra"),
                     row.get("data_inicio_consumo"), row.get("data_fim"),
-                    row.get("gas_kg"), row.get("litros_equivalentes"), row.get("custo"),
-                    row.get("status"),
+                    float(row.get("gas_kg") or 0), float(row.get("litros_equivalentes") or 0),
+                    float(row.get("custo") or 0), row.get("status"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
+            _auto_width(ws_cilindros)
         
         ws_elementos = wb.create_sheet("Elementos")
         if elementos_data:
@@ -637,9 +633,10 @@ def export_data():
             ws_elementos.append(headers)
             for row in elementos_data:
                 ws_elementos.append([
-                    row.get("id"), row.get("nome"), row.get("consumo_lpm"),
+                    row.get("id"), row.get("nome"), float(row.get("consumo_lpm") or 0),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
+            _auto_width(ws_elementos)
         
         ws_leituras = wb.create_sheet("Leituras")
         if leituras_data:
@@ -652,9 +649,10 @@ def export_data():
                     row.get("id"), row.get("data"), row.get("tempo_chama"),
                     row.get("cilindro_id"), row.get("cilindro_numero"),
                     row.get("elemento_id"), row.get("elemento_nome"),
-                    row.get("quantidade"),
+                    int(row.get("quantidade") or 0),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
+            _auto_width(ws_leituras)
         
         ws_pressoes = wb.create_sheet("Pressoes")
         if pressoes_data:
@@ -664,9 +662,11 @@ def export_data():
             for row in pressoes_data:
                 ws_pressoes.append([
                     row.get("id"), row.get("cilindro_id"), row.get("cilindro_numero"),
-                    row.get("pressao"), row.get("temperatura"), row.get("data"), row.get("hora"),
+                    float(row.get("pressao") or 0), float(row.get("temperatura") or 0) if row.get("temperatura") else None,
+                    row.get("data"), row.get("hora"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
+            _auto_width(ws_pressoes)
         
         ws_amostras = wb.create_sheet("Amostras")
         if amostras_data:
@@ -679,6 +679,7 @@ def export_data():
                     row.get("elementos_nomes"), row.get("qtd_elementos"),
                     row.get("usuario_email"), row.get("usuario_nome"), row.get("created_at")
                 ])
+            _auto_width(ws_amostras)
         
         output = io.BytesIO()
         wb.save(output)
@@ -690,6 +691,9 @@ def export_data():
         return response
     
     elif formato == "md":
+        def escape_md(val):
+            return str(val).replace("|", "\\|") if val is not None else ""
+
         md_output = io.StringIO()
         md_output.write(f"# LabGas Manager — Exportação\n\n")
         md_output.write(f"**Exportado por:** {user_name}\n")
@@ -702,10 +706,10 @@ def export_data():
         
         md_output.write("## Cilindros\n\n")
         if cilindro_data:
-            md_output.write("| ID | Número | Status | Gas (kg) | Custo | Usuário |\n")
-            md_output.write("|---|---|---|---|---|---|\n")
+            md_output.write("| ID | Número | Compra | Início | Fim | Gas (kg) | Litros | Custo | Status | Usuário |\n")
+            md_output.write("|---|---|---|---|---|---|---|---|---|---|\n")
             for row in cilindro_data:
-                md_output.write(f"| {row.get('id')} | {row.get('numero')} | {row.get('status')} | {row.get('gas_kg')} | R${row.get('custo')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {escape_md(row.get('id'))} | {escape_md(row.get('numero'))} | {escape_md(row.get('data_compra'))} | {escape_md(row.get('data_inicio_consumo'))} | {escape_md(row.get('data_fim'))} | {escape_md(row.get('gas_kg'))} | {escape_md(row.get('litros_equivalentes'))} | R${escape_md(row.get('custo'))} | {escape_md(row.get('status'))} | {escape_md(row.get('usuario_email'))} |\n")
         else:
             md_output.write("*Nenhum cilindro encontrado.*\n\n")
         
@@ -714,7 +718,7 @@ def export_data():
             md_output.write("| ID | Cilindro | Pressão (bar) | Temperatura (°C) | Data | Hora | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|---|\n")
             for row in pressoes_data:
-                md_output.write(f"| {row.get('id')} | {row.get('cilindro_numero')} | {row.get('pressao')} | {row.get('temperatura')} | {row.get('data')} | {row.get('hora')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {escape_md(row.get('id'))} | {escape_md(row.get('cilindro_numero'))} | {escape_md(row.get('pressao'))} | {escape_md(row.get('temperatura'))} | {escape_md(row.get('data'))} | {escape_md(row.get('hora'))} | {escape_md(row.get('usuario_email'))} |\n")
         else:
             md_output.write("*Nenhuma pressão encontrada.*\n\n")
         
@@ -723,7 +727,7 @@ def export_data():
             md_output.write("| ID | Nome | Consumo (L/min) | Usuário |\n")
             md_output.write("|---|---|---|---|\n")
             for row in elementos_data:
-                md_output.write(f"| {row.get('id')} | {row.get('nome')} | {row.get('consumo_lpm')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {escape_md(row.get('id'))} | {escape_md(row.get('nome'))} | {escape_md(row.get('consumo_lpm'))} | {escape_md(row.get('usuario_email'))} |\n")
         else:
             md_output.write("*Nenhum elemento encontrado.*\n\n")
         
@@ -732,7 +736,7 @@ def export_data():
             md_output.write("| ID | Data | Tempo | Cilindro | Elemento | Qtd | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|---|\n")
             for row in leituras_data:
-                md_output.write(f"| {row.get('id')} | {row.get('data')} | {row.get('tempo_chama')} | {row.get('cilindro_numero')} | {row.get('elemento_nome')} | {row.get('quantidade')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {escape_md(row.get('id'))} | {escape_md(row.get('data'))} | {escape_md(row.get('tempo_chama'))} | {escape_md(row.get('cilindro_numero'))} | {escape_md(row.get('elemento_nome'))} | {escape_md(row.get('quantidade'))} | {escape_md(row.get('usuario_email'))} |\n")
         else:
             md_output.write("*Nenhuma leitura encontrada.*\n\n")
         
@@ -741,7 +745,7 @@ def export_data():
             md_output.write("| ID | Número | Lote | Elementos | Qtd | Usuário |\n")
             md_output.write("|---|---|---|---|---|---|\n")
             for row in amostras_data:
-                md_output.write(f"| {row.get('id')} | {row.get('numero_amostra')} | {row.get('lote')} | {row.get('elementos_nomes')} | {row.get('qtd_elementos')} | {row.get('usuario_email')} |\n")
+                md_output.write(f"| {escape_md(row.get('id'))} | {escape_md(row.get('numero_amostra'))} | {escape_md(row.get('lote'))} | {escape_md(row.get('elementos_nomes'))} | {escape_md(row.get('qtd_elementos'))} | {escape_md(row.get('usuario_email'))} |\n")
         else:
             md_output.write("*Nenhuma amostra encontrada.*\n\n")
         

@@ -148,10 +148,10 @@
         </button>
         <ul class="dropdown-menu">
             <li><h6 class="dropdown-header">Exportar Dados{% if is_dev and selected_user_id and selected_user_id != 'all' %} (Filtrado){% endif %}</h6></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='json', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='csv', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='csv') }}"><i class="bi bi-filetype-csv"></i> CSV</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='excel', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='excel') }}"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
-            <li><a class="dropdown-item" href="{{ url_for('admin.export_data', formato='md', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='md') }}"><i class="bi bi-markdown"></i> Markdown</a></li>
+            <li><a class="dropdown-item" data-no-loading href="{{ url_for('admin.export_data', formato='json', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
+            <li><a class="dropdown-item" data-no-loading href="{{ url_for('admin.export_data', formato='csv', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='csv') }}"><i class="bi bi-filetype-csv"></i> CSV</a></li>
+            <li><a class="dropdown-item" data-no-loading href="{{ url_for('admin.export_data', formato='excel', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='excel') }}"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
+            <li><a class="dropdown-item" data-no-loading href="{{ url_for('admin.export_data', formato='md', selected_user_id=selected_user_id) if selected_user_id and selected_user_id != 'all' else url_for('admin.export_data', formato='md') }}"><i class="bi bi-markdown"></i> Markdown</a></li>
         </ul>
     </div>
     {% endif %}

@@ -1,3 +1,6 @@
+import csv
+import io
+import json
 import requests
 import pytest
 
@@ -24,6 +27,8 @@ def test_export_json_downloads(login, page):
     assert cd.endswith(".json")
     assert "labgas_export" in cd
     data = resp.json()
+    assert "versao" in data
+    assert data["versao"] == "2.21.0"
     assert "kpis" in data
     assert "exportado_por" in data
     assert len(data.get("cilindros", [])) >= 0
@@ -37,7 +42,10 @@ def test_export_csv_downloads(login, page):
     cd = resp.headers.get("Content-Disposition", "")
     assert cd.endswith(".csv")
     assert "labgas_export" in cd
-    assert "CILINDROS" in resp.text
+    reader = csv.reader(io.StringIO(resp.text))
+    rows = list(reader)
+    cilindro_header = [r for r in rows if r and r[0] == "# CILINDROS"]
+    assert cilindro_header, "CSV must contain # CILINDROS section"
 
 
 def test_export_md_downloads(login, page):

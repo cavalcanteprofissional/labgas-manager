@@ -2415,3 +2415,49 @@ Padronizar nomenclatura de arquivos exportados e registrar todas as exportaçõe
 - `frontend/templates/admin_user_data.html` — filtros de tipo/ação + badge teal
 - `frontend/tests/test_export.py` — teste de registro no histórico
 
+## Fase 88: Correção do loading infinito + melhorias nas exportações (concluído) ✅
+
+### Objetivo
+Corrigir o bug de loading infinito ao baixar exportações e padronizar a distribuição de dados nos 4 formatos (JSON, CSV, Excel, Markdown) seguindo boas práticas (RFC 4180 para CSV, formatação para Excel).
+
+### Bugs corrigidos
+
+#### 1. Loading infinito no download (CRITICAL)
+- **Causa**: links de exportação são `<a>` tags que disparam `showLoadingDelayed()` no handler global de `click`, mas a resposta `Content-Disposition: attachment` não navega a página → `pageshow` nunca dispara → overlay fica preso
+- **Correção**: adicionar `data-no-loading` nos 4 links de exportação em `dashboard.html`
+
+#### 2. CSV: coluna "elementos" das amostras sempre vazia (CRITICAL)
+- **Causa**: header diz `"elementos"` mas a chave no dict é `"elementos_nomes"` → `row.get("elementos")` retorna `""` 
+- **Correção**: usar `csv.writer` com headers corretos
+
+#### 3. CSV sem módulo csv (RFC 4180) (HIGH)
+- **Causa**: writing manual com `",".join()` não trata vírgulas, aspas ou quebras de linha
+- **Correção**: substituir por `csv.writer` com `io.StringIO`
+
+#### 4. sanitize_csv aplicado parcialmente (MEDIUM)
+- **Causa**: só cilindros/elementos usavam `sanitize_csv` — leituras, pressões e amostras ficavam sem proteção
+- **Correção**: aplicar em todas as tabelas
+
+### Melhorias implementadas
+
+#### 5. Excel — formatação profissional
+- Largura de colunas automáticas baseada no maior valor
+- `auto_filter` na aba Resumo para ordenação
+- Formatação numérica: custo como moeda (R$ #,##0.00), litros com 1 decimal
+
+#### 6. JSON — campo versão
+- Adicionado `"versao": "2.21.0"` para compatibilidade futura
+
+#### 7. Markdown — colunas consistentes + escape
+- Colunas adicionadas: `data_compra`, `data_inicio_consumo`, `data_fim`, `litros_equivalentes`, `usuario_nome`, `created_at`
+- Escape de `|` nos valores para não quebrar tabelas
+
+#### 8. Testes atualizados
+- `test_export_csv` valida conteúdo com `csv.reader` (não só substring)
+- `test_export_json` valida campo `versao`
+
+### Arquivos modificados
+- `frontend/templates/dashboard.html` — `data-no-loading` nos links de exportação
+- `frontend/blueprints/admin.py` — reescrita do bloco CSV (módulo csv), correção header amostras, Excel com formatação, JSON com versão, Markdown com colunas consistentes
+- `frontend/tests/test_export.py` — asserts atualizados
+
