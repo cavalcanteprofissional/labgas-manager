@@ -437,14 +437,16 @@
                 {% if elementos_mais_analisados %}
                 <div class="elem-bar-list">
                     {% set max_qtd = elementos_mais_analisados[0].quantidade %}
+                    {% set total_qtd = elementos_mais_analisados|sum(attribute='quantidade') %}
                     {% for item in elementos_mais_analisados %}
-                    {% set pct = ((item.quantidade / max_qtd) * 100)|round(0)|int %}
+                    {% set bar_pct = ((item.quantidade / max_qtd) * 100)|round(0)|int %}
+                    {% set total_pct = ((item.quantidade / total_qtd) * 100)|round(0)|int %}
                     <div class="elem-bar-item">
                         <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
                         <div class="elem-bar-track">
-                            <div class="elem-bar-fill" style="width: {{ pct }}%;"></div>
+                            <div class="elem-bar-fill" style="width: {{ bar_pct }}%;"></div>
                         </div>
-                        <span class="elem-bar-meta">{{ item.quantidade|milhar }} <small>({{ pct }}%)</small></span>
+                        <span class="elem-bar-meta">{{ item.quantidade|milhar }} <small>({{ total_pct }}%)</small></span>
                     </div>
                     {% endfor %}
                 </div>
