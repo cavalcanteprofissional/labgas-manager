@@ -518,6 +518,12 @@
         <div class="card h-100">
             <div class="card-header dash-header dash-header-leitura">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i> Últimas Leituras</h6>
+                {% if leituras %}
+                <a href="{{ url_for('leitura.leitura_list') }}" class="elem-toggle-btn">
+                    <span>Ver todas</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+                {% endif %}
             </div>
             <div class="card-body p-0">
                 {% if leituras %}
@@ -532,9 +538,6 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('leitura.leitura_list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
-                </div>
                 {% else %}
                 <div class="empty-state">
                     <i class="bi bi-{{ ICON_TIPO["leitura"] }}"></i>
@@ -548,6 +551,12 @@
         <div class="card h-100">
             <div class="card-header dash-header dash-header-amostra">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["amostra"] }}"></i> Últimas Amostras</h6>
+                {% if amostras %}
+                <a href="{{ url_for('amostra.list') }}" class="elem-toggle-btn">
+                    <span>Ver todas</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+                {% endif %}
             </div>
             <div class="card-body p-0">
                 {% if amostras %}
@@ -561,9 +570,6 @@
                         <small class="text-muted text-nowrap">{{ a.created_at|data_relativa }}</small>
                     </div>
                     {% endfor %}
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('amostra.list') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
                 </div>
                 {% else %}
                 <div class="empty-state">
