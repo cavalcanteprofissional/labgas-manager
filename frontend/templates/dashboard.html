@@ -14,44 +14,54 @@
     }
     .cilindro-segmented {
         display: inline-flex;
+        position: relative;
         padding: 0.2rem;
         gap: 0.2rem;
-        background: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.14);
         border: 1px solid rgba(255, 255, 255, 0.28);
         border-radius: 999px;
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
     }
+    .cilindro-indicator {
+        position: absolute;
+        top: 0.2rem;
+        bottom: 0.2rem;
+        left: 0.2rem;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                    width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform, width;
+        z-index: 0;
+    }
     .cilindro-filtro-btn {
+        position: relative;
+        z-index: 1;
         border: none;
         border-radius: 999px;
-        padding: 0.28rem 0.85rem;
-        font-size: 0.78rem;
+        padding: 0.3rem 0.9rem;
+        font-size: 0.76rem;
         font-weight: 600;
         line-height: 1.2;
         color: rgba(255, 255, 255, 0.92);
         background: transparent;
         white-space: nowrap;
-        transition: color 0.18s ease, background-color 0.18s ease,
-                    box-shadow 0.18s ease, transform 0.12s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.18s ease, transform 0.12s ease;
     }
-    .cilindro-filtro-btn:hover {
-        color: #fff;
-        background: rgba(255, 255, 255, 0.18);
-    }
+    .cilindro-filtro-btn i { font-size: 0.85rem; }
+    .cilindro-filtro-btn:hover { color: #fff; }
+    .cilindro-filtro-btn:active { transform: scale(0.95); }
     .cilindro-filtro-btn:focus-visible {
         outline: 2px solid rgba(255, 255, 255, 0.7);
         outline-offset: 1px;
     }
-    .cilindro-filtro-btn.active {
-        color: var(--cilindro-dark);
-        background: #fff;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-    }
-    .cilindro-filtro-btn.active:hover {
-        color: var(--cilindro-dark);
-        background: #fff;
-    }
+    .cilindro-filtro-btn.active { color: var(--cilindro-dark); }
     .dash-header-cilindro { background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); }
     .dash-header-pressao  { background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); }
     .dash-header-leitura   { background: linear-gradient(135deg, var(--leitura-dark), var(--leitura-light)); }
@@ -197,6 +207,39 @@
         font-variant-numeric: tabular-nums;
     }
     .elem-item-more { display: none; }
+    .elem-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.42);
+        border-radius: 999px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.76rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.16);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+        transition: background-color 0.18s ease, border-color 0.18s ease,
+                    transform 0.12s ease;
+    }
+    .elem-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.28);
+        border-color: rgba(255, 255, 255, 0.62);
+    }
+    .elem-toggle-btn:active { transform: scale(0.95); }
+    .elem-toggle-btn:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.7);
+        outline-offset: 1px;
+    }
+    .elem-toggle-btn .chev {
+        transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .elem-toggle-btn.expanded .chev {
+        transform: rotate(180deg);
+    }
 </style>
 {% endblock %}
 
@@ -385,8 +428,13 @@
             <div class="card-header dash-header dash-header-cilindro">
                 <h5 class="mb-0"><i class="bi bi-thermometer-half"></i> Leituras por Cilindro</h5>
                 <div class="cilindro-segmented" role="group" aria-label="Ordenar legenda">
-                    <button type="button" class="cilindro-filtro-btn active" data-cilindro-ordem="numero">Por Número</button>
-                    <button type="button" class="cilindro-filtro-btn" data-cilindro-ordem="leitura">Por Leituras</button>
+                    <span class="cilindro-indicator" aria-hidden="true"></span>
+                    <button type="button" class="cilindro-filtro-btn active" data-cilindro-ordem="numero">
+                        <i class="bi bi-hash"></i> Número
+                    </button>
+                    <button type="button" class="cilindro-filtro-btn" data-cilindro-ordem="leitura">
+                        <i class="bi bi-bar-chart-fill"></i> Leituras
+                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -434,8 +482,9 @@
             <div class="card-header dash-header dash-header-elemento">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Elementos mais analisados</h6>
                 {% if elementos_mais_analisados|length > 5 %}
-                <button type="button" id="elemToggleBtn" class="btn btn-sm btn-light d-inline-flex align-items-center gap-1">
-                    <i class="bi bi-chevron-down"></i> Ver todos
+                <button type="button" id="elemToggleBtn" class="elem-toggle-btn" aria-expanded="false">
+                    <i class="bi bi-chevron-down chev"></i>
+                    <span id="elemToggleLabel">Ver todos</span>
                 </button>
                 {% endif %}
             </div>
@@ -638,14 +687,29 @@ cilindroChart = new Chart(document.getElementById('cilindroChart'), {
 });
 renderCilindro('numero');
 
+function moveCilindroIndicator() {
+    var seg = document.querySelector('.cilindro-segmented');
+    var ind = document.querySelector('.cilindro-indicator');
+    if (!seg || !ind) return;
+    var ativo = seg.querySelector('.cilindro-filtro-btn.active');
+    if (!ativo) return;
+    var segRect = seg.getBoundingClientRect();
+    var btnRect = ativo.getBoundingClientRect();
+    ind.style.width = btnRect.width + 'px';
+    ind.style.transform = 'translateX(' + (btnRect.left - segRect.left) + 'px)';
+}
+
 document.querySelectorAll('.cilindro-filtro-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
         document.querySelectorAll('.cilindro-filtro-btn').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         cilindroModo = btn.getAttribute('data-cilindro-ordem');
         renderCilindro(cilindroModo);
+        moveCilindroIndicator();
     });
 });
+window.addEventListener('load', moveCilindroIndicator);
+window.addEventListener('resize', moveCilindroIndicator);
 {% endif %}
 
 {% if pressao_chart %}
@@ -738,14 +802,17 @@ document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
 var elemToggleBtn = document.getElementById('elemToggleBtn');
 if (elemToggleBtn) {
     var elemExpanded = false;
+    var elemLabel = document.getElementById('elemToggleLabel');
     elemToggleBtn.addEventListener('click', function () {
         elemExpanded = !elemExpanded;
         document.querySelectorAll('.elem-item-more').forEach(function (el) {
             el.style.display = elemExpanded ? 'grid' : 'none';
         });
-        elemToggleBtn.innerHTML = elemExpanded
-            ? '<i class="bi bi-chevron-up"></i> Ver 5'
-            : '<i class="bi bi-chevron-down"></i> Ver todos';
+        elemToggleBtn.classList.toggle('expanded', elemExpanded);
+        elemToggleBtn.setAttribute('aria-expanded', elemExpanded ? 'true' : 'false');
+        if (elemLabel) {
+            elemLabel.textContent = elemExpanded ? 'Ver 5' : 'Ver todos';
+        }
     });
 }
 </script>
