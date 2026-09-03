@@ -12,8 +12,45 @@
         flex-wrap: wrap;
         gap: 0.5rem;
     }
+    .cilindro-segmented {
+        display: inline-flex;
+        padding: 0.2rem;
+        gap: 0.2rem;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+    .cilindro-filtro-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 0.28rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: rgba(255, 255, 255, 0.92);
+        background: transparent;
+        white-space: nowrap;
+        transition: color 0.18s ease, background-color 0.18s ease,
+                    box-shadow 0.18s ease, transform 0.12s ease;
+    }
+    .cilindro-filtro-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.18);
+    }
+    .cilindro-filtro-btn:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.7);
+        outline-offset: 1px;
+    }
     .cilindro-filtro-btn.active {
-        box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+        color: var(--cilindro-dark);
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    }
+    .cilindro-filtro-btn.active:hover {
+        color: var(--cilindro-dark);
+        background: #fff;
     }
     .dash-header-cilindro { background: linear-gradient(135deg, var(--cilindro-dark), var(--cilindro-light)); }
     .dash-header-pressao  { background: linear-gradient(135deg, var(--pressao-dark), var(--pressao-light)); }
@@ -311,9 +348,9 @@
         <div class="card h-100">
             <div class="card-header dash-header dash-header-cilindro">
                 <h5 class="mb-0"><i class="bi bi-thermometer-half"></i> Leituras por Cilindro</h5>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar legenda">
-                    <button type="button" class="btn btn-light cilindro-filtro-btn active" data-cilindro-ordem="numero">Por Número</button>
-                    <button type="button" class="btn btn-light cilindro-filtro-btn" data-cilindro-ordem="leitura">Por Leituras</button>
+                <div class="cilindro-segmented" role="group" aria-label="Ordenar legenda">
+                    <button type="button" class="cilindro-filtro-btn active" data-cilindro-ordem="numero">Por Número</button>
+                    <button type="button" class="cilindro-filtro-btn" data-cilindro-ordem="leitura">Por Leituras</button>
                 </div>
             </div>
             <div class="card-body">
