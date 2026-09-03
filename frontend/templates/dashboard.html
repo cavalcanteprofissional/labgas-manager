@@ -149,6 +149,13 @@
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
     }
+    .dist-legend {
+        margin-top: 0.75rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
+        max-height: none;
+    }
     @media (max-width: 991.98px) {
         .doughnut-wrap {
             flex-direction: column;
@@ -460,12 +467,24 @@
         <div class="card h-100">
             <div class="card-header dash-header dash-header-amostra">
                 <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Elementos por Amostra</h5>
+                {% if dist_values and dist_values|sum > 0 %}
+                <div id="distSeg" class="cilindro-segmented" role="group" aria-label="Ordenar">
+                    <span class="cilindro-indicator" aria-hidden="true"></span>
+                    <button type="button" class="cilindro-filtro-btn active" data-dist-ordem="faixa">
+                        <i class="bi bi-list-ul"></i> Por Faixa
+                    </button>
+                    <button type="button" class="cilindro-filtro-btn" data-dist-ordem="amostra">
+                        <i class="bi bi-people"></i> Amostras
+                    </button>
+                </div>
+                {% endif %}
             </div>
             <div class="card-body">
                 {% if dist_values and dist_values|sum > 0 %}
                 <div class="chart-container">
                     <canvas id="distChart"></canvas>
                 </div>
+                <div id="distLegend" class="dist-legend"></div>
                 {% else %}
                 <div class="empty-state">
                     <i class="bi bi-diagram-3"></i>
@@ -695,30 +714,34 @@ cilindroChart = new Chart(document.getElementById('cilindroChart'), {
 });
 renderCilindro('numero');
 
-function moveCilindroIndicator() {
-    var seg = document.querySelector('.cilindro-segmented');
-    var ind = document.querySelector('.cilindro-indicator');
-    if (!seg || !ind) return;
-    var ativo = seg.querySelector('.cilindro-filtro-btn.active');
-    if (!ativo) return;
-    var segRect = seg.getBoundingClientRect();
-    var btnRect = ativo.getBoundingClientRect();
-    ind.style.width = btnRect.width + 'px';
-    ind.style.transform = 'translateX(' + (btnRect.left - segRect.left) + 'px)';
-}
-
-document.querySelectorAll('.cilindro-filtro-btn').forEach(function (btn) {
+document.querySelectorAll('[data-cilindro-ordem]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-        document.querySelectorAll('.cilindro-filtro-btn').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('[data-cilindro-ordem]').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
+        var box = btn.closest('.cilindro-segmented');
         cilindroModo = btn.getAttribute('data-cilindro-ordem');
         renderCilindro(cilindroModo);
-        moveCilindroIndicator();
+        moveIndicator(box);
     });
 });
-window.addEventListener('load', moveCilindroIndicator);
-window.addEventListener('resize', moveCilindroIndicator);
 {% endif %}
+
+function moveIndicator(segEl) {
+    if (!segEl) return;
+    var ind = segEl.querySelector('.cilindro-indicator');
+    var ativo = segEl.querySelector('.cilindro-filtro-btn.active');
+    if (!ind || !ativo) return;
+    var sRect = segEl.getBoundingClientRect();
+    var bRect = ativo.getBoundingClientRect();
+    ind.style.width = bRect.width + 'px';
+    ind.style.transform = 'translateX(' + (bRect.left - sRect.left) + 'px)';
+}
+
+function moveAllIndicators() {
+    document.querySelectorAll('.cilindro-segmented').forEach(moveIndicator);
+}
+window.addEventListener('load', moveAllIndicators);
+window.addEventListener('resize', moveAllIndicators);
 
 {% if pressao_chart %}
 var pressaoCtx = document.getElementById('pressaoChart');
@@ -778,14 +801,27 @@ new Chart(document.getElementById('leiturasMesChart'), {
 {% endif %}
 
 {% if dist_values and dist_values|sum > 0 %}
-new Chart(document.getElementById('distChart'), {
+var distLabels = {{ dist_labels|tojson }};
+var distValues = {{ dist_values|tojson }};
+var distIntervals = {{ dist_intervals|tojson }};
+var distCores = {{ paleta_amostra|tojson }};
+var distModo = 'faixa';
+var distOrder = [];
+
+function distFaixa(f) {
+    if (f[0] === f[1]) return f[0] + ' elemento';
+    if (f[1] === null) return f[0] + ' ou mais elementos';
+    return 'de ' + f[0] + ' a ' + f[1] + ' elementos';
+}
+
+var distChart = new Chart(document.getElementById('distChart'), {
     type: 'bar',
     data: {
-        labels: {{ dist_labels|tojson }},
+        labels: distLabels,
         datasets: [{
             label: 'Amostras',
-            data: {{ dist_values|tojson }},
-            backgroundColor: {{ paleta_amostra|tojson }},
+            data: distValues,
+            backgroundColor: distCores,
             borderRadius: 4
         }]
     },
@@ -795,16 +831,18 @@ new Chart(document.getElementById('distChart'), {
             tooltip: Object.assign({}, tooltipStyle, {
                 callbacks: {
                     title: function (items) {
-                        var idx = items[0].dataIndex;
-                        var f = {{ dist_intervals|tojson }}[idx];
-                        if (!f) return '';
-                        if (f[0] === f[1]) return f[0] + ' elemento';
-                        if (f[1] === null) return f[0] + ' ou mais elementos';
-                        return 'de ' + f[0] + ' a ' + f[1] + ' elementos';
+                        var it = distOrder[items[0].dataIndex];
+                        if (!it) return '';
+                        return distModo === 'amostra'
+                            ? it.val + (it.val === 1 ? ' amostra' : ' amostras')
+                            : distFaixa(it.inter);
                     },
                     label: function (ctx) {
-                        var n = ctx.parsed.y;
-                        return n + (n === 1 ? ' amostra' : ' amostras');
+                        var it = distOrder[ctx.dataIndex];
+                        if (!it) return '';
+                        return distModo === 'amostra'
+                            ? distFaixa(it.inter)
+                            : it.val + (it.val === 1 ? ' amostra' : ' amostras');
                     }
                 }
             }),
@@ -815,6 +853,42 @@ new Chart(document.getElementById('distChart'), {
             y: { beginAtZero: true, title: { display: true, text: 'Nº de amostras' }, ticks: { stepSize: 1 } }
         }
     }
+});
+
+function renderDist(modo) {
+    var items = [];
+    for (var i = 0; i < distLabels.length; i++)
+        items.push({ label: distLabels[i], val: distValues[i], inter: distIntervals[i], cor: distCores[i % distCores.length] });
+    if (modo === 'amostra') items.sort(function (a, b) { return b.val - a.val; });
+    distOrder = items;
+
+    distChart.data.labels = items.map(function (it) { return it.label; });
+    distChart.data.datasets[0].data = items.map(function (it) { return it.val; });
+    distChart.data.datasets[0].backgroundColor = items.map(function (it) { return it.cor; });
+    distChart.update();
+
+    var wrap = document.getElementById('distLegend');
+    if (!wrap) return;
+    var html = '';
+    items.forEach(function (it) {
+        html += '<div class="cilindro-legend-item">' +
+            '<span class="cilindro-legend-dot" style="background:' + it.cor + '"></span>' +
+            '<span class="cilindro-legend-num">' + distFaixa(it.inter) + '</span>' +
+            '<span class="cilindro-legend-qtd">' + it.val + (it.val === 1 ? ' amostra' : ' amostras') + '</span>' +
+            '</div>';
+    });
+    wrap.innerHTML = html;
+}
+renderDist('faixa');
+
+document.querySelectorAll('#distSeg .cilindro-filtro-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        document.querySelectorAll('#distSeg .cilindro-filtro-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        distModo = btn.getAttribute('data-dist-ordem');
+        renderDist(distModo);
+        moveIndicator(document.getElementById('distSeg'));
+    });
 });
 {% endif %}
 
