@@ -466,7 +466,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
 @login_required
 def dashboard():
     from utils.supabase_utils import get_supabase_client, get_admin_client
-    from blueprints.helpers import get_user_id, is_dev, get_all_users
+    from blueprints.helpers import get_user_id, is_dev, get_all_users, verificar_alerta_pressao
 
     current_user_id = get_user_id()
     selected_user_id = request.args.get("selected_user_id", "").strip()
@@ -524,6 +524,8 @@ def dashboard():
     pressoes_recentes = pressoes[-5:] if pressoes else []
     amostras_recentes = amostras_data[:5]
 
+    alerta_pressao = verificar_alerta_pressao() if filter_user_id == current_user_id else None
+
     return render_template(
         "dashboard.html",
         cilindro=cilindro,
@@ -535,6 +537,7 @@ def dashboard():
         paleta_elemento=PALETA_ELEMENTO,
         lista_usuarios=lista_usuarios,
         selected_user_id=selected_user_id or "all",
+        alerta_pressao=alerta_pressao,
         **kpis,
     )
 

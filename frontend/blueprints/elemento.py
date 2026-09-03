@@ -36,6 +36,11 @@ def list():
                 flash("Nome e consumo são obrigatórios", "danger")
                 return redirect(url_for("elemento.list"))
             
+            consumo_val = safe_float(consumo_lpm, 0)
+            if consumo_val <= 0:
+                flash("Consumo (L/min) deve ser maior que zero", "danger")
+                return redirect(url_for("elemento.list"))
+            
             if dev:
                 existing = get_admin_client().table("elemento").select("id").eq("nome", nome).execute()
             else:
@@ -46,7 +51,7 @@ def list():
             
             data = {
                 "nome": nome,
-                "consumo_lpm": safe_float(consumo_lpm, 0),
+                "consumo_lpm": consumo_val,
                 "user_id": user_id
             }
             
@@ -74,6 +79,11 @@ def list():
                 flash("ID do elemento, nome e consumo são obrigatórios", "danger")
                 return redirect(url_for("elemento.list"))
             
+            consumo_val = safe_float(consumo_lpm, 0)
+            if consumo_val <= 0:
+                flash("Consumo (L/min) deve ser maior que zero", "danger")
+                return redirect(url_for("elemento.list"))
+            
             if not dev:
                 existing = get_supabase_client().table("elemento").select("id").eq("user_id", user_id).eq("nome", nome).neq("id", elemento_id).execute()
                 if existing.data:
@@ -82,7 +92,7 @@ def list():
             
             data = {
                 "nome": nome,
-                "consumo_lpm": safe_float(consumo_lpm, 0)
+                "consumo_lpm": consumo_val
             }
             
             if not dev:

@@ -78,6 +78,24 @@ def leitura_list():
             cilindro_id_int = int(cilindro_id)
             elemento_id_int = int(elemento_id)
 
+            cil_detail = get_supabase_client().table("cilindro").select("data_inicio_consumo,data_fim").eq("id", cilindro_id_int).execute().data
+            if cil_detail:
+                cil_data = cil_detail[0]
+                try:
+                    dt_leitura = datetime.strptime(data_leitura, "%Y-%m-%d")
+                    if cil_data.get("data_inicio_consumo"):
+                        dt_inicio = datetime.strptime(cil_data["data_inicio_consumo"], "%Y-%m-%d")
+                        if dt_leitura < dt_inicio:
+                            flash(f"Data da leitura ({data_leitura}) é anterior ao início do cilindro ({cil_data['data_inicio_consumo']})", "danger")
+                            return redirect(url_for("leitura.leitura_list"))
+                    if cil_data.get("data_fim"):
+                        dt_fim = datetime.strptime(cil_data["data_fim"], "%Y-%m-%d")
+                        if dt_leitura > dt_fim:
+                            flash(f"Data da leitura ({data_leitura}) é posterior ao fim do cilindro ({cil_data['data_fim']})", "danger")
+                            return redirect(url_for("leitura.leitura_list"))
+                except ValueError:
+                    pass
+
             if not dev:
                 if cilindro_id_int not in cilindro_dict:
                     flash("Cilindro não encontrado", "danger")
@@ -135,6 +153,24 @@ def leitura_list():
 
             cilindro_id_int = int(cilindro_id)
             elemento_id_int = int(elemento_id)
+
+            cil_detail = get_supabase_client().table("cilindro").select("data_inicio_consumo,data_fim").eq("id", cilindro_id_int).execute().data
+            if cil_detail:
+                cil_data = cil_detail[0]
+                try:
+                    dt_leitura = datetime.strptime(data_leitura, "%Y-%m-%d")
+                    if cil_data.get("data_inicio_consumo"):
+                        dt_inicio = datetime.strptime(cil_data["data_inicio_consumo"], "%Y-%m-%d")
+                        if dt_leitura < dt_inicio:
+                            flash(f"Data da leitura ({data_leitura}) é anterior ao início do cilindro ({cil_data['data_inicio_consumo']})", "danger")
+                            return redirect(url_for("leitura.leitura_list"))
+                    if cil_data.get("data_fim"):
+                        dt_fim = datetime.strptime(cil_data["data_fim"], "%Y-%m-%d")
+                        if dt_leitura > dt_fim:
+                            flash(f"Data da leitura ({data_leitura}) é posterior ao fim do cilindro ({cil_data['data_fim']})", "danger")
+                            return redirect(url_for("leitura.leitura_list"))
+                except ValueError:
+                    pass
 
             data_update = {
                 "data": data_leitura,

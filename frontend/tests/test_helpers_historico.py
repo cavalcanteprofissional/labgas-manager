@@ -79,6 +79,20 @@ def test_registrar_historico_ref_id_zero_e_detalhe_vazio_sao_respeitados():
 
     registro = chamadas["registro"]
     assert registro["ref_id"] == 0
+    assert registro["detalhe"] == {"_incomplete": True}
+
+
+def test_registrar_historico_detalhe_vazio_atualizado_marca_incompleto():
+    chamadas = {}
+
+    def fake_insert(nome, registro):
+        chamadas["registro"] = registro
+
+    with patch("utils.supabase_utils.get_admin_client", return_value=_fake_client(fake_insert)):
+        registrar_historico("cilindro", "criado", "CIL-001", "user-1",
+                            ref_id=5, detalhe={})
+
+    registro = chamadas["registro"]
     assert registro["detalhe"] == {}
 
 

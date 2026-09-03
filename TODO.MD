@@ -2552,3 +2552,72 @@ Criar um relatório visual/estruturado do estado dos testes, similar a um dashbo
 - `CHANGELOG.md` — entrada v2.21.2
 - `TODO.MD` — marcar como concluído
 
+---
+
+## Fase 67: Correções de Integridade de Dados (RELATORIO_ANALISE) 🔧
+
+### Contexto
+Baseado no relatório `RELATORIO_ANALISE_LABGAS_md_2026_09_03T16_42_37.md` (análise do backup `labgas_backup_2026-08-31_20-55-22.json`). Correções de bugs de dados, validações e melhorias de qualidade.
+
+### Fase 1 — Correções de Dados (SQL)
+
+#### 1.1 BUG-01: Cilindro #1 (id=33) com data_fim invertida
+- [x] Criar migration `database/migrations/20260903_correcoes_dados.sql`
+- [ ] Executar no Supabase: `UPDATE public.cilindro SET data_fim = '2025-09-16' WHERE id = 33;`
+
+#### 1.2 BUG-02: Mercúrio (id=69) com consumo_lpm = 0
+- [x] Correção no `frontend/utils/constants.py` (Mercúrio default 0.5)
+- [ ] Executar no Supabase: `UPDATE public.elemento SET consumo_lpm = 0.5 WHERE id = 69;`
+
+#### 1.3 BUG-03: Remover 4 duplicatas exatas
+- [ ] Executar no Supabase: `DELETE FROM public.leitura WHERE id IN (112, 121, 154, 159);`
+- Duplicatas divergentes (IDs 145/146, 148/149, 197/198, 234/235, 259/260): revisão manual necessária
+
+#### 1.4 BUG-04: Leituras fora do período
+- [ ] Cil #5 (id=37): `UPDATE public.cilindro SET data_fim = '2025-12-23' WHERE id = 37;`
+- [ ] Cil #9 (id=41) → Cil #8 (id=40): `UPDATE public.leitura SET cilindro_id = 40 WHERE id = 194;`
+- [ ] Cil #13 (id=151): `UPDATE public.cilindro SET data_fim = '2026-07-16' WHERE id = 151;`
+
+#### 1.5 BUG-05: Permissões admin
+- [ ] Executar no Supabase: habilitar todas as abas para `a908e61d-ac27-4ba1-af2a-698836aab07b`
+
+### Fase 2 — Validações no Código ✅
+
+- [x] 2.1 Validação `consumo_lpm > 0` em `frontend/blueprints/elemento.py` (create + update)
+- [x] 2.2 Validação `data_fim >= data_inicio_consumo` em `frontend/blueprints/cilindro.py` (create + update)
+- [x] 2.3 Override de permissões admin/dev em `frontend/blueprints/helpers.py` (já existia, documentado)
+- [x] 2.4 Validação período da leitura vs cilindro em `frontend/blueprints/leitura.py` (create + update)
+
+### Fase 3 — Melhorias ✨
+
+- [x] 3.1 `helpers.py::registrar_historico` — detalhe obrigatório para 'atualizado' (flag `_incomplete`)
+- [x] 3.2 Migrations de constraints: `database/migrations/20260903_constraints_validacao.sql`
+- [x] 3.2 Migration trigger período: `database/migrations/20260903_trigger_leitura_periodo.sql`
+- [x] 3.3 Alerta de pressão para cilindro ativo: `helpers.py::verificar_alerta_pressao` + dashboard
+- [x] 3.4 Flag retroativo: `database/migrations/20260903_flag_retroativo.sql`
+
+### Arquivos Modificados
+
+| Arquivo | Ação |
+|---------|------|
+| `frontend/blueprints/elemento.py` | Validação consumo_lpm > 0 |
+| `frontend/blueprints/cilindro.py` | Validação data_fim >= data_inicio |
+| `frontend/blueprints/leitura.py` | Validação período leitura vs cilindro |
+| `frontend/blueprints/helpers.py` | Registrar histórico com detalhe obrigatório + alerta pressão |
+| `frontend/app.py` | Dashboard inclui alerta_pressao |
+| `frontend/templates/dashboard.html` | Exibe alerta de pressão |
+| `frontend/utils/constants.py` | Mercúrio default 0.5 |
+| `database/migrations/20260903_correcoes_dados.sql` | SQL Fase 1 (executar no Supabase) |
+| `database/migrations/20260903_constraints_validacao.sql` | Constraints DB |
+| `database/migrations/20260903_trigger_leitura_periodo.sql` | Trigger período leitura |
+| `database/migrations/20260903_flag_retroativo.sql` | Flag retroativo |
+| `.gitignore` | + RELATORIO_ANALISE + prompts/ |
+
+### Pendências
+- [x] Testes executados e passando (4+7+18+12+20+8+6+41+41=testes locais validados)
+- [ ] Executar SQL de correção de dados no Supabase (Fase 1)
+- [ ] Aplicar constraints após correção de dados (Fase 3.2)
+- [ ] Investigar 5 duplicatas divergentes (BUG-03)
+- [ ] Ativar trigger período após corrigir dados (descomentar no SQL)
+- [ ] Testar tudo localmente antes de push
+

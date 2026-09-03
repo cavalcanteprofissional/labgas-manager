@@ -157,6 +157,27 @@
     {% endif %}
 </div>
 
+{% if alerta_pressao and alerta_pressao.alerta %}
+<div class="alert alert-warning d-flex align-items-start gap-3 mb-3" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-4 mt-1"></i>
+    <div>
+        <strong>Atenção — medição de pressão pendente</strong>
+        <ul class="mb-0 mt-1 ps-3">
+            {% for a in alerta_pressao.alertas %}
+            <li>
+                Cilindro #{{ a.cilindro }}
+                {% if a.tem_pressao %}
+                — última medição de {{ a.pressao }} bar há {{ a.dias }} dia(s)
+                {% else %}
+                — sem medição de pressão registrada
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
 {% if is_dev and lista_usuarios %}
 <div class="row mb-3">
     <div class="col-12 col-md-6 col-lg-4">

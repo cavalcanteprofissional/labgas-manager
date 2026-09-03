@@ -65,6 +65,16 @@ def list():
                 flash("Data de compra inválida", "danger")
                 return redirect(url_for("cilindro.list"))
             
+            if data_inicio_consumo and data_fim:
+                try:
+                    dt_inicio = datetime.strptime(data_inicio_consumo, "%Y-%m-%d")
+                    dt_fim = datetime.strptime(data_fim, "%Y-%m-%d")
+                    if dt_fim < dt_inicio:
+                        flash("Data de fim não pode ser anterior à data de início", "danger")
+                        return redirect(url_for("cilindro.list"))
+                except ValueError:
+                    pass
+            
             try:
                 gas_kg_val = safe_float(gas_kg, GAS_KG_DEFAULT)
                 custo_val = safe_float(custo, CUSTO_DEFAULT)
@@ -127,6 +137,16 @@ def list():
             if not cilindro_id or numero is None or not data_compra:
                 flash("ID do cilindro, número e data de compra são obrigatórios", "danger")
                 return redirect(url_for("cilindro.list"))
+            
+            if data_inicio_consumo and data_fim:
+                try:
+                    dt_inicio = datetime.strptime(data_inicio_consumo, "%Y-%m-%d")
+                    dt_fim = datetime.strptime(data_fim, "%Y-%m-%d")
+                    if dt_fim < dt_inicio:
+                        flash("Data de fim não pode ser anterior à data de início", "danger")
+                        return redirect(url_for("cilindro.list"))
+                except ValueError:
+                    pass
             
             try:
                 gas_kg_val = safe_float(gas_kg, GAS_KG_DEFAULT)

@@ -80,9 +80,10 @@ def registrar_historico(tipo, acao, label, user_id, ref_id=None, detalhe=None):
     acao: criado | atualizado | excluido
     label: texto legível (antiga coluna nome)
     ref_id: id do registro de origem na tabela de `tipo` (None p/ perfil/auth/lote)
-    detalhe: payload estruturado JSONB opcional
+    detalhe: payload estruturado JSONB — obrigatório para 'atualizado'
     """
     from utils.supabase_utils import get_admin_client
+
     try:
         client = get_admin_client()
         registro = {
@@ -93,8 +94,13 @@ def registrar_historico(tipo, acao, label, user_id, ref_id=None, detalhe=None):
         }
         if ref_id is not None:
             registro["ref_id"] = ref_id
+        
+        if acao == "atualizado" and (detalhe is None or (isinstance(detalhe, dict) and len(detalhe) == 0)):
+            detalhe = {"_incomplete": True}
+        
         if detalhe is not None:
             registro["detalhe"] = detalhe
+        
         client.table("historico_auditoria").insert(registro).execute()
         logger.info(f"Histórico registrado: {tipo} | {acao} | {label} | ref={ref_id} | User: {user_id}")
     except Exception as e:
@@ -106,7 +112,11 @@ ABAS_DEFAULT = {aba: True for aba in ABAS_DISPONIVEIS}
 
 
 def pode_acessar_aba(aba):
-    """Verifica se o usuário atual pode acessar a aba especificada"""
+    """Verifica se o usuário atual pode acessar a aba especificada.
+    
+    Admin e dev sempre têm acesso a todas as abas (override).
+    Usuários comuns seguem o habilitar_abas do perfil.
+    """
     if is_admin():
         return True
     
@@ -179,3 +189,47 @@ def get_all_users():
             return []
 
     return get_cached_or_fetch("get_all_users", _fetch, timeout=300)
+
+
+def verificar_alerta_pressao():
+    """MELHORIA-02: Verifica se cilindro ativo está sem medição de pressão há 7+ dias.
+
+    Retorna dict com alerta e detalhes, ou None se não houver alerta.
+    """
+    from datetime import datetime, timezone
+    from utils.supabase_utils import get_supabase_client
+
+    try:
+        supabase = get_supabase_client()
+        cil_ativo = supabase.table("cilindro").select("id,numero,status").eq("status", "ativo").execute().data or []
+        if not cil_ativo:
+            return None
+
+        alertas = []
+        for cil in cil_ativo:
+            cil_id = cil["id"]
+            ultima_pressao = supabase.table("pressao").select("data,pressao").eq("cilindro_id", cil_id).order("data", desc=True).limit(1).execute().data
+
+            if ultima_pressao:
+                try:
+                    ultima_data = datetime.strptime(str(ultima_pressao[0]["data"]), "%Y-%m-%d")
+                    dias = (datetime.now(timezone.utc).date() - ultima_data.date()).days
+                except (ValueError, TypeError):
+                    dias = None
+            else:
+                dias = None
+
+            if dias is None or dias > 7:
+                alertas.append({
+                    "cilindro": cil.get("numero"),
+                    "dias": dias,
+                    "pressao": ultima_pressao[0].get("pressao") if ultima_pressao else None,
+                    "tem_pressao": bool(ultima_pressao)
+                })
+
+        if alertas:
+            return {"alerta": True, "alertas": alertas}
+        return {"alerta": False}
+    except Exception as e:
+        logger.error(f"verificar_alerta_pressao: erro: {str(e)}")
+        return None

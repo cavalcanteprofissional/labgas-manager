@@ -134,7 +134,7 @@ ELEMENTOS_PADRAO = [
     {"nome": "Estanho HG", "consumo_lpm": 1.5},
     {"nome": "Ferro", "consumo_lpm": 2.0},
     {"nome": "Manganês", "consumo_lpm": 1.5},
-    {"nome": "Mercúrio", "consumo_lpm": 0},
+    {"nome": "Mercúrio", "consumo_lpm": 0.5},
     {"nome": "Molibdênio", "consumo_lpm": 4.5},
     {"nome": "Níquel", "consumo_lpm": 1.5},
     {"nome": "Prata", "consumo_lpm": 1.5},
