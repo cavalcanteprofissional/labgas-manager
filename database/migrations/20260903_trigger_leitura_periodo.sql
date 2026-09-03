@@ -32,9 +32,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- NOTA: Comentado para permitir correção de dados históricos primeiro.
--- Após corrigir os dados (BUG-04), descomente abaixo para ativar o trigger.
+-- NOTA: Ativo no banco em 2026-09-03 após corrigir os dados (BUG-04),
+-- quando as leituras fora do período foram zeradas (validação = 0).
 
--- CREATE TRIGGER trg_validar_leitura_periodo
--- BEFORE INSERT OR UPDATE ON public.leitura
--- FOR EACH ROW EXECUTE FUNCTION validar_leitura_periodo();
+CREATE TRIGGER trg_validar_leitura_periodo
+BEFORE INSERT OR UPDATE ON public.leitura
+FOR EACH ROW EXECUTE FUNCTION validar_leitura_periodo();

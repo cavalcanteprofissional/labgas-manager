@@ -34,9 +34,11 @@ DELETE FROM public.leitura WHERE id IN (112, 121, 154, 159);
 -- Cil #5 (id=37): ajustar data_fim para incluir a leitura de 2025-12-23
 UPDATE public.cilindro SET data_fim = '2025-12-23' WHERE id = 37;
 
--- Cil #9 (id=41): mover leitura id=194 para Cil #8 (id=40)
--- que estava ativo em 2026-02-12
-UPDATE public.leitura SET cilindro_id = 40 WHERE id = 194;
+-- Cil #9 (id=41): mover leitura id=194 (2026-02-12) para o cilindro
+-- efetivamente ativo na data. Ocilindro ativo em 2026-02-12 é o Cil #7 (id=39,
+-- período 2026-01-23 a 2026-02-23). NOTA: o relatório sugeria Cil #8, mas este
+-- só inicia em 2026-02-23, o que criaria nova leitura fora do período.
+UPDATE public.leitura SET cilindro_id = 39 WHERE id = 194;
 
 -- Cil #13 (id=151): ajustar data_fim para incluir leituras de 2026-07-16
 UPDATE public.cilindro SET data_fim = '2026-07-16' WHERE id = 151;

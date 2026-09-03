@@ -2615,9 +2615,19 @@ Baseado no relatório `RELATORIO_ANALISE_LABGAS_md_2026_09_03T16_42_37.md` (aná
 
 ### Pendências
 - [x] Testes executados e passando (4+7+18+12+20+8+6+41+41=testes locais validados)
-- [ ] Executar SQL de correção de dados no Supabase (Fase 1)
-- [ ] Aplicar constraints após correção de dados (Fase 3.2)
-- [ ] Investigar 5 duplicatas divergentes (BUG-03)
-- [ ] Ativar trigger período após corrigir dados (descomentar no SQL)
+- [x] **Backup prévio criado**: `backups/labgas_backup_2026-09-03_18-19-59.json.gz`
+- [x] **Executado no Supabase** — `20260903_correcoes_dados.sql` (BUG-01, BUG-02, exatas 112/121/154/159, BUG-04, BUG-05) + correção leitura 194 → Cil#7 (id=39)
+- [x] **Executado no Supabase** — `20260903_flag_retroativo.sql` (adic. coluna retroativo; 132 marcadas)
+- [x] **Executado no Supabase** — constraints VAL-01, VAL-02, pressão/temp/quantidade (**VAL-03 adiado**)
+- [x] **Executado no Supabase** — `20260903_trigger_leitura_periodo.sql` (função + trigger ATIVO)
+- [x] Validação pós-correção OK: datas=0, consumo≤0=0, fora-do-período=0, duplicatas-exatas=0; total 219 leituras
+- [ ] **BUG-03 — 5 duplicatas DIVERGENTES (aguardando decisão manual — investigar origem antes de excluir):**
+      - Par 1 — Ferro @2026-01-22 (Cil#6): manter 145(48)/excluir 146(37)
+      - Par 2 — Zinco @2026-01-23 (Cil#6): manter 148(48)/excluir 149(47)
+      - Par 3 — Cromo @2026-03-13 (Cil#9): manter ??? / excluir ??? — created_at quase iguais, decidir 197(25) vs 198(45)
+      - Par 4 — Manganês @2026-04-22 (Cil#11): manter 234(24)/excluir 235(24, tempo difere)
+      - Par 5 — Zinco @2026-05-27 (Cil#12): manter 259(37)/excluir 260(27)
+      - Todos do mesmo user_id (a908e61d). Histórico de auditoria não registrou essas leituras (não auxilia).
+- [ ] **VAL-03 (idx_leitura_unique) — BLOQUEADO pelas 5 divergentes:** só aplicar após resolver os pares, senão a criação do índice falha.
 - [ ] Testar tudo localmente antes de push
 
