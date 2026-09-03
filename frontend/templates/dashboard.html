@@ -509,6 +509,8 @@ var cilindroLabels = {{ cilindro_leituras_labels|tojson }};
 var cilindroValues = {{ cilindro_leituras_values|tojson }};
 var paletaCilindro = {{ paleta_cilindro|tojson }};
 var cilindroChart = null;
+var cilindroModo = 'numero';
+var cilindroOrder = [];
 
 function renderCilindro(modo) {
     var items = [];
@@ -520,6 +522,7 @@ function renderCilindro(modo) {
     } else {
         items.sort(function (a, b) { return Number(a.num) - Number(b.num); });
     }
+    cilindroOrder = items;
     var base = modo === 'leitura'
         ? items.map(function (it) { return it.qtd; })
         : items.map(function (it) { return Number(it.num); });
@@ -578,7 +581,8 @@ document.querySelectorAll('.cilindro-filtro-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
         document.querySelectorAll('.cilindro-filtro-btn').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        renderCilindro(btn.getAttribute('data-cilindro-ordem'));
+        cilindroModo = btn.getAttribute('data-cilindro-ordem');
+        renderCilindro(cilindroModo);
     });
 });
 {% endif %}
@@ -610,8 +614,25 @@ new Chart(pressaoCtx, {
         responsive: true, maintainAspectRatio: false,
         scales: { y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' } } },
         plugins: {
-            tooltip: tooltipStyle,
-            legend: { position: 'bottom', labels: { usePointStyle: true } }
+            tooltip: Object.assign({}, tooltipStyle, {
+                callbacks: {
+                    title: function (items) {
+                        var it = cilindroOrder[items[0].dataIndex];
+                        if (!it) return '';
+                        return cilindroModo === 'leitura'
+                            ? 'Nº de Leituras ' + it.qtd
+                            : 'Cilindro Nº ' + it.num;
+                    },
+                    label: function (ctx) {
+                        var it = cilindroOrder[ctx.dataIndex];
+                        if (!it) return '';
+                        return cilindroModo === 'leitura'
+                            ? 'Cilindro Nº ' + it.num
+                            : 'Nº de Leituras ' + it.qtd;
+                    }
+                }
+            }),
+            legend: { display: false }
         }
     }
 });
