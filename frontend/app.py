@@ -429,9 +429,9 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     dist_labels = ["1", "2", "3", "4+"]
     dist_values = [elem_por_amostra_dist.get(l, 0) for l in dist_labels]
 
-    # Elementos mais analisados (top 5)
+    # Elementos mais analisados (todos)
     elementos_mais_analisados = []
-    for eid, qtd in sorted(elem_leituras.items(), key=lambda x: x[1], reverse=True)[:5]:
+    for eid, qtd in sorted(elem_leituras.items(), key=lambda x: x[1], reverse=True):
         elementos_mais_analisados.append({
             "nome": elemento_dict.get(eid, {}).get("nome", str(eid)),
             "quantidade": qtd
