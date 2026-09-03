@@ -2631,3 +2631,15 @@ Baseado no relatório `RELATORIO_ANALISE_LABGAS_md_2026_09_03T16_42_37.md` (aná
 - [ ] **VAL-03 (idx_leitura_unique) — BLOQUEADO pelas 5 divergentes:** só aplicar após resolver os pares, senão a criação do índice falha.
 - [ ] Testar tudo localmente antes de push
 
+## Pendência GitHub — Descrição e Topics do repositório
+**Repo:** `github.com/cavalcanteprofissional/labgas-manager`
+**Quando:** aplicar APÓS liberar push (aguardando teste local) — via `gh`/API ou manualmente em Settings → About.
+
+### Description (≤350 caracteres)
+LabGas Manager — Dashboard web para gestão de cilindros de gás e análises em laboratório de química. Controla cilindros, pressão (bar/temperatura), elementos, leituras (tempo de chama + consumo L/min) e amostras, com KPIs, gráficos e métricas de consumo de gás. Backend Flask + Jinja2, banco Supabase (PostgreSQL), autenticação Supabase Auth, deploy Vercel e backup automático Cloudflare R2.
+
+*(Alternativa enxuta:)* Dashboard Flask/Supabase para gestão de cilindros de gás e análises de laboratório de química — CRUD de cilindros, pressão, elementos, leituras e amostras, com KPIs e gráficos de consumo.
+
+### Topics (15)
+`flask`, `python`, `supabase`, `postgresql`, `jinja2`, `bootstrap5`, `dashboard`, `laboratory`, `chemistry`, `chartjs`, `authentication`, `crud`, `data-visualization`, `vercel`, `backup`
+
