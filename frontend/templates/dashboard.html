@@ -570,7 +570,24 @@ cilindroChart = new Chart(document.getElementById('cilindroChart'), {
     options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            tooltip: tooltipStyle,
+            tooltip: Object.assign({}, tooltipStyle, {
+                callbacks: {
+                    title: function (items) {
+                        var it = cilindroOrder[items[0].dataIndex];
+                        if (!it) return '';
+                        return cilindroModo === 'leitura'
+                            ? 'Nº de Leituras ' + it.qtd
+                            : 'Cilindro Nº ' + it.num;
+                    },
+                    label: function (ctx) {
+                        var it = cilindroOrder[ctx.dataIndex];
+                        if (!it) return '';
+                        return cilindroModo === 'leitura'
+                            ? 'Cilindro Nº ' + it.num
+                            : 'Nº de Leituras ' + it.qtd;
+                    }
+                }
+            }),
             legend: { display: false }
         }
     }
@@ -614,24 +631,7 @@ new Chart(pressaoCtx, {
         responsive: true, maintainAspectRatio: false,
         scales: { y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' } } },
         plugins: {
-            tooltip: Object.assign({}, tooltipStyle, {
-                callbacks: {
-                    title: function (items) {
-                        var it = cilindroOrder[items[0].dataIndex];
-                        if (!it) return '';
-                        return cilindroModo === 'leitura'
-                            ? 'Nº de Leituras ' + it.qtd
-                            : 'Cilindro Nº ' + it.num;
-                    },
-                    label: function (ctx) {
-                        var it = cilindroOrder[ctx.dataIndex];
-                        if (!it) return '';
-                        return cilindroModo === 'leitura'
-                            ? 'Cilindro Nº ' + it.num
-                            : 'Nº de Leituras ' + it.qtd;
-                    }
-                }
-            }),
+            tooltip: tooltipStyle,
             legend: { display: false }
         }
     }
