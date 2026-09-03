@@ -578,7 +578,7 @@ var coresLinha = ['#e63946','#f77f00','#2a9d8f','#457b9d','#6a1b9a','#e76f51','#
 var i = 0;
 {% for cod, serie in pressao_chart.items() %}
 pressaoDatasets.push({
-    label: '{{ cod }}',
+    label: 'Cilindro Nº {{ cod }}',
     data: {{ serie.get('values', [])|tojson }},
     borderColor: coresLinha[i % coresLinha.length],
     backgroundColor: coresLinha[i % coresLinha.length] + '33',
