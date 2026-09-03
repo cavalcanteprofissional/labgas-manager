@@ -196,6 +196,7 @@
         text-align: right;
         font-variant-numeric: tabular-nums;
     }
+    .elem-item-more { display: none; }
 </style>
 {% endblock %}
 
@@ -432,6 +433,11 @@
         <div class="card h-100">
             <div class="card-header dash-header dash-header-elemento">
                 <h6 class="mb-0"><i class="bi bi-{{ ICON_TIPO["elemento"] }}"></i> Elementos mais analisados</h6>
+                {% if elementos_mais_analisados|length > 5 %}
+                <button type="button" id="elemToggleBtn" class="btn btn-sm btn-light d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-chevron-down"></i> Ver todos
+                </button>
+                {% endif %}
             </div>
             <div class="card-body p-0">
                 {% if elementos_mais_analisados %}
@@ -441,7 +447,7 @@
                     {% for item in elementos_mais_analisados %}
                     {% set bar_pct = ((item.quantidade / max_qtd) * 100)|round(0)|int %}
                     {% set total_pct = ((item.quantidade / total_qtd) * 100)|round(0)|int %}
-                    <div class="elem-bar-item">
+                    <div class="elem-bar-item{% if loop.index > 5 %} elem-item-more{% endif %}">
                         <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
                         <div class="elem-bar-track">
                             <div class="elem-bar-fill" style="width: {{ bar_pct }}%;"></div>
@@ -728,5 +734,19 @@ new Chart(document.getElementById('distChart'), {
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
     new bootstrap.Tooltip(el);
 });
+
+var elemToggleBtn = document.getElementById('elemToggleBtn');
+if (elemToggleBtn) {
+    var elemExpanded = false;
+    elemToggleBtn.addEventListener('click', function () {
+        elemExpanded = !elemExpanded;
+        document.querySelectorAll('.elem-item-more').forEach(function (el) {
+            el.style.display = elemExpanded ? 'grid' : 'none';
+        });
+        elemToggleBtn.innerHTML = elemExpanded
+            ? '<i class="bi bi-chevron-up"></i> Ver 5'
+            : '<i class="bi bi-chevron-down"></i> Ver todos';
+    });
+}
 </script>
 {% endblock %}
