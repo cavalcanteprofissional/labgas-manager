@@ -156,6 +156,22 @@
         gap: 0.45rem;
         max-height: none;
     }
+    .pressao-legend {
+        margin-top: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem 0.6rem;
+    }
+    .pressao-legend-item {
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    .pressao-legend-item:hover { background: rgba(0, 0, 0, 0.045); }
+    .pressao-legend-item.oculto { opacity: 0.4; }
+    .pressao-legend-item.oculto .cilindro-legend-num {
+        text-decoration: line-through;
+    }
     @media (max-width: 991.98px) {
         .doughnut-wrap {
             flex-direction: column;
@@ -400,6 +416,7 @@
                 <div class="chart-container">
                     <canvas id="pressaoChart"></canvas>
                 </div>
+                <div id="pressaoLegend" class="pressao-legend"></div>
                 {% else %}
                 <div class="empty-state">
                     <i class="bi bi-graph-up-arrow"></i>
@@ -758,9 +775,8 @@ pressaoDatasets.push({
     tension: 0.3,
     pointRadius: 3
 });
-i++;
 {% endfor %}
-new Chart(pressaoCtx, {
+var pressaoChart = new Chart(pressaoCtx, {
     type: 'line',
     data: {
         labels: {{ pressao_chart_labels|tojson }},
@@ -770,11 +786,36 @@ new Chart(pressaoCtx, {
         responsive: true, maintainAspectRatio: false,
         scales: { y: { beginAtZero: true, title: { display: true, text: 'Pressão (bar)' } } },
         plugins: {
-            tooltip: tooltipStyle,
+            tooltip: Object.assign({}, tooltipStyle, { displayColors: true }),
             legend: { display: false }
         }
     }
 });
+
+(function construirPressaoLegend() {
+    var wrap = document.getElementById('pressaoLegend');
+    if (!wrap) return;
+    var html = '';
+    for (var k = 0; k < pressaoDatasets.length; k++) {
+        var ds = pressaoDatasets[k];
+        var qtd = ds.data.length;
+        html += '<div class="cilindro-legend-item pressao-legend-item" data-idx="' + k + '">' +
+            '<span class="cilindro-legend-dot" style="background:' + ds.borderColor + '"></span>' +
+            '<span class="cilindro-legend-num">' + ds.label + '</span>' +
+            '<span class="cilindro-legend-qtd">' + qtd + (qtd === 1 ? ' leitura' : ' leituras') + '</span>' +
+            '</div>';
+    }
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.pressao-legend-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+            var idx = parseInt(item.getAttribute('data-idx'), 10);
+            var oculto = pressaoChart.isDatasetVisible(idx);
+            pressaoChart.setDatasetVisibility(idx, !oculto);
+            item.classList.toggle('oculto', oculto);
+            pressaoChart.update();
+        });
+    });
+})();
 {% endif %}
 
 {% if leituras_mes_labels %}
