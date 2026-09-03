@@ -110,10 +110,10 @@
     .cilindro-legend-item {
         display: flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.35rem;
         min-width: 0;
         padding: 0.3rem 0.45rem;
-        font-size: 0.8rem;
+        font-size: 0.74rem;
         line-height: 1.2;
         background: rgba(0, 0, 0, 0.028);
         border: 1px solid rgba(0, 0, 0, 0.05);
@@ -128,6 +128,10 @@
     .cilindro-legend-num {
         font-weight: 600;
         font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .cilindro-legend-qtd {
         margin-left: auto;
@@ -532,10 +536,18 @@ function renderCilindro(modo) {
     if (!wrap) return;
     var html = '';
     for (var j = 0; j < items.length; j++) {
+        var principal, secundario;
+        if (modo === 'leitura') {
+            principal = 'Nº de Leituras ' + items[j].qtd;
+            secundario = 'Cilindro Nº ' + items[j].num;
+        } else {
+            principal = 'Cilindro Nº ' + items[j].num;
+            secundario = 'Nº de Leituras ' + items[j].qtd;
+        }
         html += '<div class="cilindro-legend-item">' +
             '<span class="cilindro-legend-dot" style="background:' + cores[j] + '"></span>' +
-            '<span class="cilindro-legend-num">' + items[j].num + '</span>' +
-            '<span class="cilindro-legend-qtd">' + items[j].qtd + '</span>' +
+            '<span class="cilindro-legend-num">' + principal + '</span>' +
+            '<span class="cilindro-legend-qtd">' + secundario + '</span>' +
             '</div>';
     }
     wrap.innerHTML = html;
