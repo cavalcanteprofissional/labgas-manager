@@ -785,19 +785,34 @@ new Chart(document.getElementById('distChart'), {
         datasets: [{
             label: 'Amostras',
             data: {{ dist_values|tojson }},
-            backgroundColor: {{ paleta_cilindro|tojson }},
+            backgroundColor: {{ paleta_amostra|tojson }},
             borderRadius: 4
         }]
     },
     options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-            tooltip: tooltipStyle,
+            tooltip: Object.assign({}, tooltipStyle, {
+                callbacks: {
+                    title: function (items) {
+                        var idx = items[0].dataIndex;
+                        var f = {{ dist_intervals|tojson }}[idx];
+                        if (!f) return '';
+                        if (f[0] === f[1]) return f[0] + ' elemento';
+                        if (f[1] === null) return f[0] + ' ou mais elementos';
+                        return 'de ' + f[0] + ' a ' + f[1] + ' elementos';
+                    },
+                    label: function (ctx) {
+                        var n = ctx.parsed.y;
+                        return n + (n === 1 ? ' amostra' : ' amostras');
+                    }
+                }
+            }),
             legend: { display: false }
         },
         scales: {
-            x: { title: { display: true, text: 'Nº de Elementos' } },
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            x: { title: { display: true, text: 'Elementos por amostra' } },
+            y: { beginAtZero: true, title: { display: true, text: 'Nº de amostras' }, ticks: { stepSize: 1 } }
         }
     }
 });

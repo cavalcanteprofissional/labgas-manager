@@ -10,7 +10,7 @@ from supabase import create_client, Client
 
 from blueprints.helpers import get_authenticated_client
 from utils.limiter import limiter
-from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA
+from utils.constants import ELEMENTO_CORES, ELEMENTO_CORES_LEITURAS, PALETA_CILINDRO, PALETA_ELEMENTO, PALETA_LEITURA, PALETA_AMOSTRA
 from utils.erros_utils import formatar_erro_supabase
 from utils.cilindro_utils import normalizar_numero_cilindro, numero_corresponde
 
@@ -416,18 +416,22 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
     leituras_mes_labels = [_formatar_mes_ano(m) for m in reversed(meses)]
     leituras_mes_values = [leituras_por_mes[m] for m in meses]
 
-    # Elementos por Amostra (distribuição)
+    # Elementos por Amostra (distribuição em faixas mais finas)
     ae_count = defaultdict(int)
     for ae in ae_data:
         ae_count[ae.get("amostra_id")] += 1
 
+    dist_buckets = [("1", 1, 1), ("2-3", 2, 3), ("4-6", 4, 6), ("7-10", 7, 10), ("11+", 11, None)]
     elem_por_amostra_dist = defaultdict(int)
     for count in ae_count.values():
-        key = "4+" if count >= 4 else str(count)
-        elem_por_amostra_dist[key] += 1
+        for label, lo, hi in dist_buckets:
+            if (hi is None and count >= lo) or (lo <= count <= hi):
+                elem_por_amostra_dist[label] += 1
+                break
 
-    dist_labels = ["1", "2", "3", "4+"]
-    dist_values = [elem_por_amostra_dist.get(l, 0) for l in dist_labels]
+    dist_labels = [b[0] for b in dist_buckets]
+    dist_values = [elem_por_amostra_dist.get(b[0], 0) for b in dist_buckets]
+    dist_intervals = [[b[1], b[2]] for b in dist_buckets]
 
     # Elementos mais analisados (todos)
     elementos_mais_analisados = []
@@ -457,6 +461,7 @@ def _compute_kpis(leituras, cilindro, elementos, amostras_data, ae_data, pressoe
         elementos_mais_analisados=elementos_mais_analisados,
         dist_labels=dist_labels,
         dist_values=dist_values,
+        dist_intervals=dist_intervals,
         cilindro_dict={k: numero_cilindro.get(k, str(k)) for k in cilindro_dict},
         elemento_dict={k: v.get("nome") for k, v in elemento_dict.items()},
     )
@@ -535,6 +540,7 @@ def dashboard():
         amostras=amostras_recentes,
         paleta_cilindro=PALETA_CILINDRO,
         paleta_elemento=PALETA_ELEMENTO,
+        paleta_amostra=PALETA_AMOSTRA,
         lista_usuarios=lista_usuarios,
         selected_user_id=selected_user_id or "all",
         alerta_pressao=alerta_pressao,
