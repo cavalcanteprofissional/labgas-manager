@@ -21,6 +21,18 @@ def test_dashboard_elementos_mais_analisados(login, page):
     assert section.is_visible()
 
 
+def test_dashboard_elementos_mais_analisados_barras(login, page):
+    section = page.locator("text=Elementos mais analisados")
+    if not section.is_visible():
+        return
+    bars = page.locator(".elem-bar-fill").count()
+    items = page.locator(".elem-bar-item").count()
+    assert items == bars, f"Esperado {items} barras preenchidas, encontrado {bars}"
+    if items:
+        first_width = page.locator(".elem-bar-fill").first.get_attribute("style")
+        assert "100%" in first_width, f"Maior elemento deveria ter barra em 100%, got {first_width}"
+
+
 def test_dashboard_ultimas_amostras_section(login, page):
     section = page.locator("text=Últimas Amostras")
     assert section.is_visible()

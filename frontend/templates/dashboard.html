@@ -165,6 +165,37 @@
     .dash-kpi-tooltip {
         cursor: help;
     }
+    .elem-bar-list { padding: 0.6rem 0; }
+    .elem-bar-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 1rem;
+        transition: background 0.15s ease;
+    }
+    .elem-bar-item:hover { background: rgba(0,0,0,0.025); }
+    .elem-bar-track {
+        height: 22px;
+        background: rgba(0,0,0,0.06);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+    }
+    .elem-bar-fill {
+        height: 100%;
+        border-radius: 6px;
+        background: linear-gradient(90deg, var(--elemento-dark), var(--elemento-light));
+        transition: width 0.6s ease;
+        min-width: 2px;
+    }
+    .elem-bar-meta {
+        font-size: 0.78rem;
+        color: var(--bs-secondary-color);
+        white-space: nowrap;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
 </style>
 {% endblock %}
 
@@ -404,11 +435,16 @@
             </div>
             <div class="card-body p-0">
                 {% if elementos_mais_analisados %}
-                <div class="list-group list-group-flush">
+                <div class="elem-bar-list">
+                    {% set max_qtd = elementos_mais_analisados[0].quantidade %}
                     {% for item in elementos_mais_analisados %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                    {% set pct = ((item.quantidade / max_qtd) * 100)|round(0)|int %}
+                    <div class="elem-bar-item">
                         <span class="badge" style="background: {{ COR_TIPO['elemento']['var'] }};">{{ item.nome }}</span>
-                        <span class="badge bg-secondary">{{ item.quantidade|milhar }} leitura(s)</span>
+                        <div class="elem-bar-track">
+                            <div class="elem-bar-fill" style="width: {{ pct }}%;"></div>
+                        </div>
+                        <span class="elem-bar-meta">{{ item.quantidade|milhar }} <small>({{ pct }}%)</small></span>
                     </div>
                     {% endfor %}
                 </div>
