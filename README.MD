@@ -647,6 +647,16 @@ poetry run python frontend/app.py
 
 O frontend estará disponível em: `http://localhost:5000`
 
+#### Modo Debug
+
+Para ativar o modo debug (auto-reload e stack traces detalhados), defina `FLASK_DEBUG=true` no `frontend/.env.local`:
+
+```env
+FLASK_DEBUG=true
+```
+
+> **Nota**: O debug é forçado para `False` em produção (Vercel) mesmo se a variável estiver `true`. Não exponha debug em ambientes públicos.
+
 ### Seed (criar/resetar usuário de teste)
 
 ```bash
