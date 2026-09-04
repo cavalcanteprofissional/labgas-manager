@@ -763,14 +763,19 @@ window.addEventListener('resize', moveAllIndicators);
 {% if pressao_chart %}
 var pressaoCtx = document.getElementById('pressaoChart');
 var pressaoDatasets = [];
-var coresLinha = ['#e63946','#f77f00','#2a9d8f','#457b9d','#6a1b9a','#e76f51','#f4a261','#264653'];
-var i = 0;
+function corPorIndice(total, idx, alpha) {
+    var hueBase = 354;
+    var hue = (hueBase + (idx * 360 / total)) % 360;
+    var a = (alpha === undefined) ? 1 : alpha;
+    return 'hsla(' + hue + ', 78%, 56%, ' + a + ')';
+}
+var pressaoTotal = {{ pressao_chart|length }};
 {% for cod, serie in pressao_chart.items() %}
 pressaoDatasets.push({
     label: 'Cilindro Nº {{ cod }}',
     data: {{ serie.get('values', [])|tojson }},
-    borderColor: coresLinha[i % coresLinha.length],
-    backgroundColor: coresLinha[i % coresLinha.length] + '33',
+    borderColor: corPorIndice(pressaoTotal, {{ loop.index0 }}),
+    backgroundColor: corPorIndice(pressaoTotal, {{ loop.index0 }}, 0.2),
     fill: true,
     tension: 0.3,
     pointRadius: 3
