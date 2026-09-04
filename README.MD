@@ -73,7 +73,7 @@ Tanto `ICON_TIPO` quanto `COR_TIPO` são injetados automaticamente em **todos os
 
 | Aba | Funcionalidades |
 |-----|-----------------|
-| **Dashboard** | 6 KPIs, 4 gráficos, top elementos, últimas leituras e amostras |
+| **Dashboard** | 6 KPIs, 4 gráficos interativos, top elementos, atividade recente |
 | **Cilindros** | CRUD completo, número do cilindro, status (ativo/esgotado) |
 | **Pressão** | CRUD completo, pressão (bar), temperatura (°C), data e hora, vinculado a cilindro |
 | **Elementos** | CRUD completo, consumo em L/min, 20 elementos padrão pré-carregados |
@@ -109,19 +109,21 @@ O dashboard é o coração do sistema — uma visão geral do laboratório com *
 
 #### Gráficos (Linhas 2 e 3)
 
-**Curva de Pressão por Cilindro** — gráfico de linha que mostra a evolução da pressão (bar) ao longo do tempo para cada cilindro. Cada cilindro ganha uma cor diferente. O sistema pega as **últimas 10 medições** de pressão de cada cilindro e plota lado a lado, permitindo visualizar o decaimento natural do gás.
+**Curva de Pressão por Cilindro** — gráfico de linha que mostra a evolução da pressão (bar) ao longo do tempo para cada cilindro. Cada cilindro ganha uma cor diferente via **paleta HSL dinâmica** (hue distribuído uniformemente, sem repetição). O sistema pega as **últimas 10 medições** de pressão de cada cilindro e plota lado a lado, permitindo visualizar o decaimento natural do gás. A **legenda interativa** permite ocultar/mostrar cilindros individualmente (click em um item da legenda).
 
 **Leituras por Mês** — gráfico de barras que agrupa as leituras por mês (últimos 12 meses). O eixo X são os meses, o eixo Y é a soma das quantidades. Ideal para enxergar sazonalidade: "em abril o laboratório trabalhou mais que em janeiro".
 
-**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra quantas leituras foram feitas em cada cilindro. A legenda é um **grid customizado** com ponto de cor + número do cilindro + quantidade total de leituras (empilha abaixo do gráfico no mobile). O header do card tem um filtro de **"Por Número"** (padrão) e **"Por Leituras"**, que reordena fatias e legenda juntas e recalcula a cor pela base escolhida. A cor usa **escala vermelha pura claro→escuro** (`#ffc2c2 → #780000`): menor valor = vermelho mais claro, maior = vermelho mais escuro. Útil para saber qual cilindro está sendo mais usado.
+**Leituras por Cilindro** — gráfico de rosca (doughnut) que mostra quantas leituras foram feitas em cada cilindro. A legenda é um **grid customizado** com ponto de cor + número do cilindro + quantidade total de leituras (empilha abaixo do gráfico no mobile). O header do card tem um filtro de **"Por Número"** (padrão) e **"Por Leituras"**, que reordena fatias e legenda juntas e recalcula a cor pela base escolhida. A cor usa **escala vermelha pura claro→escuro** (`#ffc2c2 → #780000`): menor valor = vermelho mais claro, maior = vermelho mais escuro. O **tooltip dinâmico** mostra a legenda do gráfico de cilindro ao passar o mouse. Útil para saber qual cilindro está sendo mais usado.
 
-**Elementos por Amostra** — gráfico de barras que mostra a distribuição de quantos elementos cada amostra tem: amostras com 1, 2, 3 ou 4+ elementos. Se 10 amostras têm 1 elemento cada e 5 amostras têm 3 elementos cada, o gráfico mostra essa proporção. Ajuda a entender a complexidade média das amostras.
+**Elementos por Amostra** — gráfico de barras que mostra a distribuição de quantos elementos cada amostra tem, com **faixas refinadas**: 1, 2-3, 4-6, 7-10 e 11+ elementos. O **segmented control** permite alternar a visualização entre modos de exibição. Um **tooltip explicativo** detalha cada faixa ao passar o mouse sobre as barras.
 
 #### Listas (Linha 4)
 
-- **Elementos mais analisados** — top 5 elementos com mais leituras, em ordem decrescente. Cada elemento aparece com seu nome e quantidade de leituras.
-- **Últimas Leituras** — as 5 leituras mais recentes, mostrando o cilindro e o elemento usados. Botão "Ver todas" leva à página de leituras.
-- **Últimas Amostras** — as 5 amostras mais recentes, com número e lote. Botão "Ver todas" leva à página de amostras.
+- **Elementos mais analisados** — top 5 elementos com mais leituras, em ordem decrescente, com **barras horizontais proporcionais** e percentual relativo ao total. Cada elemento aparece com seu nome e quantidade de leituras. **Colapsa automaticamente em top 5** por padrão, com **toggle expandir/colapsar** (chip de vidro + chevron rotativo) para visualizar todos.
+- **Últimas Leituras** — as 5 leituras mais recentes, mostrando o cilindro e o elemento usados.
+- **Últimas Amostras** — as 5 amostras mais recentes, com número e lote.
+
+> Os botões **"Ver todas"** de cada card ficam no cabeçalho (chip de vidro) ao lado do título, em vez de no rodapé.
 
 ---
 
