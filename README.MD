@@ -649,6 +649,8 @@ O frontend estará disponível em: `http://localhost:5000`
 
 #### Modo Debug
 
+Por padrão, o debug está desligado (`false`). O `.env.example` já vem com `FLASK_DEBUG=false` comentado.
+
 Para ativar o modo debug (auto-reload e stack traces detalhados), defina `FLASK_DEBUG=true` no `frontend/.env.local`:
 
 ```env
