@@ -2642,3 +2642,58 @@ LabGas Manager - Dashboard web para gestão de cilindros de gás e análises em 
 ### Topics (15, aplicados)
 `flask`, `python`, `supabase`, `postgresql`, `jinja2`, `bootstrap5`, `dashboard`, `laboratory`, `chemistry`, `chartjs`, `authentication`, `crud`, `data-visualization`, `vercel`, `backup`
 
+---
+
+## Pendências Dependabot — Major Bumps Pendentes (2026-09-04)
+
+### Contexto
+Branches Dependabot foram todas deletadas do GitHub (16 branches, superseded/descontinuadas). As atualizações de dependências serão aplicadas manualmente na branch `main` quando o usuário decidir. Abaixo estão os **major bumps** que exigem revisão antes de merge.
+
+### ⚠️ Major Bumps (exigem revisão manual)
+
+#### 1. Flask 3.0.0 → 3.1.3
+- **Tipo:** Major bump (3.0 → 3.1)
+- **Motivação:** Correções de segurança e bugs; Flask 3.1 inclui suporte nativo a async views, performance melhorada e fixes de regressão
+- **Risco:** Pode quebrar compatibilidade com Flask-Login 0.6.3, flask-wtf 1.2.1 ou flask-limiter; o Supabase Python client pode ter conflitos de typing
+- **Recomendação:** Testar em ambiente local antes de merge; verificar changelog do Flask 3.1 para breaking changes; atualizar flask-login e flask-wtf se necessário
+- **Status:** Pendente — branches Dependabot deletadas
+
+#### 2. Flask-CORS 4.0.0 → 6.0.5
+- **Tipo:** Major bump (4 → 6)
+- **Motivação:** Novas features de CORS policy, correções de bugs, suporte a origins dinâmicas
+- **Risco:** API pode ter mudanças de interface; a configuração atual (`ALLOWED_ORIGINS` em `app.py`) pode precisar de ajustes
+- **Recomendação:** Revisar changelog do Flask-CORS 5.x e 6.x; testar que CORS funciona corretamente no Vercel; a configuração atual (`@app.after_request`) deve continuar compatível
+- **Status:** Pendente — branches Dependabot deletadas
+
+#### 3. Gunicorn 21.2.0 → 26.0.0
+- **Tipo:** Major bump (21 → 26)
+- **Motivação:** Melhorias de performance, suporte a Python 3.12+, correções de workers
+- **Risco:** Configuração de workers pode ter mudanças; o Vercel usa `@vercel/python` (não gunicorn diretamente) então impacto é limitado a desenvolvimento local
+- **Recomendação:** Baixo risco em produção (Vercel não usa gunicorn); verificar se `Procfile` e configuração local continuam funcionando; atualizar por completude
+- **Status:** Pendente — branches Dependabot deletadas
+
+#### 4. Python-Dotenv 1.0.0 → 1.2.2
+- **Tipo:** Minor bump (1.0 → 1.2)
+- **Motivação:** Correções de bugs e suporte a novos formatos de env
+- **Risco:** Baixo — API estável; o `.env.local` continua compatível
+- **Recomendação:** Merge seguro; apenas testar que `load_dotenv` continua lendo `.env.local` corretamente
+- **Status:** Pendente — branches Dependabot deletadas
+
+### ✅ Updates Patch/Minor (baixo risco, prontos para merge manual)
+Estes updates foram propostos pelo Dependabot e são compatíveis com as versões pinadas:
+- `flask-caching 2.4.0 → 2.4.1` (patch, compatível com `>=2.1.0`)
+- `flask-wtf 1.2.1 → 1.3.0` (minor, compatível)
+- `flask-restx 1.3.0 → 1.3.2` (patch)
+- `openpyxl 3.1.2 → 3.1.5` (patch)
+- `python-jose 3.3.0 → 3.5.0` (minor)
+- `actions/checkout 4 → 7` (GitHub Actions major, mas sem impacto no código)
+- `actions/setup-python 5 → 7` (GitHub Actions major, sem impacto)
+- `actions/upload-artifact 4 → 7` (GitHub Actions major, sem impacto)
+- `actions/github-script 7 → 9` (GitHub Actions major, sem impacto)
+
+### Ação recomendada
+1. Aplicar os 4 major bumps (Flask, Flask-CORS, Gunicorn, Python-Dotenv) em um único commit com testes
+2. Aplicar os patch/minor em commit separado
+3. Renomear `frontend/requirements.txt` para refletir as novas versões (ou remover se Poetry for a fonte única)
+4. Testar suíte de testes completa (`pytest frontend/tests/ -v`)
+
